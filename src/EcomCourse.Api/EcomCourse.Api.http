@@ -1,0 +1,6 @@
+@EcomCourse.Api_HostAddress = http://localhost:5269
+
+GET {{EcomCourse.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
