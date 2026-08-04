@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\EcomCourse.Application\EcomCourse.Application.csproj" />
+    <ProjectReference Include="..\..\src\EcomCourse.Domain\EcomCourse.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
