@@ -1,4 +1,4 @@
-﻿namespace EcomCourse.UnitTests;
+namespace EcomCourse.UnitTests;
 
 public class UnitTest1
 {
