@@ -1,6 +1,12 @@
+using EcomCourse.Api;
+
+var userId = new CreateUserCommand("Ivan", "ivan@example.com");
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+
+
 
 var app = builder.Build();
 
@@ -14,8 +20,8 @@ app.UseHttpsRedirection();
 
 app.MapGet("/", () =>
 {
-   
-    return "Everything is okay";
+
+    return userId;
 })
 .WithName("GetHealthCheck");
 
