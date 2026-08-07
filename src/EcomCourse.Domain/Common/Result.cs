@@ -1,20 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace EcomCourse.Domain.Common
 {
     public class Result
     {
-        public bool IsSuccess { get; set; }
+        public bool IsSuccess { get; init; }
         public bool IsFailure => !IsSuccess;
-        public DomainError Error { get; set; }
+        public DomainError Error { get; init; }
 
-       
-        public Result(bool isSuccess, DomainError error)
+
+        protected Result(bool isSuccess, DomainError error)
         {
+            if (isSuccess && error != DomainError.None)
+            {
+                throw new InvalidOperationException("Success result cannot contain an error.");
+            }
+
+            if (!isSuccess && error == DomainError.None)
+            {
+                throw new InvalidOperationException("Failure result must contain an error.");
+            }
+
             IsSuccess = isSuccess;
             Error = error;
         }
@@ -42,9 +51,9 @@ namespace EcomCourse.Domain.Common
 
     public class Result<TValue> : Result
     {
-        public TValue? Value { get; set; }
+        public TValue? Value { get; init; }
 
-        public Result(TValue? value, bool isSuccess, DomainError error)
+        protected internal Result(TValue? value, bool isSuccess, DomainError error)
             : base(isSuccess, error)
         {
             Value = value;
