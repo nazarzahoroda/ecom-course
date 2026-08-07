@@ -8,7 +8,7 @@ namespace EcomCourse.Api
 
     public class CreateUserHandler : ICommandHandler<CreateUserCommand, Guid>
     {
-        public async Task<Guid> HandleAsync(CreateUserCommand command, CancellationToken cancellationToken = default)
+        public async Task<Guid> HandleAsync(CreateUserCommand command, CancellationToken cancellationToken)
         {
             // Імітація створення користувача в БД
             Guid newUserId = Guid.NewGuid();
