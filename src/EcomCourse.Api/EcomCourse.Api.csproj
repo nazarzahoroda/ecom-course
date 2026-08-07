@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\EcomCourse.Application\EcomCourse.Application.csproj" />
     <ProjectReference Include="..\EcomCourse.Infrastructure\EcomCourse.Infrastructure.csproj" />
   </ItemGroup>
 
