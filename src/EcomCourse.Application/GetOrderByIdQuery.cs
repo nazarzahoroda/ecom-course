@@ -1,9 +1,16 @@
+<<<<<<< HEAD
 
 using EcomCourse.Application.Abstraction.Messaging;
+=======
+using System;
+using System.Collections.Generic;
+using System.Text;
+using EcomCourse.Application;
+>>>>>>> parent of be43481 (fixed cqrs-pattern)
 
 namespace EcomCourse.Application
 {
-    public record GetOrderByIdQuery(Guid OrderId) : IQuery<OrderDto>;
+    public record GetOrderByIdQuery(Guid OrderId) : IQuery<GetOrderByIdQuery, OrderDto>;
 
     public record OrderDto(Guid Id, string ProductName, int Quantity);
 
@@ -15,3 +22,7 @@ namespace EcomCourse.Application
         }
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> parent of be43481 (fixed cqrs-pattern)
