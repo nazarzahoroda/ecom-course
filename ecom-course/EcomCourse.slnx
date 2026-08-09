@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="../src/EcomCourse.Api/EcomCourse.Api.csproj" />
+    <Project Path="../src/EcomCourse.Application/EcomCourse.Application.csproj" />
+    <Project Path="../src/EcomCourse.Domain/EcomCourse.Domain.csproj" />
+    <Project Path="../src/EcomCourse.Infrastructure/EcomCourse.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="../tests/EcomCourse.IntegrationTests/EcomCourse.IntegrationTests.csproj" />
+    <Project Path="../tests/EcomCourse.UnitTests/EcomCourse.UnitTests.csproj" />
+  </Folder>
+</Solution>
