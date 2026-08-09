@@ -17,10 +17,3 @@ namespace EcomCourse.Application
         }
     }
 }
-
-//// 1. Створюємо команду, де TResponse це Guid (ID замовлення)
-//var command = new CreateOrderCommand<Guid>("Ноутбук", 2);
-
-//// 2. Медіатор або DI-контейнер знаходить відповідний обробник і викликає метод
-//var handler = new CreateOrderHandler<Guid>();
-//Guid orderId = await handler.HandleAsync(command, CancellationToken.None);

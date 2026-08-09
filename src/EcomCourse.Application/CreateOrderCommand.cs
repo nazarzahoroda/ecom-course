@@ -14,9 +14,6 @@ namespace EcomCourse.Application
         public async Task<TResponse> HandleAsync(CreateOrderCommand<TResponse> command, CancellationToken cancellationToken)
         {
             Console.WriteLine($"Order created: {command.ProductName} x {command.Quantity}");
-            //var order = new Order(command.ProductName, command.Quantity);
-            //await _dbContext.Orders.AddAsync(order, cancellationToken);
-            //await _dbContext.SaveChangesAsync(cancellationToken);
             await Task.CompletedTask;
             return default!;
         }
