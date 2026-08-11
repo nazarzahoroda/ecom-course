@@ -12,8 +12,8 @@ namespace EcomCourse.UnitTests
         {
             var service = new ServiceCollection();
 
-            var exception = Record.Exception(()
-                => service.AddInfrastructure(new ConfigurationBuilder().Build())
+            var exception = Record.Exception(
+                () => service.AddInfrastructure()
             );
 
             Assert.Null(exception);
