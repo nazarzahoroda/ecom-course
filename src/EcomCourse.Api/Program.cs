@@ -1,6 +1,10 @@
 using EcomCourse.Api.Middleware;
 
+using EcomCourse.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddInfrastructure();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen();
