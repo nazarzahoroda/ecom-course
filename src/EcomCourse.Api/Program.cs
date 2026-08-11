@@ -1,3 +1,5 @@
+using EcomCourse.Api.Middleware;
+
 using EcomCourse.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,14 +8,19 @@ var builder = WebApplication.CreateBuilder(args);
     builder.Services.AddInfrastructure(builder.Configuration);
 
 }
+builder.Services.AddEndpointsApiExplorer();
 
-builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
