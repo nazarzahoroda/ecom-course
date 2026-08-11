@@ -26,4 +26,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EcomCourse.Infrastructure\EcomCourse.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
