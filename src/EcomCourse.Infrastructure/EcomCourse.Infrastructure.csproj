@@ -10,6 +10,9 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\EcomCourse.Application\EcomCourse.Application.csproj" />
     <ProjectReference Include="..\EcomCourse.Domain\EcomCourse.Domain.csproj" />
   </ItemGroup>
