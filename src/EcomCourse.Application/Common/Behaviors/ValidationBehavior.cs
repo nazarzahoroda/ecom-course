@@ -7,42 +7,41 @@ using MediatR;
 
 namespace EcomCourse.Application.Common.Behaviors
 {
-    public sealed class ValidationBehavior<TRequest, TResponse>
-    : IPipelineBehavior<TRequest, TResponse>
+    public sealed class ValidationResultBehavior<TRequest, TResult>(IServiceProvider serviceProvider) : IPipelineBehavior<TRequest, TResult>
     where TRequest : notnull
+    where TResult : notnull, IAsyncResult
     {
-        private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-        public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
+        public async Task<TResult> Handle(TRequest request, RequestHandlerDelegate<TResult> next, CancellationToken cancellationToken)   
         {
-            _validators = validators;
-        }
-
-        public async Task<TResponse> Handle(
-            TRequest request,
-            RequestHandlerDelegate<TResponse> next,
-            CancellationToken cancellationToken)
-        {
-            if (!_validators.Any())
+            var validators = serviceProvider.GetServices<IValidator<TRequest>>();
+            if (validators is null)
             {
                 return await next();
             }
 
-            var context = new ValidationContext<TRequest>(request);
+            var validationResult = await validator.ValidateAsync(request, cancellationToken);
+            if (!validationResult.IsValid)
+            {
+                var errorCode = validationResult.Errors.FirstOrDefault()?.ErrorCode ?? StatusCodes.Status400BadRequest.ToString();
 
-            var validationResults = await Task.WhenAll(
-                _validators.Select(validator =>
-                    validator.ValidateAsync(context, cancellationToken)));
-            var failures = validationResults
-            .SelectMany(result => result.Errors)
-            .Where(failure => failure is not null)
-            .ToList();
+                return (
+                    int.TryParse(errorCode, out var code) ? code : StatusCodes.Status400BadRequest
+                ) switch
+                {
+                    StatusCodes.Status403Forbidden => Results.Problem(
+                        new ForbiddenResponse(validationResult.Errors.FirstOrDefault()?.ErrorMessage ?? "Validation failed")  
+                    ),
+                    _ => Results.BadRequest(
+                        new BadRequestResponse(validationResult.Errors.FirstOrDefault()?.ErrorMessage ?? "Validation failed") 
+                    ),
+                };
 
+                var failures = validationResults.SelectMany(result => result.Errors).Where(failure => failure is not null).ToList();
+            
             if (failures.Count != 0)
             {
                 throw new ValidationException(failures);
             }
-
             return await next();
         }
     }

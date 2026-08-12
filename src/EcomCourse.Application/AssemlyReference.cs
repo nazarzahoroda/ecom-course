@@ -6,5 +6,8 @@ namespace EcomCourse.Application
 {
     public sealed class AssemlyReference
     {
+
     }
+
+    public static readonly Assembly Assembly = typeof(AssemblyReference).Assembly;
 }

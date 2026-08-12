@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.Application
 {
-    internal class DependencyInjection
+    public static class DependencyInjection
     {
         public static void AddApplication(IServiceCollection services)
         {
