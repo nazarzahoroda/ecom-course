@@ -1,8 +1,15 @@
+using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Api.Middleware;
 
+using EcomCourse.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddInfrastructure();
 builder.Services.AddEndpointsApiExplorer();
 
+builder.Services.AddOpenApi();
+builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddSwaggerGen();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -21,7 +28,7 @@ app.UseHttpsRedirection();
 
 app.MapGet("/", () =>
 {
-   
+
     return "Everything is okay";
 })
 .WithName("GetHealthCheck");
