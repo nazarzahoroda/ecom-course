@@ -1,22 +1,27 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using EcomCourse.Infrastructure;
 
-namespace EcomCourse.UnitTests
+namespace EcomCourse.UnitTests;
+
+public class InfrastructureTest
 {
-    public class InfrastructureTest
+    [Fact]
+    public void InfrastructureRegistration()
     {
-        // тест для перевірки на білд DI
-        [Fact]
-        public void InfrastructureRegistration()
-        {
-            var service = new ServiceCollection();
+        var services = new ServiceCollection();
 
-            var exception = Record.Exception(
-                () => service.AddInfrastructure()
-            );
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] =
+                    "Server=localhost,1433;Database=EcomDb;User Id=sa;Password=TestPassword123!;TrustServerCertificate=True"
+            })
+            .Build();
 
-            Assert.Null(exception);
-        }
+        var exception = Record.Exception(
+            () => services.AddInfrastructure(configuration));
+
+        Assert.Null(exception);
     }
 }
