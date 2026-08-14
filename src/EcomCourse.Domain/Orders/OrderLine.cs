@@ -9,7 +9,6 @@ public class OrderLine : Entity<Guid>
     public int Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
 
-    // Виправлено: додано : base(Guid.Empty)
     private OrderLine() : base(Guid.Empty) { }
 
     private OrderLine(Guid id, Guid productId, int quantity, decimal unitPrice) : base(id)

@@ -7,7 +7,6 @@ public class OrderTests
     [Fact]
     public void Create_ShouldReturnFailure_WhenItemsListIsEmpty()
     {
-        // Arrange
         var customerId = Guid.NewGuid();
         var emptyItems = Array.Empty<(Guid ProductId, int Quantity, decimal UnitPrice)>();
 
@@ -62,9 +61,9 @@ public class OrderTests
         var customerId = Guid.NewGuid();
         var items = new[]
         {
-            (ProductId: Guid.NewGuid(), Quantity: 2, UnitPrice: 100m), // 200
-            (ProductId: Guid.NewGuid(), Quantity: 3, UnitPrice: 50m),  // 150
-            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 25.5m) // 25.5
+            (ProductId: Guid.NewGuid(), Quantity: 2, UnitPrice: 100m),
+            (ProductId: Guid.NewGuid(), Quantity: 3, UnitPrice: 50m),
+            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 25.5m)
         };
         const decimal expectedTotal = 375.5m;
 
@@ -82,15 +81,12 @@ public class OrderTests
     [Fact]
     public void Lines_ShouldBeReadOnlyCollection_AndContainCorrectData()
     {
-        // Arrange
         var customerId = Guid.NewGuid();
         var productId = Guid.NewGuid();
         var items = new[] { (ProductId: productId, Quantity: 2, UnitPrice: 150m) };
 
-        // Act
         var result = Order.Create(customerId, items);
 
-        // Assert
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
         var order = result.Value!;

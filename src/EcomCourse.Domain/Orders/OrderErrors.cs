@@ -6,17 +6,17 @@ public static class OrderErrors
 {
     public static readonly DomainError NotFound = new(
         "Order.NotFound",
-        "Замовлення з вказаним ідентифікатором не знайдено.");
+        "The order with the specified identifier was not found.");
 
     public static readonly DomainError EmptyLines = new(
         "Order.EmptyLines",
-        "Замовлення повинно містити хоча б одну лінію.");
+        "The order must contain at least one line.");
 
     public static readonly DomainError InvalidQuantity = new(
         "Order.InvalidQuantity",
-        "Кількість товару має бути більшою за нуль.");
+        "Product quantity must be greater than zero.");
 
     public static readonly DomainError InvalidUnitPrice = new(
         "Order.InvalidUnitPrice",
-        "Ціна товару не може бути від'ємною.");
+        "Product unit price cannot be negative.");
 }

@@ -23,10 +23,8 @@ public class CreateOrderCommandHandlerTests
             Guid.NewGuid(),
             new List<OrderLineItemRequest>());
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.EmptyLines, result.Error);
 
