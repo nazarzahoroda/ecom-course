@@ -1,13 +1,13 @@
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Api.Middleware;
-
+using EcomCourse.Application;
 using EcomCourse.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure();
 builder.Services.AddEndpointsApiExplorer();
-
+builder.Services.AddApplication();
 builder.Services.AddOpenApi();
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddSwaggerGen();

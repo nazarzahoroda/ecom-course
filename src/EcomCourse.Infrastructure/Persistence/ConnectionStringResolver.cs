@@ -10,9 +10,10 @@ public static class ConnectionStringResolver
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' is missing. " +
-                "Please configure it using: dotnet user-secrets set \"ConnectionStrings:DefaultConnection\" \"<your_connection_string>\"");
+
+            var fallback = "Server=(localdb)\\mssqllocaldb;Database=EcomCourseDb;Trusted_Connection=True;MultipleActiveResultSets=true";
+
+            return fallback;
         }
 
         return connectionString;
