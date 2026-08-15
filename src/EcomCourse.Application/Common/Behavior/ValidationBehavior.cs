@@ -42,7 +42,6 @@ namespace EcomCourse.Application.Common.Behavior
                 }
             }
 
-            // собрать и дождаться всех ValidationResult
             var validationResults = await Task.WhenAll(
                 _validators.Select(v => v.ValidateAsync(request, cancellationToken)));
 
