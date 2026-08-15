@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using EcomCourse.Domain.Common;
 using FluentValidation;
 using MediatR;
@@ -39,8 +42,11 @@ namespace EcomCourse.Application.Common.Behavior
                 }
             }
 
-            DomainError[] errors = _validators
-                .Select(validator => validator.Validate(request))
+            // собрать и дождаться всех ValidationResult
+            var validationResults = await Task.WhenAll(
+                _validators.Select(v => v.ValidateAsync(request, cancellationToken)));
+
+            DomainError[] errors = validationResults
                 .SelectMany(validationResult => validationResult.Errors)
                 .Where(validationFailure => validationFailure is not null)
                 .Select(failure => new DomainError(
