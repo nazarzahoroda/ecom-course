@@ -1,8 +1,6 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.Infrastructure;
-    
 
 public static class DependencyInjection
 {
@@ -11,4 +9,3 @@ public static class DependencyInjection
         return services;
     }
 }
-
