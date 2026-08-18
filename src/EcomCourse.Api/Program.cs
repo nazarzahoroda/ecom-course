@@ -1,13 +1,13 @@
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Api.Middleware;
-
 using EcomCourse.Infrastructure;
+using EcomCourse.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddInfrastructure();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
-//builder.Services.AddApplication(); waiting for PR
 
 builder.Services.AddControllers();
 
@@ -38,5 +38,7 @@ app.MapGet("/", () =>
     return "Everything is okay";
 })
 .WithName("GetHealthCheck");
+
+app.MapControllers();
 
 app.Run();

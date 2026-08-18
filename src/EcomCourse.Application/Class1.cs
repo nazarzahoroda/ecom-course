@@ -1,4 +1,4 @@
-﻿namespace EcomCourse.Application;
+namespace EcomCourse.Application;
 
 public class Class1
 {
