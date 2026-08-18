@@ -1,4 +1,4 @@
-﻿namespace EcomCourse.IntegrationTests;
+namespace EcomCourse.IntegrationTests;
 
 public class UnitTest1
 {

@@ -3,6 +3,8 @@ using EcomCourse.Api.Middleware;
 using EcomCourse.Application;
 using EcomCourse.Infrastructure;
 
+using EcomCourse.Application.Orders.Commands.CreateOrder;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -38,5 +40,7 @@ app.MapGet("/", () =>
     return "Everything is okay";
 })
 .WithName("GetHealthCheck");
+
+app.MapControllers();
 
 app.Run();
