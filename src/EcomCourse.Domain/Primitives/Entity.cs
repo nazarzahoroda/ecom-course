@@ -13,7 +13,7 @@ namespace EcomCourse.Domain.Primitives
 
         public IReadOnlyCollection<IDomainEvent> GetDomainEvents() => _domainEvents.ToList();
 
-        protected void RaiseDomainEvents (IDomainEvent domainEvent)
+        protected void RaiseDomainEvents(IDomainEvent domainEvent)
         {
             _domainEvents.Add(domainEvent);
         }

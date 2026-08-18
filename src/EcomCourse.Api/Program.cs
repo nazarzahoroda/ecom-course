@@ -1,25 +1,22 @@
-using EcomCourse.Infrastructure.Persistence;
-using EcomCourse.Api.Middleware;
-using EcomCourse.Application.Customers.RegisterCustomer;
 using EcomCourse.Api.Customers;
-using MediatR;
-using EcomCourse.Domain.Customers;
+using EcomCourse.Api.Middleware;
+using EcomCourse.Application;
 using EcomCourse.Application.Customers.GetCustomerById;
-
+using EcomCourse.Application.Customers.RegisterCustomer;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Infrastructure;
+using EcomCourse.Infrastructure.Persistence;
+using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddInfrastructure();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
-
-builder.Services.AddMediatR(configuration =>
-{
-    configuration.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
-});
+builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
-builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddSwaggerGen();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -35,14 +32,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-
 app.MapGet("/", () =>
 {
-
     return "Everything is okay";
 })
 .WithName("GetHealthCheck");
-
 
 app.MapPost("/customers/register", async (
     RegisterCustomerRequest request,
@@ -81,8 +75,6 @@ app.MapPost("/customers/register", async (
 .WithName("RegisterCustomer")
 .WithTags("Customers");
 
-
-
 app.MapGet("/customers/{id:guid}", async (
     Guid id,
     ISender sender,
@@ -105,6 +97,8 @@ app.MapGet("/customers/{id:guid}", async (
 })
 .WithName("GetCustomerById")
 .WithTags("Customers");
+
+app.MapControllers();
 
 app.Run();
 

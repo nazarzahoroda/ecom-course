@@ -7,7 +7,7 @@ using EcomCourse.Domain.Primitives;
 
 namespace EcomCourse.UnitTests.Domain.Primitives
 {
-    public class Address: ValueObject
+    public class Address : ValueObject
     {
 
         public string City { get; } = "";
