@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EcomCourse.Api.Middleware
 {
-    public class GlobalExceptionHandler: IExceptionHandler
+    public class GlobalExceptionHandler : IExceptionHandler
     {
 
         public async ValueTask<bool> TryHandleAsync(
