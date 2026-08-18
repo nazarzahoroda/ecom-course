@@ -12,7 +12,7 @@ namespace EcomCourse.Application.Carts.Commands.AddItemToCartCommand
 
         public AddItemToCartCommandHandler(IApplicationDbContext context)
         {
-            this._context = context;
+            _context = context;
         }
 
         public async Task<Result> Handle(AddItemToCartCommand request, CancellationToken cancellationToken)

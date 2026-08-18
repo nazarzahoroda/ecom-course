@@ -1,4 +1,5 @@
 using EcomCourse.Domain.Orders;
+using EcomCourse.Infrastructure.Interfaces;
 using EcomCourse.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +17,7 @@ public static class DependencyInjection
         services.AddDbContext<EcomCourseDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        services.AddScoped<IApplicationDbContext, EcomCourseDbContext>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
         return services;
