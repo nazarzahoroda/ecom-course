@@ -4,11 +4,11 @@ using EcomCourse.Api.Middleware;
 using EcomCourse.Infrastructure;
 
 using EcomCourse.Application.Orders.Commands.CreateOrder;
+using EcomCourse.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(CreateOrderCommandHandler).Assembly));
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
