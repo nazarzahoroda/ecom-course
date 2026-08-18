@@ -33,9 +33,6 @@ public class OrdersIntegrationTests : IClassFixture<WebApplicationFactory<Progra
 
         var responseBody = await createResponse.Content.ReadAsStringAsync();
 
-        Console.WriteLine($"STATUS: {createResponse.StatusCode}");
-        Console.WriteLine($"BODY: {responseBody}");
-
         //Assert
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
@@ -45,7 +42,7 @@ public class OrdersIntegrationTests : IClassFixture<WebApplicationFactory<Progra
         // Act 
         var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
 
-        // Assert - Перевірка отриманих даних
+        // Assert
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
         var orderDetails = await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
@@ -56,7 +53,7 @@ public class OrdersIntegrationTests : IClassFixture<WebApplicationFactory<Progra
 
         Assert.Equal(250m, orderDetails.Total);
 
-        // Перевіряємо лінії
+        // Сheck lines
         Assert.Equal(2, orderDetails.Lines.Count);
 
         var firstLine = orderDetails.Lines.First(l => l.Quantity == 2);

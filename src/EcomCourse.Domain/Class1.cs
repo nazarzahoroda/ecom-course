@@ -1,4 +1,4 @@
-﻿namespace EcomCourse.Domain;
+namespace EcomCourse.Domain;
 
 public class Class1
 {
