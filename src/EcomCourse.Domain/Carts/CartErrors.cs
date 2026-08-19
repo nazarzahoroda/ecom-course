@@ -9,5 +9,7 @@ namespace EcomCourse.Domain.Carts
         public static readonly DomainError NotFound = new("Cart.NotFound", "Not found");
 
         public static readonly DomainError CartNotActive = new("Cart.NotActive", "Cart is not active");
+
+        public static readonly DomainError ActiveCartAlreadyExists = new("Cart.ActiveCartAlreadyExists", "Customer already has an active cart");
     }
 }

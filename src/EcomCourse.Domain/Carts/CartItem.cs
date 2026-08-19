@@ -13,7 +13,7 @@ namespace EcomCourse.Domain.Carts
 
         private CartItem() : base(Guid.Empty) { }
 
-        private CartItem(Guid productId, int quantity) : base(Guid.NewGuid())
+        private CartItem(Guid productId, int quantity) : base(Guid.Empty)
         {
             ProductId = productId;
             Quantity = quantity;
@@ -26,12 +26,12 @@ namespace EcomCourse.Domain.Carts
 
             return Result.Success(new CartItem(productId, quantity));
         }
-        public Result IncreaseQuantity(int quantity)
+        public Result ChangeQuantity(int quantity)
         {
             if (quantity <= 0)
                 return Result.Failure(CartErrors.InvalidQuantity);
 
-            Quantity += quantity;
+            Quantity = quantity;
 
             return Result.Success();
         }

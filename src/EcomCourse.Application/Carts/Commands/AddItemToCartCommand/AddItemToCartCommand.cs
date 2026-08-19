@@ -4,5 +4,5 @@ using MediatR;
 
 namespace EcomCourse.Application.Carts.Commands.AddItemToCartCommand
 {
-    public record AddItemToCartCommand(AddItemToCartDto dto) : ICommand;
+    public record AddItemToCartCommand(Guid customerId, AddItemToCartDto dto) : ICommand;
 }

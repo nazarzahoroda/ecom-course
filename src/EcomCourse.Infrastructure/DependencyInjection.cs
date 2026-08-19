@@ -15,7 +15,11 @@ public static class DependencyInjection
         var connectionString = ConnectionStringResolver.Resolve(configuration);
 
         services.AddDbContext<EcomCourseDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        {
+            options.UseSqlServer(connectionString);
+            options.EnableSensitiveDataLogging();
+            options.LogTo(Console.WriteLine);
+        });
 
         services.AddScoped<IApplicationDbContext, EcomCourseDbContext>();
         services.AddScoped<IOrderRepository, OrderRepository>();

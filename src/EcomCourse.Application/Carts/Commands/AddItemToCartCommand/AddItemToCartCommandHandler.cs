@@ -17,10 +17,17 @@ namespace EcomCourse.Application.Carts.Commands.AddItemToCartCommand
 
         public async Task<Result> Handle(AddItemToCartCommand request, CancellationToken cancellationToken)
         {
-            var cart = await _context.Carts.SingleOrDefaultAsync(c => c.Id == request.dto.CartId, cancellationToken);
+            var cart = await _context.Carts.Include(c => c.Items).SingleOrDefaultAsync(
+            c => c.CustomerId == request.customerId &&
+                 c.Status == CartStatus.Active,
+            cancellationToken);
             if (cart is null)
             {
-                return Result.Failure(CartErrors.NotFound);
+                cart = new Cart(
+                    Guid.NewGuid(),
+                    request.customerId);
+
+                _context.Carts.Add(cart);
             }
             var result = cart.AddItem(
             request.dto.ProductId,

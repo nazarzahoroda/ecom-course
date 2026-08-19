@@ -13,7 +13,6 @@ namespace EcomCourse.Domain.Carts
 
         public IReadOnlyCollection<CartItem> Items => _items.AsReadOnly();
 
-
         private Cart() : base(Guid.Empty) { }
 
         public Cart(Guid id, Guid customerId)
@@ -34,7 +33,7 @@ namespace EcomCourse.Domain.Carts
 
             if (existingItem is not null)
             {
-                return existingItem.IncreaseQuantity(quantity);
+                return existingItem.ChangeQuantity(quantity);
             }
 
             var newItem = CartItem.Create(productId, quantity);
@@ -48,6 +47,20 @@ namespace EcomCourse.Domain.Carts
 
             return Result.Success();
         }
+        //public Result UpdateItemQuantity(Guid productId, int quantity)
+        //{
+        //    var isActive = EnsureActive();
+
+        //    if (isActive.IsFailure)
+        //        return Result.Failure(isActive.Error);
+
+        //    var item = _items.FirstOrDefault(x => x.ProductId == productId);
+
+        //    if (item is null)
+        //        return Result.Failure(CartErrors.NotFound);
+
+        //    return item.ChangeQuantity(quantity);
+        //}
 
         public Result RemoveItem(Guid productId)
         {
@@ -66,28 +79,52 @@ namespace EcomCourse.Domain.Carts
             return Result.Success();
         }
 
-        public Result<CartCheckoutData> Checkout()
-        {
-            var isActive = EnsureActive();
+        //public Result<CartCheckoutData> Checkout()
+        //{
+        //    var isActive = EnsureActive();
 
-            if (isActive.IsFailure)
-                return Result.Failure<CartCheckoutData>(isActive.Error);
+        //    if (isActive.IsFailure)
+        //        return Result.Failure<CartCheckoutData>(isActive.Error);
 
-            if (_items.Count == 0)
-                return Result.Failure<CartCheckoutData>(CartErrors.NotFound);
+        //    if (_items.Count == 0)
+        //        return Result.Failure<CartCheckoutData>(CartErrors.NotFound);
 
-            Status = CartStatus.CheckedOut;
+        //    Status = CartStatus.CheckedOut;
 
-            var data = new CartCheckoutData
-              (CustomerId, _items.Select(x => new CartCheckoutItem(x.ProductId, x.Quantity)).ToList());
+        //    var data = new CartCheckoutData
+        //      (CustomerId, _items.Select(x => new CartCheckoutItem(x.ProductId, x.Quantity)).ToList());
 
-            return Result.Success(data);
-        }
+        //    return Result.Success(data);
+        //}
 
         private Result EnsureActive()
         {
             if (Status != CartStatus.Active)
                 return Result.Failure(CartErrors.CartNotActive);
+
+            return Result.Success();
+        }
+
+        public Result Checkout()
+        {
+            var isActive = EnsureActive();
+
+            if (isActive.IsFailure)
+                return Result.Failure(isActive.Error);
+
+            Status = CartStatus.CheckedOut;
+
+            return Result.Success();
+        }
+
+        public Result Abandon()
+        {
+            var isActive = EnsureActive();
+
+            if (isActive.IsFailure)
+                return Result.Failure(isActive.Error);
+
+            Status = CartStatus.Abandoned;
 
             return Result.Success();
         }
