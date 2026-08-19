@@ -1,9 +1,9 @@
 using EcomCourse.Domain.Orders;
+using EcomCourse.Infrastructure.Interfaces;
 using EcomCourse.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace EcomCourse.Infrastructure;
 
 public static class DependencyInjection
@@ -15,8 +15,13 @@ public static class DependencyInjection
         var connectionString = ConnectionStringResolver.Resolve(configuration);
 
         services.AddDbContext<EcomCourseDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        {
+            options.UseSqlServer(connectionString);
+            options.EnableSensitiveDataLogging();
+            options.LogTo(Console.WriteLine);
+        });
 
+        services.AddScoped<IApplicationDbContext, EcomCourseDbContext>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
         return services;

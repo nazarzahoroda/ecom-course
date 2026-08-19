@@ -1,24 +1,27 @@
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Api.Middleware;
-
+using EcomCourse.Application;
 using EcomCourse.Infrastructure;
 
 using EcomCourse.Application.Orders.Commands.CreateOrder;
-using EcomCourse.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddApplication();
+
 builder.Services.AddControllers();
 
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -29,6 +32,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.MapControllers();
 
 app.MapGet("/", () =>
 {
