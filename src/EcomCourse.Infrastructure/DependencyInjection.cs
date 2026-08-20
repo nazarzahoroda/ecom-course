@@ -17,8 +17,6 @@ public static class DependencyInjection
         services.AddDbContext<EcomCourseDbContext>(options =>
         {
             options.UseSqlServer(connectionString);
-            options.EnableSensitiveDataLogging();
-            options.LogTo(Console.WriteLine);
         });
 
         services.AddScoped<IApplicationDbContext, EcomCourseDbContext>();

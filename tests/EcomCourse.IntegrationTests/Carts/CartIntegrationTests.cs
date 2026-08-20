@@ -21,25 +21,6 @@ namespace EcomCourse.IntegrationTests.Carts
             _context = scope.ServiceProvider
                 .GetRequiredService<EcomCourseDbContext>();
         }
-        //public async Task CartFlow_ShouldAddUpdateAndRemoveItems()
-        //{
-        //    var customerId = Guid.NewGuid();
-        //    var product1Id = Guid.NewGuid();
-
-        //    var dto = new AddItemToCartDto(
-        //        product1Id,
-        //        2);
-
-        //    var response = await _httpClient.PostAsJsonAsync(
-        //        $"/api/Cart/items?customerId={customerId}",
-        //        dto);
-
-        //    var body = await response.Content.ReadAsStringAsync();
-
-        //    Assert.True(
-        //        response.IsSuccessStatusCode,
-        //        $"Status: {response.StatusCode}\nBody: {body}");
-        //}
         [Fact]
         public async Task CartFlow_ShouldAddUpdateAndRemoveItems()
         {
