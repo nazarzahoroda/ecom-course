@@ -4,6 +4,5 @@ using MediatR;
 
 namespace EcomCourse.Application.Categories
 {
-    public sealed record CreateCategoryCommand(
-    string Name) : IRequest<Result<Guid>>;
+    public sealed record GetCategoryByIdQuery(Guid Id) : IRequest<Result<CategoryDto>>;   
 }
