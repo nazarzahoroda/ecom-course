@@ -1,10 +1,6 @@
-using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Api.Middleware;
-
-using EcomCourse.Infrastructure;
-
-using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application;
+using EcomCourse.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,10 +25,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-
 app.MapGet("/", () =>
 {
-
     return "Everything is okay";
 })
 .WithName("GetHealthCheck");
@@ -40,3 +34,5 @@ app.MapGet("/", () =>
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;
