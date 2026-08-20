@@ -31,5 +31,9 @@ namespace EcomCourse.Domain.Categories
             return Result.Success(new Category(Guid.NewGuid(), name.Trim()));
         }
 
+        public Result UpdateName(string name)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

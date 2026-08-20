@@ -6,6 +6,7 @@
     <Project Path="src/EcomCourse.Infrastructure/EcomCourse.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <File Path="CreateCategoryCommandValidatorTests.cs" />
     <Project Path="tests/EcomCourse.IntegrationTests/EcomCourse.IntegrationTests.csproj" />
     <Project Path="tests/EcomCourse.UnitTests/EcomCourse.UnitTests.csproj" />
   </Folder>
