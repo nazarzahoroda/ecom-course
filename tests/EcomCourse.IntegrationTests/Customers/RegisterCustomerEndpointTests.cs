@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using EcomCourse.Application.Customers;
 using EcomCourse.Domain.Customers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,8 +22,8 @@ public sealed class RegisterCustomerEndpointTests
                 {
                     builder.ConfigureServices(services =>
                     {
-                        services.RemoveAll<ICustomerRepository>();
-                        services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
+                        services.RemoveAll<ICustomerStore>();
+                        services.AddSingleton<ICustomerStore, InMemoryCustomerStore>();
                     });
                 })
                 .CreateClient();
@@ -63,7 +62,7 @@ public sealed class RegisterCustomerEndpointTests
     {
     }
 
-    private sealed class InMemoryCustomerRepository : ICustomerRepository
+    private sealed class InMemoryCustomerStore : ICustomerStore
     {
         private readonly List<Customer> _customers = [];
 
@@ -74,11 +73,11 @@ public sealed class RegisterCustomerEndpointTests
             return Task.FromResult(exists);
         }
 
-        public Task AddAsync(Customer customer, CancellationToken cancellationToken)
+        public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
         {
             _customers.Add(customer);
 
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

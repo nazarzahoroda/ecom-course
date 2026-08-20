@@ -1,4 +1,3 @@
-using EcomCourse.Application.Customers;
 using EcomCourse.Application.Customers.RegisterCustomer;
 using EcomCourse.Domain.Customers;
 
@@ -9,8 +8,8 @@ public class RegisterCustomerCommandHandlerTests
     [Fact]
     public async Task HandleReturnsSuccessWhenCommandIsValid()
     {
-        var repository = new FakeCustomerRepository();
-        var handler = new RegisterCustomerCommandHandler(repository);
+        var store = new FakeCustomerStore();
+        var handler = new RegisterCustomerCommandHandler(store);
         var userId = Guid.NewGuid();
 
         var command = new RegisterCustomerCommand(
@@ -32,8 +31,8 @@ public class RegisterCustomerCommandHandlerTests
     [Fact]
     public async Task HandleReturnsFailureWhenEmailAlreadyExists()
     {
-        var repository = new FakeCustomerRepository();
-        var handler = new RegisterCustomerCommandHandler(repository);
+        var store = new FakeCustomerStore();
+        var handler = new RegisterCustomerCommandHandler(store);
         var userId = Guid.NewGuid();
 
         var command = new RegisterCustomerCommand(
@@ -56,8 +55,8 @@ public class RegisterCustomerCommandHandlerTests
     [Fact]
     public async Task HandleReturnsFailureWhenEmailIsInvalid()
     {
-        var repository = new FakeCustomerRepository();
-        var handler = new RegisterCustomerCommandHandler(repository);
+        var store = new FakeCustomerStore();
+        var handler = new RegisterCustomerCommandHandler(store);
 
         var command = new RegisterCustomerCommand(
             Guid.NewGuid(),
@@ -74,9 +73,36 @@ public class RegisterCustomerCommandHandlerTests
         Assert.Equal(CustomerErrors.EmailInvalidFormat, result.Error);
     }
 
-    private sealed class FakeCustomerRepository : ICustomerRepository
+    [Fact]
+    public async Task HandleReturnsFailureWhenAddFailsBecauseEmailAlreadyExists()
+    {
+        var store = new FakeCustomerStore(addResult: false);
+        var handler = new RegisterCustomerCommandHandler(store);
+
+        var command = new RegisterCustomerCommand(
+            Guid.NewGuid(),
+            "Ivan",
+            "ivan@example.com",
+            "Polubotka",
+            "Lviv",
+            "79066",
+            "Ukraine");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CustomerErrors.EmailAlreadyExists, result.Error);
+    }
+
+    private sealed class FakeCustomerStore : ICustomerStore
     {
         private readonly List<Customer> _customers = [];
+        private readonly bool _addResult;
+
+        public FakeCustomerStore(bool addResult = true)
+        {
+            _addResult = addResult;
+        }
 
         public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken)
         {
@@ -85,11 +111,16 @@ public class RegisterCustomerCommandHandlerTests
             return Task.FromResult(exists);
         }
 
-        public Task AddAsync(Customer customer, CancellationToken cancellationToken)
+        public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
         {
+            if (!_addResult)
+            {
+                return Task.FromResult(false);
+            }
+
             _customers.Add(customer);
 
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)

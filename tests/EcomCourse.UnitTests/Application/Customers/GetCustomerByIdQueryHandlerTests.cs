@@ -1,4 +1,3 @@
-using EcomCourse.Application.Customers;
 using EcomCourse.Application.Customers.GetCustomerById;
 using EcomCourse.Domain.Customers;
 
@@ -6,11 +5,24 @@ namespace EcomCourse.UnitTests.Application.Customers;
 
 public class GetCustomerByIdQueryHandlerTests
 {
+    [Fact]
+    public async Task HandleReturnsFailureWhenCustomerDoesNotExist()
+    {
+        var store = new FakeCustomerStore();
+        var handler = new GetCustomerByIdQueryHandler(store);
+
+        var query = new GetCustomerByIdQuery(Guid.NewGuid());
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CustomerErrors.NotFound, result.Error);
+    }
 
     [Fact]
     public async Task HandleReturnsCustomerWhenCustomerExists()
     {
-        var repository = new FakeCustomerRepository();
+        var store = new FakeCustomerStore();
         var userId = Guid.NewGuid();
 
         var customerResult = Customer.Create(
@@ -22,9 +34,9 @@ public class GetCustomerByIdQueryHandlerTests
             "79066",
             "Ukraine");
 
-        await repository.AddAsync(customerResult.Value!, CancellationToken.None);
+        await store.AddAsync(customerResult.Value!, CancellationToken.None);
 
-        var handler = new GetCustomerByIdQueryHandler(repository);
+        var handler = new GetCustomerByIdQueryHandler(store);
 
         var query = new GetCustomerByIdQuery(customerResult.Value!.Id);
 
@@ -38,10 +50,10 @@ public class GetCustomerByIdQueryHandlerTests
         Assert.Equal("Polubotka", result.Value.Address.Street);
         Assert.Equal("Lviv", result.Value.Address.City);
         Assert.Equal("79066", result.Value.Address.PostalCode);
-        Assert.Equal("Ukraine", result.Value.Address.Country); }
+        Assert.Equal("Ukraine", result.Value.Address.Country);
+    }
 
-
-        private sealed class FakeCustomerRepository : ICustomerRepository
+    private sealed class FakeCustomerStore : ICustomerStore
     {
         private readonly List<Customer> _customers = [];
 
@@ -51,10 +63,10 @@ public class GetCustomerByIdQueryHandlerTests
             return Task.FromResult(exists);
         }
 
-        public Task AddAsync(Customer customer, CancellationToken cancellationToken)
+        public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
         {
             _customers.Add(customer);
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -64,6 +76,4 @@ public class GetCustomerByIdQueryHandlerTests
         }
     }
 }
-
-
 

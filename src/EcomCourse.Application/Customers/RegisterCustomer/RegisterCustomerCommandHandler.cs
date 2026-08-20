@@ -10,11 +10,11 @@ public sealed class RegisterCustomerCommandHandler
 {
 
 
-    private readonly ICustomerRepository _customerRepository;
+    private readonly ICustomerStore _customerStore;
 
-    public RegisterCustomerCommandHandler (ICustomerRepository customerRepository)
+    public RegisterCustomerCommandHandler (ICustomerStore customerStore)
     {
-        _customerRepository = customerRepository;
+        _customerStore = customerStore;
 
     }
 
@@ -39,14 +39,19 @@ public sealed class RegisterCustomerCommandHandler
             return Result.Failure<Guid>(customerResult.Error);
         }
 
-        var emailExists = await _customerRepository.ExistsByEmailAsync(customerResult.Value!.Email, cancellationToken);
+        var emailExists = await _customerStore.ExistsByEmailAsync(customerResult.Value!.Email, cancellationToken);
 
         if (emailExists)
         {
             return Result.Failure<Guid>(CustomerErrors.EmailAlreadyExists);
         }
 
-        await _customerRepository.AddAsync(customerResult.Value!, cancellationToken);
+        var wasAdded = await _customerStore.AddAsync(customerResult.Value!, cancellationToken);
+
+        if (!wasAdded)
+        {
+            return Result.Failure<Guid>(CustomerErrors.EmailAlreadyExists);
+        }
 
         return Result.Success(customerResult.Value!.Id);
     }

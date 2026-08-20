@@ -7,17 +7,17 @@ namespace EcomCourse.Application.Customers.GetCustomerById;
 public sealed class GetCustomerByIdQueryHandler : IQueryHandler<GetCustomerByIdQuery, CustomerResponse>
 {
 
-    private readonly ICustomerRepository _customerRepository;
+    private readonly ICustomerStore _customerStore;
 
-    public GetCustomerByIdQueryHandler(ICustomerRepository customerRepository)
+    public GetCustomerByIdQueryHandler(ICustomerStore customerStore)
     {
-        _customerRepository = customerRepository;
+        _customerStore = customerStore;
     }
 
     public async Task<Result<CustomerResponse>> Handle(GetCustomerByIdQuery request, CancellationToken cancellationToken)
     {
 
-        var customer = await _customerRepository.GetByIdAsync(request.CustomerId, cancellationToken);
+        var customer = await _customerStore.GetByIdAsync(request.CustomerId, cancellationToken);
 
 
         if (customer is null)
