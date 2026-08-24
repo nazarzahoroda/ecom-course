@@ -1,39 +1,40 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Xml.Linq;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Domain.Categories
 {
     public sealed class Category
     {
+        private Category()
+        {
+
+        }
+
         private Category(Guid id, string name)
         {
             Id = id;
             Name = name;
         }
 
-        public Guid Id { get; init; }
+        public Guid Id { get; private set; }
 
-        public string Name { get; init; } = null!;
+        public string Name { get; private set; } = null!;
 
-        public static Result<Category> Create(string? name)
+        public static Result<Category> Create(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                return Result.Failure<Category>(CategoryErrors.NameEmpty);
+                return Result.Failure<Category>(CategoryErrors.NameEmpty);       
             }
 
-            if (name.Length > 100)            {
-                return Result.Failure<Category>(CategoryErrors.NameTooLong);
+            if (name.Length > 100)
+            {
+                return Result.Failure<Category>(CategoryErrors.NameTooLong);     
             }
 
-            return Result.Success(new Category(Guid.NewGuid(), name.Trim()));
-        }
-
-        public Result UpdateName(string name)
-        {
-            throw new NotImplementedException();
+            var category = new Category(Guid.NewGuid(), name.Trim());
+                
+            return Result.Success(category);
         }
     }
 }
