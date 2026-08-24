@@ -12,7 +12,7 @@ public sealed class CreateCategoryCommandValidatorTests
     {
         var command = new CreateCategoryCommand("");
 
-        var result = validator.TestValidate(command);
+        var result = _validator.TestValidate(command);
 
         result.ShouldReturnValidationError(x => x.Name);
     }

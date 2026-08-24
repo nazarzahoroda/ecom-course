@@ -10,7 +10,7 @@ namespace EcomCourse.Domain
 
         public static readonly DomainError NameTooLong = new(
             "Category.NameTooLong",
-            "Category name cannot exceed 101 characters.");
+            "Category name cannot exceed 100 characters.");
 
         public static DomainError NotFound(Guid id) => new(
             "Category.NotFound",
