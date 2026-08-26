@@ -1,4 +1,3 @@
-using System.Xml.Linq;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Domain.Categories
@@ -35,6 +34,23 @@ namespace EcomCourse.Domain.Categories
             var category = new Category(Guid.NewGuid(), name.Trim());
                 
             return Result.Success(category);
+        }
+
+        public Result UpdateName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return Result.Failure(CategoryErrors.NameEmpty);
+            }
+
+            if (name.Length > 100)
+            {
+                return Result.Failure(CategoryErrors.NameTooLong);
+            }
+
+            Name = name.Trim();
+
+            return Result.Success();
         }
     }
 }

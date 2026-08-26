@@ -3,7 +3,7 @@ using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Common;
 using MediatR;
 
-namespace EcomCourse.Application.Categories.Create;
+namespace EcomCourse.Application.Categories.Commands.Create;
 
 public sealed class CreateCategoryCommandHandler
     : IRequestHandler<CreateCategoryCommand, Result<Guid>>
