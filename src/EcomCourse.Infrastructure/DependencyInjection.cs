@@ -1,5 +1,7 @@
 using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Infrastructure.Customers;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -41,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtService, JwtService>();
 
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<ICustomerStore, CustomerStore>();
 
         return services;
     }

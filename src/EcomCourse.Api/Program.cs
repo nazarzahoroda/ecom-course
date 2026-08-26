@@ -61,10 +61,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-
 app.MapGet("/", () =>
 {
-
     return "Everything is okay";
 })
 .WithName("GetHealthCheck");
@@ -72,3 +70,4 @@ app.MapGet("/", () =>
 app.MapControllers();
 
 app.Run();
+
