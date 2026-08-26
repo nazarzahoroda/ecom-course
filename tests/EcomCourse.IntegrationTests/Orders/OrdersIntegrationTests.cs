@@ -93,5 +93,10 @@ public class OrdersIntegrationTests
 
             return Task.CompletedTask;
         }
+
+        public Task UpdateAsync(Order order, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
