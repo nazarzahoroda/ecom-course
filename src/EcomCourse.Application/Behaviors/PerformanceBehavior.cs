@@ -25,9 +25,7 @@ public partial class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavio
 
         try
         {
-#pragma warning disable CA2016 
-            return await next();
-#pragma warning restore CA2016
+            return await next(cancellationToken);
         }
         finally
         {

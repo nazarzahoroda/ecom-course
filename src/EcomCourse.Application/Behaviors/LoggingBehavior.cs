@@ -13,25 +13,17 @@ public partial class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TR
         _logger = logger;
     }
 
-    public async Task<TResponse> Handle(
-        TRequest request,
-        RequestHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         var requestName = typeof(TRequest).Name;
 
         LogProcessingRequest(_logger, requestName);
 
-        try
-        {
-#pragma warning disable CA2016 
-            return await next();
-#pragma warning restore CA2016
-        }
-        finally
-        {
-            LogCompletedRequest(_logger, requestName);
-        }
+        var response = await next(cancellationToken);
+
+        LogCompletedRequest(_logger, requestName);
+
+        return response;
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Processing request {RequestName}")]
