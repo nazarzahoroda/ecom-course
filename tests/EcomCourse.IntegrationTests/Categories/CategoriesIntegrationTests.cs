@@ -19,94 +19,52 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     public async Task Category_CRUD_HappyPath_ShouldWork()
     {
         // Arrange
-        var createCommand =
-            new CreateCategoryCommand("Electronics");
-
+        var createCommand = new CreateCategoryCommand("Electronics");
+            
         // CREATE
-        var createResponse =
-            await _client.PostAsJsonAsync(
-                "/api/categories",
-                createCommand);
+        var createResponse = await _client.PostAsJsonAsync("/api/categories", createCommand);
+            
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
-        Assert.Equal(
-            HttpStatusCode.Created,
-            createResponse.StatusCode);
-
-        var categoryId =
-            await createResponse.Content
-                .ReadFromJsonAsync<Guid>();
-
-        Assert.NotEqual(
-            Guid.Empty,
-            categoryId);
+        var categoryId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+            
+        Assert.NotEqual(Guid.Empty, categoryId);
 
         // READ BY ID
-        var getResponse =
-            await _client.GetAsync(
-                $"/api/categories/{categoryId}");
+        var getResponse = await _client.GetAsync($"/api/categories/{categoryId}");
+            
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
-        Assert.Equal(
-            HttpStatusCode.OK,
-            getResponse.StatusCode);
-
-        var category =
-            await getResponse.Content
-                .ReadFromJsonAsync<CategoryDto>();
+        var category = await getResponse.Content.ReadFromJsonAsync<CategoryDto>();
 
         Assert.NotNull(category);
 
-        Assert.Equal(
-            "Electronics",
-            category.Name);
+        Assert.Equal("Electronics", category.Name);
 
         // UPDATE
-        var updateResponse =
-            await _client.PutAsJsonAsync(
-                $"/api/categories/{categoryId}",
-                new
-                {
-                    name = "Smartphones"
-                });
+        var updateResponse = await _client.PutAsJsonAsync($"/api/categories/{categoryId}", new {name = "Smartphones"});
 
-        Assert.Equal(
-            HttpStatusCode.NoContent,
-            updateResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
         // VERIFY UPDATE
-        var updatedResponse =
-            await _client.GetAsync(
-                $"/api/categories/{categoryId}");
+        var updatedResponse = await _client.GetAsync($"/api/categories/{categoryId}");
 
-        Assert.Equal(
-            HttpStatusCode.OK,
-            updatedResponse.StatusCode);
-
-        var updatedCategory =
-            await updatedResponse.Content
-                .ReadFromJsonAsync<CategoryDto>();
+        Assert.Equal(HttpStatusCode.OK, updatedResponse.StatusCode);
+            
+        var updatedCategory = await updatedResponse.Content.ReadFromJsonAsync<CategoryDto>();   
 
         Assert.NotNull(updatedCategory);
 
-        Assert.Equal(
-            "Smartphones",
-            updatedCategory.Name);
+        Assert.Equal("Smartphones", updatedCategory.Name);
 
         // DELETE
-        var deleteResponse =
-            await _client.DeleteAsync(
-                $"/api/categories/{categoryId}");
+        var deleteResponse = await _client.DeleteAsync($"/api/categories/{categoryId}");
 
-        Assert.Equal(
-            HttpStatusCode.NoContent,
-            deleteResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         // VERIFY DELETE
-        var deletedResponse =
-            await _client.GetAsync(
-                $"/api/categories/{categoryId}");
+        var deletedResponse = await _client.GetAsync($"/api/categories/{categoryId}");
 
-        Assert.Equal(
-            HttpStatusCode.NotFound,
-            deletedResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deletedResponse.StatusCode);   
     }
 }
