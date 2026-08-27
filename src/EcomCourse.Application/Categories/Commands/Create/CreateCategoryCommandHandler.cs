@@ -1,5 +1,4 @@
-using EcomCourse.Application.Abstractions.Persistence;
-using EcomCourse.Domain.Categories;
+using EcomCourse.Application.Categories.Services;
 using EcomCourse.Domain.Common;
 using MediatR;
 
@@ -8,35 +7,21 @@ namespace EcomCourse.Application.Categories.Commands.Create;
 public sealed class CreateCategoryCommandHandler
     : IRequestHandler<CreateCategoryCommand, Result<Guid>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ICategoryService _categoryService;
 
     public CreateCategoryCommandHandler(
-        IApplicationDbContext context)
+        ICategoryService categoryService)
     {
-        _context = context;
+        _categoryService = categoryService;
     }
 
     public async Task<Result<Guid>> Handle(
-        CreateCategoryCommand request,
-        CancellationToken cancellationToken)
+    CreateCategoryCommand request,
+    CancellationToken cancellationToken)
     {
-        var categoryResult =
-            Category.Create(request.Name);
-
-        if (categoryResult.IsFailure)
-        {
-            return Result.Failure<Guid>(
-                categoryResult.Error);
-        }
-
-        var category = categoryResult.Value!;
-
-        _context.Categories.Add(category);
-
-        await _context.SaveChangesAsync(
+        return await _categoryService.CreateAsync(
+            request.Name,
             cancellationToken);
-
-        return Result.Success(category.Id);
     }
 }
 

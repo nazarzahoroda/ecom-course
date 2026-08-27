@@ -1,6 +1,4 @@
-using EcomCourse.Application.Abstractions.Persistence;
-using EcomCourse.Domain;
-using Microsoft.EntityFrameworkCore;
+using EcomCourse.Application.Categories.Services;
 using EcomCourse.Domain.Common;
 using MediatR;
 
@@ -9,35 +7,22 @@ namespace EcomCourse.Application.Categories.Commands.Delete
     public sealed class DeleteCategoryCommandHandler
     : IRequestHandler<DeleteCategoryCommand, Result>
     {
-        private readonly IApplicationDbContext _context;
+       
+        private readonly ICategoryService _categoryService;
 
         public DeleteCategoryCommandHandler(
-            IApplicationDbContext context)
+            ICategoryService categoryService)
         {
-            _context = context;
-
+            _categoryService = categoryService;
         }
 
         public async Task<Result> Handle(
             DeleteCategoryCommand request,
             CancellationToken cancellationToken)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(
-                category => category.Id == request.Id,
+            return await _categoryService.DeleteAsync(
+                request.Id,
                 cancellationToken);
-
-            if (category is null)
-            {
-                return Result.Failure(
-                    CategoryErrors.NotFound(request.Id));
-            }
-
-            _context.Categories.Remove(category);
-
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return Result.Success();
-
         }
     }
 }
