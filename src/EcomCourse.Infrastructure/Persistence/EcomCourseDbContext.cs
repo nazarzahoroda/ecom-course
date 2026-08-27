@@ -1,6 +1,7 @@
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
+using EcomCourse.Domain.Customers;
 
 namespace EcomCourse.Infrastructure.Persistence;
 
@@ -18,6 +19,8 @@ public class EcomCourseDbContext
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+
+    public DbSet<Customer> Customers => Set<Customer>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
