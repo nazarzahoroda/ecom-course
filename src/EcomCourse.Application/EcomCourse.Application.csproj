@@ -19,4 +19,8 @@
     <ProjectReference Include="..\EcomCourse.Domain\EcomCourse.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Abstractions\Persistence\" />
+  </ItemGroup>
+
 </Project>

@@ -1,8 +1,9 @@
+using EcomCourse.Application.Categories.Services;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
 using EcomCourse.Infrastructure.Persistence;
-using EcomCourse.Application.Abstractions.Persistence;
+using EcomCourse.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
-        services.AddScoped<IApplicationDbContext>(
-            provider => provider.GetRequiredService<EcomCourseDbContext>());
+        services.AddScoped<ICategoryService, CategoryService>();
 
         return services;
     }

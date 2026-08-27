@@ -1,4 +1,3 @@
-using EcomCourse.Application.Abstractions.Persistence;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Orders;
 using Microsoft.EntityFrameworkCore;
@@ -6,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace EcomCourse.Infrastructure.Persistence;
 
 public class EcomCourseDbContext
-    : DbContext, IApplicationDbContext
+    : DbContext
 {
     public EcomCourseDbContext(
         DbContextOptions<EcomCourseDbContext> options)
