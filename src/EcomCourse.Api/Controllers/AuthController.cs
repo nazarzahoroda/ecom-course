@@ -1,5 +1,10 @@
+using EcomCourse.Application.Authentication.Commands.LoginCommand;
+using EcomCourse.Application.Authentication.Commands.LogoutCommand;
+using EcomCourse.Application.Authentication.Commands.RefreshCommand;
+using EcomCourse.Application.Authentication.Commands.RegisterCommand;
 using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Domain.Common;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using MediatR;
@@ -33,232 +38,81 @@ namespace EcomCourse.Api.Controllers
             _identityContext = identityContext;
         }
 
-        //[HttpPost("register")]
-        //public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
-        //{
-        //    var existingUser = await _manager.FindByEmailAsync(request.Email);
-
-        //    if (existingUser is not null)
-        //    {
-        //        return BadRequest("User with this email already exists.");
-        //    }
-
-        //    var user = new ApplicationUser
-        //    {
-        //        UserName = request.Email,
-        //        Email = request.Email
-        //    };
-
-        //    var createUserResult =
-        //        await _manager.CreateAsync(
-        //            user,
-        //            request.Password);
-
-        //    if (!createUserResult.Succeeded)
-        //    {
-        //        return BadRequest(
-        //            createUserResult.Errors.Select(
-        //                x => x.Description));
-        //    }
-
-        //    try
-        //    {
-        //        var customer = new Customer
-        //        {
-        //            Id = Guid.NewGuid(),
-        //            UserId = user.Id
-        //        };
-
-        //        _context.Customers.Add(customer);
-
-        //        await _context.SaveChangesAsync(
-        //            cancellationToken);
-
-        //        user.CustomerId = customer.Id;
-
-        //        var updateUserResult =
-        //            await _manager.UpdateAsync(user);
-
-        //        if (!updateUserResult.Succeeded)
-        //        {
-        //            await CompensateAsync(
-        //                user,
-        //                customer.Id,
-        //                cancellationToken);
-
-        //            return BadRequest(
-        //                updateUserResult.Errors.Select(
-        //                    x => x.Description));
-        //        }
-
-        //        var roleResult =
-        //            await _manager.AddToRoleAsync(
-        //                user,
-        //                "Customer");
-
-        //        if (!roleResult.Succeeded)
-        //        {
-        //            await CompensateAsync(
-        //                user,
-        //                customer.Id,
-        //                cancellationToken);
-
-        //            return BadRequest(
-        //                roleResult.Errors.Select(
-        //                    x => x.Description));
-        //        }
-
-        //        return StatusCode(
-        //            StatusCodes.Status201Created);
-        //    }
-        //    catch
-        //    {
-        //        await CompensateAsync(
-        //            user,
-        //            user.CustomerId,
-        //            cancellationToken);
-
-        //        throw;
-        //    }
-        //}
-    //    private async Task CompensateAsync(
-    //ApplicationUser user,
-    //Guid customerId,
-    //CancellationToken cancellationToken)
-    //    {
-    //        if (customerId != Guid.Empty)
-    //        {
-    //            var customer =
-    //                await _context.Customers
-    //                    .FirstOrDefaultAsync(
-    //                        x => x.Id == customerId,
-    //                        cancellationToken);
-
-    //            if (customer is not null)
-    //            {
-    //                _context.Customers.Remove(customer);
-
-    //                await _context.SaveChangesAsync(
-    //                    cancellationToken);
-    //            }
-    //        }
-
-    //        await _manager.DeleteAsync(user);
-    //    }
-        [HttpPost("login")]
-        public async Task<ActionResult<AuthResponse>> Login(LoginDto dto)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterDto dto, CancellationToken cancellationToken)
         {
-            var user = await _manager.FindByEmailAsync(
-                dto.Email);
-
+            var request = new RegisterCommand(dto);
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+                return StatusCode(StatusCodes.Status201Created);
+        }
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginDto dto, CancellationToken cancellationToken)
+        {
+            var user = await _manager.FindByEmailAsync(dto.Email);
             if (user is null)
-            {
                 return Unauthorized();
+
+            var userDto = new ApplicationUserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                CustomerId = user.CustomerId
+            };
+
+            var request = new LoginCommand(dto, userDto);
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status400BadRequest
+                });
             }
-
-            var result =
-                await _signInManager.CheckPasswordSignInAsync(
-                    user,
-                    dto.Password,
-                    lockoutOnFailure: false);
-
-            if (!result.Succeeded)
-            {
-                return Unauthorized();
-            }
-
-            var roles =
-                await _manager.GetRolesAsync(user);
-
-            var details = new UserTokenDetails
-            {
-                UserId = user.Id,
-                Email = user.Email!,
-                CustomerId = user.CustomerId,
-                Roles = roles
-            };
-
-            var accessToken =
-                _jwtService.GenerateAccessToken(details);
-
-            var refreshToken =
-                _jwtService.GenerateRefreshToken();
-
-            var entity = new RefreshToken
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7),
-                IsRevoked = false
-            };
-
-            _identityContext.RefreshTokens.Add(entity);
-
-            await _identityContext.SaveChangesAsync();
-            var response = new AuthResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
-            };
-            return Ok(response);
+            return Ok(result.Value);
         }
 
         [HttpPost("refresh")]
-        public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request)
+        public async Task<IActionResult> Refresh(string refreshToken, CancellationToken cancellationToken)
         {
-            var refreshToken =
-                await _identityContext.RefreshTokens
-                    .Include(x => x.User)
-                    .FirstOrDefaultAsync(
-                        x => x.Token == request.RefreshToken);
-
-            if (refreshToken is null ||
-                refreshToken.IsRevoked ||
-                refreshToken.ExpiresAt <= DateTime.UtcNow)
+            var request = new RefreshCommand(refreshToken);
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
             {
-                return Unauthorized();
+                return BadRequest(new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status400BadRequest
+                });
             }
-
-            var roles =
-                await _manager.GetRolesAsync(
-                    refreshToken.User);
-
-            var details = new UserTokenDetails
-            {
-                UserId = refreshToken.User.Id,
-                Email = refreshToken.User.Email!,
-                CustomerId = refreshToken.User.CustomerId,
-                Roles = roles
-            };
-
-            var accessToken =
-                _jwtService.GenerateAccessToken(details);
-            var response = new AuthResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken.Token
-            };
-            return Ok(response);
+            return Ok(result.Value);
         }
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout(LogoutRequest request)
+        public async Task<IActionResult> Logout(string refreshToken, CancellationToken cancellationToken)
         {
-            var refreshToken =
-                await _identityContext.RefreshTokens
-                    .FirstOrDefaultAsync(
-                        x => x.Token == request.RefreshToken);
-
-            if (refreshToken is null)
+            var request = new LogoutCommand(refreshToken);
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
             {
-                return Unauthorized();
+                return BadRequest(new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status400BadRequest
+                });
             }
-
-            refreshToken.IsRevoked = true;
-
-            await _identityContext.SaveChangesAsync();
-
-            return NoContent();
+            return Ok();
         }
     }
 }

@@ -2,48 +2,52 @@ using EcomCourse.Api.Middleware;
 using EcomCourse.Application;
 using EcomCourse.Infrastructure;
 using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.Infrastructure.Persistence.Identity.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-//var jwtKey = builder.Configuration["Jwt:Key"]!;
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        "SameCustomerOrAdmin",
+        policy =>
+        {
+            policy.RequireAuthenticatedUser();
 
-//builder.Services
-//    .AddAuthentication(options =>
-//    {
-//        options.DefaultAuthenticateScheme =
-//            JwtBearerDefaults.AuthenticationScheme;
+            policy.AddRequirements(
+                new SameCustomerOrAdminRequirement());
+        });
+});
 
-//        options.DefaultChallengeScheme =
-//            JwtBearerDefaults.AuthenticationScheme;
-//    })
-//    .AddJwtBearer(options =>
-//    {
-//        options.TokenValidationParameters =
-//            new TokenValidationParameters
-//            {
-//                ValidateIssuer = true,
-//                ValidateAudience = true,
-//                ValidateLifetime = true,
-//                ValidateIssuerSigningKey = true,
-
-//                ValidIssuer =
-//                    builder.Configuration["Jwt:Issuer"],
-
-//                ValidAudience =
-//                    builder.Configuration["Jwt:Audience"],
-
-//                IssuerSigningKey =
-//                    new SymmetricSecurityKey(
-//                        Encoding.UTF8.GetBytes(jwtKey))
-//            };
-//    });
+builder.Services.AddScoped<IAuthorizationHandler, SameCustomerOrAdminHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition(
+        "Bearer",
+        new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter your JWT token."
+        });
+
+    options.AddSecurityRequirement(document =>
+        new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+        });
+});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 

@@ -30,8 +30,13 @@ namespace EcomCourse.Infrastructure.Persistence.Identity
             new Claim(
                 JwtRegisteredClaimNames.Email,
                 details.Email!),
-        };
+            new Claim("CustomerId", details.CustomerId.ToString())
 
+        };
+            foreach (var role in details.Roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(
                     _configuration["Jwt:Key"]!));

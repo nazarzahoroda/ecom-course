@@ -30,7 +30,7 @@ namespace EcomCourse.Domain.Customers
 
 
         public static readonly DomainError NotFound = new("Customer.NotFound", "Customer was not found.");
-
+        public static readonly DomainError BadRequest = new("Customer.BadRequest", "Bad request.");
 
     }
 }

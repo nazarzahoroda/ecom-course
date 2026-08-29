@@ -1,34 +1,40 @@
-//using System;
-//using System.Collections.Generic;
-//using System.Text;
+using EcomCourse.Application.Authentication.DTOs;
+using EcomCourse.Application.Interfaces;
+using EcomCourse.Domain.Customers;
+using MediatR;
 
-//namespace EcomCourse.Application.Services
-//{
-//    internal class CompensateAsync
-//    {
-//        private async Task CompensateAsync(
-//    Applica user,
-//    Guid customerId,
-//    CancellationToken cancellationToken)
-//        {
-//            if (customerId != Guid.Empty)
-//            {
-//                var customer =
-//                    await _context.Customers
-//                        .FirstOrDefaultAsync(
-//                            x => x.Id == customerId,
-//                            cancellationToken);
+namespace EcomCourse.Application.Services
+{
+    public class CompensateAsync
+    {
+        private readonly ICustomerStore _customerStore;
+        private readonly IIdentityService _identityService;
 
-//                if (customer is not null)
-//                {
-//                    _context.Customers.Remove(customer);
+        public CompensateAsync(ICustomerStore customerStore, IIdentityService identityService)
+        {
+            _customerStore = customerStore;
+            _identityService = identityService;
+        }
 
-//                    await _context.SaveChangesAsync(
-//                        cancellationToken);
-//                }
-//            }
+        public async Task CompensateAsyncTask(Guid userId, Guid customerId, CancellationToken cancellationToken)
+        {
+            if (customerId != Guid.Empty)
+            {
+                var customer = await _customerStore.GetByIdAsync(customerId, cancellationToken);
 
-//            await _manager.DeleteAsync(user);
-//        }
-//    }
-//}
+                if (customer is not null)
+                {
+                    var deleteResult = await _customerStore.DeleteAsync(customer.Id, cancellationToken);
+                    if (!deleteResult)
+                    {
+                        throw new InvalidOperationException(
+                            $"Failed to delete customer with ID: {customerId}");
+                    }
+                }
+
+                
+            }
+            await _identityService.DeleteUserAsync(userId, cancellationToken);
+        }
+    }
+}   

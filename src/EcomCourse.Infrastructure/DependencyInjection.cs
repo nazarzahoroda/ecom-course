@@ -1,9 +1,11 @@
 using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,9 +43,11 @@ public static class DependencyInjection
         .AddSignInManager().AddDefaultTokenProviders();
 
         services.AddScoped<IJwtService, JwtService>();
-
+            
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
+
+        services.AddScoped<IIdentityService, IdentityService>();
 
         return services;
     }
