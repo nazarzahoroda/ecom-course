@@ -4,11 +4,6 @@ namespace EcomCourse.Domain.Categories
 {
     public sealed class Category
     {
-        private Category()
-        {
-
-        }
-
         private Category(Guid id, string name)
         {
             Id = id;
