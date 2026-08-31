@@ -4,10 +4,19 @@ namespace EcomCourse.Domain.Products
 {
     public sealed class Product
     {
+        private Product()
+        {
+
+        }
+
         public Guid Id { get; private set; }
-        public string Name { get; private set; }
-        public Price Price { get; private set; }
-        public SKU SKU { get; private set; }
+
+        public string Name { get; private set; } = null!;
+
+        public Price Price { get; private set; } = null!;
+
+        public SKU SKU { get; private set; } = null!;
+
         public Guid CategoryId { get; private set; }
 
 
