@@ -1,3 +1,4 @@
+using EcomCourse.Api.Categories;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
 using EcomCourse.Application.Categories.Commands.Delete;
@@ -26,9 +27,11 @@ public sealed class CategoriesController : ControllerBase
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateCategory(
-        [FromBody] CreateCategoryCommand command,
+        [FromBody] CreateCategoryRequest request,
         CancellationToken cancellationToken)
     {
+        var command = new CreateCategoryCommand(request.Name);
+
         var result = await _sender.Send(
             command,
             cancellationToken);
@@ -43,10 +46,9 @@ public sealed class CategoriesController : ControllerBase
             });
         }
 
-        return Created(
-            $"/api/categories/{result.Value}",
-            result.Value);
+        return CreatedAtAction(nameof(GetCategoryById), new { id = result.Value }, result.Value);
     }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -87,7 +89,6 @@ public sealed class CategoriesController : ControllerBase
         return Ok(result.Value);
     }
 
-    public sealed record UpdateCategoryRequest(string Name);
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateCategory(
@@ -136,3 +137,5 @@ public sealed class CategoriesController : ControllerBase
         return NoContent();
     }
 }
+
+
