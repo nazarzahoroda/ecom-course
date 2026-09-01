@@ -1,11 +1,12 @@
+using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Categories.Services;
 using EcomCourse.Domain.Common;
-using MediatR;
+
 
 namespace EcomCourse.Application.Categories.Commands.Delete
 {
     public sealed class DeleteCategoryCommandHandler
-    : IRequestHandler<DeleteCategoryCommand, Result>
+    : ICommandHandler<DeleteCategoryCommand>
     {
        
         private readonly ICategoryService _categoryService;

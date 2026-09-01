@@ -1,10 +1,8 @@
-using EcomCourse.Domain.Common;
-using MediatR;
+using EcomCourse.Application.Abstractions.Messaging;
 
-namespace EcomCourse.Application.Categories.Commands.Update
-{
-    public sealed record UpdateCategoryCommand(
+namespace EcomCourse.Application.Categories.Commands.Update;
+
+public sealed record UpdateCategoryCommand(
     Guid Id,
     string Name)
-    : IRequest<Result>;
-}
+    : ICommand;

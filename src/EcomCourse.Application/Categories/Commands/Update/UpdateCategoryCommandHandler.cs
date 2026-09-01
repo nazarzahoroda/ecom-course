@@ -1,12 +1,11 @@
+using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Categories.Services;
 using EcomCourse.Domain.Common;
-using MediatR;
-
 
 namespace EcomCourse.Application.Categories.Commands.Update
 {
     public sealed class UpdateCategoryCommandHandler
-    : IRequestHandler<UpdateCategoryCommand, Result>
+    : ICommandHandler<UpdateCategoryCommand>
     {
         private readonly ICategoryService _categoryService;
 

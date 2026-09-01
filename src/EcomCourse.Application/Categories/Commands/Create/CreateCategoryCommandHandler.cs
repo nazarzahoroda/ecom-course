@@ -1,11 +1,11 @@
+using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Categories.Services;
 using EcomCourse.Domain.Common;
-using MediatR;
 
 namespace EcomCourse.Application.Categories.Commands.Create;
 
 public sealed class CreateCategoryCommandHandler
-    : IRequestHandler<CreateCategoryCommand, Result<Guid>>
+    : ICommandHandler<CreateCategoryCommand, Guid>
 {
     private readonly ICategoryService _categoryService;
 

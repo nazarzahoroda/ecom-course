@@ -1,9 +1,6 @@
-using EcomCourse.Domain.Common;
-using MediatR;
+using EcomCourse.Application.Abstractions.Messaging;
 
-namespace EcomCourse.Application.Categories.Queries.GetById
-{
-    public sealed record GetCategoryByIdQuery(Guid Id)
-        : IRequest<Result<CategoryDto>>;
+namespace EcomCourse.Application.Categories.Queries.GetById;
 
-}
+public sealed record GetCategoryByIdQuery(Guid Id)
+    : IQuery<CategoryDto>;
