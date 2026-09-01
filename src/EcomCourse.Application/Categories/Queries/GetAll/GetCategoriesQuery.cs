@@ -1,8 +1,7 @@
-using EcomCourse.Domain.Common;
-using MediatR;
+using EcomCourse.Application.Abstractions.Messaging;
 
 namespace EcomCourse.Application.Categories.Queries.GetAll
 {
-    public sealed record GetCategoriesQuery()
-    : IRequest<Result<List<CategoryDto>>>;
+    public sealed record GetCategoriesQuery
+    : IQuery<List<CategoryDto>>;
 }

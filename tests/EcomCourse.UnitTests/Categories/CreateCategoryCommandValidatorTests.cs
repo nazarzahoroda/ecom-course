@@ -1,11 +1,11 @@
-using Application.Categories;
+using EcomCourse.Application.Categories.Commands.Create;
 using FluentValidation.TestHelper;
 
-namespace Tests;
+namespace EcomCourse.UnitTests.Categories;
 
 public sealed class CreateCategoryCommandValidatorTests
 {
-    private readonly CreateCategoryCommandValidator validator = new();
+    private readonly CreateCategoryCommandValidator _validator = new();
 
     [Fact]
     public void Should_ReturnError_When_Name_Is_Empty()
@@ -14,16 +14,16 @@ public sealed class CreateCategoryCommandValidatorTests
 
         var result = _validator.TestValidate(command);
 
-        result.ShouldReturnValidationError(x => x.Name);
+        result.ShouldHaveValidationErrorFor(x => x.Name);
     }
 
     [Fact]
     public void Should_ReturnError_When_Name_Is_Longer_Than_100_Characters()
     {
         var command = new CreateCategoryCommand(new string('N', 101));
-            
-        var result = validator.TestValidate(command);
 
-        result.ShouldReturnValidationError(x => x.Name);
+        var result = _validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Name);
     }
 }

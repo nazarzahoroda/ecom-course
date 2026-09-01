@@ -1,8 +1,6 @@
-using EcomCourse.Domain.Common;
-using MediatR;
+using EcomCourse.Application.Abstractions.Messaging;
 
-namespace EcomCourse.Application.Categories.Commands.Create
-{
-    public sealed record CreateCategoryCommand(string Name)
-    : IRequest<Result<Guid>>;
-}
+namespace EcomCourse.Application.Categories.Commands.Create;
+
+public sealed record CreateCategoryCommand(string Name)
+    : ICommand<Guid>;
