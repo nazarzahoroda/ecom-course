@@ -39,7 +39,6 @@ public sealed class CustomerStore : ICustomerStore
     public async Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _dbContext.Customers
-            .Include(customer => customer.Address)
             .FirstOrDefaultAsync(customer => customer.Id == id, cancellationToken);
     }
 
