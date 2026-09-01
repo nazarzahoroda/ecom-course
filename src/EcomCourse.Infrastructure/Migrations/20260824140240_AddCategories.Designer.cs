@@ -101,20 +101,6 @@ namespace EcomCourse.Infrastructure.Migrations
                     b.ToTable("OrderLines", (string)null);
                 });
 
-            modelBuilder.Entity("EcomCourse.Domain.Categories.Category", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Categories", (string)null);
-                });
 
             modelBuilder.Entity("EcomCourse.Domain.Customers.Customer", b =>
                 {
