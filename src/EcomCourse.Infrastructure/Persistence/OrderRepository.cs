@@ -34,9 +34,10 @@ public sealed class OrderRepository : IOrderRepository
 
 
     public async Task UpdateAsync(
-    Order order,
-    CancellationToken cancellationToken = default)
+       Order order,
+       CancellationToken cancellationToken = default)
     {
+        _dbContext.Orders.Update(order);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

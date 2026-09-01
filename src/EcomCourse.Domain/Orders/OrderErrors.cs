@@ -21,6 +21,6 @@ public static class OrderErrors
         "Product unit price cannot be negative.");
 
     public static readonly DomainError InvalidStatusTransition = new(
-    "Order.InvalidStatusTransition",
-    "This order status transition is not allowed.");
+        "Order.InvalidStatusTransition",
+        "This order status transition is not allowed.");
 }
