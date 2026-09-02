@@ -34,7 +34,11 @@ namespace EcomCourse.Infrastructure.Persistence.Configurations
             {
                 skuBuilder.Property(sku => sku.Value)
                     .HasColumnName("SKUValue")
+                    .HasMaxLength(8)
                     .IsRequired();
+
+                skuBuilder.HasIndex(sku => sku.Value)
+                    .IsUnique();
             });
 
             builder.Property(product => product.CategoryId)
