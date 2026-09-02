@@ -19,11 +19,14 @@ public partial class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 
         LogProcessingRequest(_logger, requestName);
 
-        var response = await next(cancellationToken);
-
-        LogCompletedRequest(_logger, requestName);
-
-        return response;
+        try
+        {
+            return await next(cancellationToken);
+        }
+        finally
+        {
+            LogCompletedRequest(_logger, requestName);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Processing request {RequestName}")]

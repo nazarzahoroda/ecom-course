@@ -1,6 +1,7 @@
 using EcomCourse.Application.Behaviors;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
 namespace EcomCourse.UnitTests.Application.Behaviors;
@@ -14,9 +15,10 @@ public class PerformanceBehaviorTests
     {
         // Arrange
         var loggerMock = Substitute.For<ILogger<PerformanceBehavior<TestCommand, string>>>();
-
         loggerMock.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var behavior = new PerformanceBehavior<TestCommand, string>(loggerMock);
+
+        var timeProvider = new FakeTimeProvider();
+        var behavior = new PerformanceBehavior<TestCommand, string>(loggerMock, timeProvider);
 
         var next = Substitute.For<RequestHandlerDelegate<string>>();
         next().Returns("Success");
@@ -38,14 +40,15 @@ public class PerformanceBehaviorTests
     {
         // Arrange
         var loggerMock = Substitute.For<ILogger<PerformanceBehavior<TestCommand, string>>>();
-
         loggerMock.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var behavior = new PerformanceBehavior<TestCommand, string>(loggerMock);
+
+        var timeProvider = new FakeTimeProvider();
+        var behavior = new PerformanceBehavior<TestCommand, string>(loggerMock, timeProvider);
 
         var next = Substitute.For<RequestHandlerDelegate<string>>();
         next.Invoke().Returns(async _ =>
         {
-            await Task.Delay(510);
+            timeProvider.Advance(TimeSpan.FromMilliseconds(510));
             return "Success";
         });
 

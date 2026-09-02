@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -10,10 +9,14 @@ public partial class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavio
     private const long SlowRequestThresholdMilliseconds = 500;
 
     private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger)
+    public PerformanceBehavior(
+        ILogger<PerformanceBehavior<TRequest, TResponse>> logger,
+        TimeProvider timeProvider)
     {
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public async Task<TResponse> Handle(
@@ -21,7 +24,7 @@ public partial class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavio
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        var stopwatch = Stopwatch.StartNew();
+        var startTimestamp = _timeProvider.GetTimestamp();
 
         try
         {
@@ -29,13 +32,12 @@ public partial class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavio
         }
         finally
         {
-            stopwatch.Stop();
+            var elapsedTime = _timeProvider.GetElapsedTime(startTimestamp);
 
-            if (stopwatch.ElapsedMilliseconds > SlowRequestThresholdMilliseconds)
+            if (elapsedTime.TotalMilliseconds > SlowRequestThresholdMilliseconds)
             {
                 var requestName = typeof(TRequest).Name;
-
-                LogLongRunningRequest(_logger, requestName, stopwatch.ElapsedMilliseconds);
+                LogLongRunningRequest(_logger, requestName, (long)elapsedTime.TotalMilliseconds);
             }
         }
     }
