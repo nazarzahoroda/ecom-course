@@ -4,36 +4,37 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace EcomCourse.UnitTests.Api;
 
 public class GlobalExceptionHandlerTests
 {
-    private readonly Mock<IHostEnvironment> _envMock;
+    private readonly IHostEnvironment _envMock;
     private readonly GlobalExceptionHandler _handler;
     private readonly DefaultHttpContext _context;
 
     public GlobalExceptionHandlerTests()
     {
-        _envMock = new Mock<IHostEnvironment>();
-        _envMock.Setup(e => e.EnvironmentName).Returns(Environments.Development);
+        // Використовуємо NSubstitute замість Moq
+        _envMock = Substitute.For<IHostEnvironment>();
+        _envMock.EnvironmentName.Returns(Environments.Development);
 
         _handler = new GlobalExceptionHandler(
             NullLogger<GlobalExceptionHandler>.Instance,
-            _envMock.Object);
+            _envMock);
 
         _context = new DefaultHttpContext();
         _context.Response.Body = new MemoryStream();
-        _context.TraceIdentifier = "test-trace-id";
+
     }
 
     [Fact]
     public async Task TryHandleAsync_GenericExceptionInDevelopment_Returns500WithStackTrace()
     {
         // Arrange
-        _envMock.Setup(e => e.EnvironmentName).Returns(Environments.Development);
+        _envMock.EnvironmentName.Returns(Environments.Development);
 
         Exception exception;
         try
@@ -63,7 +64,7 @@ public class GlobalExceptionHandlerTests
     public async Task TryHandleAsync_GenericExceptionInProduction_Returns500WithoutStackTrace()
     {
         // Arrange
-        _envMock.Setup(e => e.EnvironmentName).Returns(Environments.Production);
+        _envMock.EnvironmentName.Returns(Environments.Production);
 
         Exception exception;
         try
