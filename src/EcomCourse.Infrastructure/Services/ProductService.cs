@@ -87,4 +87,21 @@ public sealed class ProductService : IProductService
 
         return Result.Success(dto);
     }
+
+    public async Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
+        CancellationToken cancellationToken = default)  
+    {
+        var products = await _dbContext.Products
+            .AsNoTracking()
+            .Select(product => new ProductDto(
+                product.Id,
+                product.Name,
+                product.Price.Amount,
+                product.Price.Currency,
+                product.SKU.Value,
+                product.CategoryId))
+            .ToListAsync(cancellationToken);
+
+        return Result.Success<IReadOnlyList<ProductDto>>(products);
+    }
 }

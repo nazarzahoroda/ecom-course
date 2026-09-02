@@ -64,6 +64,16 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal(Currency.USD, product.Currency);
         Assert.Equal(createProductRequest.SKU, product.SKU);
         Assert.Equal(categoryId, product.CategoryId);
+
+        var getAllResponse = await _client.GetAsync("/products");
+
+        Assert.Equal(HttpStatusCode.OK, getAllResponse.StatusCode);
+
+        var products = await getAllResponse.Content
+            .ReadFromJsonAsync<List<ProductDto>>();
+
+        Assert.NotNull(products);
+        Assert.Contains(products, product => product.Id == productId);
     }
 
     [Fact]

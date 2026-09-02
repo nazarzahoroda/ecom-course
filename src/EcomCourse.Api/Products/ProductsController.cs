@@ -1,4 +1,5 @@
 using EcomCourse.Application.Products.Commands.Create;
+using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products.Queries.GetById;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -53,6 +54,17 @@ public sealed class ProductsController : ControllerBase
         {
             return NotFound(result.Error);
         }
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var query = new GetProductsQuery();
+
+        var result = await _sender.Send(query, cancellationToken);
 
         return Ok(result.Value);
     }
