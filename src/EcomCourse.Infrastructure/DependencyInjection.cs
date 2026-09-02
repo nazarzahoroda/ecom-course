@@ -1,4 +1,5 @@
 using EcomCourse.Application.Categories.Services;
+using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductService, ProductService>();
 
         return services;
     }
