@@ -15,8 +15,6 @@ public class OrdersIntegrationTests
 
     public OrdersIntegrationTests()
     {
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "TestConnectionString");
-
         var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {

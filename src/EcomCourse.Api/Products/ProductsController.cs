@@ -1,4 +1,5 @@
 using EcomCourse.Application.Products.Commands.Create;
+using EcomCourse.Application.Products.Queries.GetById;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,5 +38,22 @@ public sealed class ProductsController : ControllerBase
         return Created(
             $"/products/{result.Value}",
             result.Value);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetProductByIdQuery(id);
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return NotFound(result.Error);
+        }
+
+        return Ok(result.Value);
     }
 }

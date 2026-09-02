@@ -12,4 +12,8 @@ public interface IProductService
         string sku,
         Guid categoryId,
         CancellationToken cancellationToken = default);
+
+    Task<Result<ProductDto>> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
 }

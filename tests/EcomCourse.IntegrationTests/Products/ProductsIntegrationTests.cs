@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Categories.Commands.Create;
+using EcomCourse.Application.Products;
 using EcomCourse.Domain.Products;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -48,5 +49,31 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         var productId = await productResponse.Content.ReadFromJsonAsync<Guid>();
 
         Assert.NotEqual(Guid.Empty, productId);
+
+        var getResponse = await _client.GetAsync(
+            $"/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        var product = await getResponse.Content.ReadFromJsonAsync<ProductDto>();
+
+        Assert.NotNull(product);
+        Assert.Equal(productId, product.Id);
+        Assert.Equal("Integration Test Product", product.Name);
+        Assert.Equal(999.99m, product.Amount);
+        Assert.Equal(Currency.USD, product.Currency);
+        Assert.Equal(createProductRequest.SKU, product.SKU);
+        Assert.Equal(categoryId, product.CategoryId);
+    }
+
+    [Fact]
+    public async Task GetProductById_WhenProductDoesNotExist_ShouldReturnNotFound()
+    {
+        var productId = Guid.NewGuid();
+
+        var response = await _client.GetAsync(
+            $"/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

@@ -24,5 +24,9 @@ namespace EcomCourse.Domain.Products
         public static DomainError SKUAlreadyExists(string sku) => new(
             "Product.SKUAlreadyExists",
             $"Product with SKU {sku} already exists.");
+
+        public static DomainError NotFound(Guid id) => new(
+            "Product.NotFound",
+            $"Product {id} was not found.");
     }
 }

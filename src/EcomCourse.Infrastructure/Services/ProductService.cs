@@ -1,3 +1,4 @@
+using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
@@ -58,5 +59,32 @@ public sealed class ProductService : IProductService
             await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success(product.Id);
+    }
+
+    public async Task<Result<ProductDto>> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await _dbContext.Products
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                product => product.Id == id,
+                cancellationToken);
+
+        if (product is null)
+        {
+            return Result.Failure<ProductDto>(
+                ProductErrors.NotFound(id));
+        }
+
+        var dto = new ProductDto(
+            product.Id,
+            product.Name,
+            product.Price.Amount,
+            product.Price.Currency,
+            product.SKU.Value,
+            product.CategoryId);
+
+        return Result.Success(dto);
     }
 }
