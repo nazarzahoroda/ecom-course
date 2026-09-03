@@ -23,7 +23,7 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
             var exists = await _identityService.IsUserExist(request.dto.Email, cancellationToken);
             if (exists)
             {
-                return Result.Failure( new DomainError("Identity.Register","User already exists"));
+                return Result.Failure(new DomainError("Identity.Register", "User already exists"));
             }
             var createResult = await _identityService.CreateUserAsyncWithResult(request.dto, cancellationToken);
 
@@ -44,7 +44,10 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                    request.dto.Country);
             if (customerResult.IsFailure)
             {
-                await _compensateAsync.CompensateAsyncTask(user!.Id, Guid.Empty, cancellationToken);
+                var compensateResult = await _compensateAsync.CompensateAsyncTask(user!.Id, Guid.Empty, cancellationToken);
+                if (compensateResult.IsFailure)
+                    return compensateResult;
+
                 return customerResult;
             }
 
@@ -55,7 +58,10 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
 
             if (!wasAdded)
             {
-                await _compensateAsync.CompensateAsyncTask(user!.Id, Guid.Empty, cancellationToken);
+                var compensateResult = await _compensateAsync.CompensateAsyncTask(user!.Id, Guid.Empty, cancellationToken);
+                if (compensateResult.IsFailure)
+                    return compensateResult;
+
                 return Result.Failure(new DomainError("Customer.CreateFailed", "Failed to create customer"));
 
             }
@@ -63,13 +69,14 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
 
             if (updateUserResult.IsFailure)
             {
-                await _compensateAsync.CompensateAsyncTask(user!.Id, customer.Id, cancellationToken);
+                var compensateResult = await _compensateAsync.CompensateAsyncTask(user!.Id, customer.Id, cancellationToken);
+                if (compensateResult.IsFailure)
+                    return compensateResult;
+
                 return updateUserResult;
             }
 
             return Result.Success();
-
-
         }
     }
 }

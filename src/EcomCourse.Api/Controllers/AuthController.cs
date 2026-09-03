@@ -20,22 +20,11 @@ namespace EcomCourse.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ISender _sender;
-        private readonly UserManager<ApplicationUser> _manager;
-        private readonly EcomCourseDbContext _context;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IJwtService _jwtService;
-        private readonly IdentityDbContext _identityContext;
 
 
-        public AuthController(ISender sender, UserManager<ApplicationUser> manager, EcomCourseDbContext context,
-            SignInManager<ApplicationUser> signInManager, IJwtService jwtService, IdentityDbContext identityContext)
+        public AuthController(ISender sender)
         {
             _sender = sender;
-            _manager = manager;
-            _context = context;
-            _signInManager = signInManager;
-            _jwtService = jwtService;
-            _identityContext = identityContext;
         }
 
         [HttpPost("register")]
@@ -57,18 +46,7 @@ namespace EcomCourse.Api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto, CancellationToken cancellationToken)
         {
-            var user = await _manager.FindByEmailAsync(dto.Email);
-            if (user is null)
-                return Unauthorized();
-
-            var userDto = new ApplicationUserDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                CustomerId = user.CustomerId
-            };
-
-            var request = new LoginCommand(dto, userDto);
+            var request = new LoginCommand(dto);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
@@ -83,9 +61,9 @@ namespace EcomCourse.Api.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh(string refreshToken, CancellationToken cancellationToken)
+        public async Task<IActionResult> Refresh(RefreshDto dto, CancellationToken cancellationToken)
         {
-            var request = new RefreshCommand(refreshToken);
+            var request = new RefreshCommand(dto.RefreshToken);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
@@ -99,9 +77,9 @@ namespace EcomCourse.Api.Controllers
             return Ok(result.Value);
         }
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout(string refreshToken, CancellationToken cancellationToken)
+        public async Task<IActionResult> Logout(LogoutDto dto, CancellationToken cancellationToken)
         {
-            var request = new LogoutCommand(refreshToken);
+            var request = new LogoutCommand(dto.RefreshToken);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {

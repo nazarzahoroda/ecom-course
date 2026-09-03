@@ -22,7 +22,7 @@ public class OrdersController : ControllerBase
         _sender = sender;
         _authorizationService = authorizationService;
     }
-    [Authorize]
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -62,11 +62,11 @@ public class OrdersController : ControllerBase
 
         return Ok(result.Value);
     }
+    [Authorize]
     [HttpPost]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateOrder(
         [FromBody] CreateOrderCommand command,
         CancellationToken cancellationToken)

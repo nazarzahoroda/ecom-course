@@ -3,5 +3,5 @@ using EcomCourse.Application.Authentication.DTOs;
 
 namespace EcomCourse.Application.Authentication.Commands.LoginCommand
 {
-    public record LoginCommand(LoginDto dto, ApplicationUserDto userDto) : ICommand<AuthResponse>;
+    public record LoginCommand(LoginDto dto) : ICommand<AuthResponse>;
 }

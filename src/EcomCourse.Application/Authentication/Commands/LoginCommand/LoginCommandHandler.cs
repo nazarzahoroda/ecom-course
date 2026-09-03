@@ -18,6 +18,10 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
 
         public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
+            var user = await _identityService.GetUserAsync(request.dto.Email, cancellationToken);
+            if (user.IsFailure)
+                return Result.Failure<AuthResponse>(user.Error);
+
             var checkResult = await _identityService.CheckPasswordSignInAsync(request.dto, cancellationToken);
             if (checkResult.IsFailure)
                 return Result.Failure<AuthResponse>(checkResult.Error);
@@ -26,22 +30,22 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
 
             var details = new UserTokenDetails
             {
-                UserId = request.userDto.Id,
-                Email = request.userDto.Email!,
-                CustomerId = request.userDto.CustomerId,
+                UserId = user.Value!.Id,
+                Email = user.Value.Email!,
+                CustomerId = user.Value.CustomerId,
                 Roles = roles!
             };
-            var acceaccessToken = _jwtService.GenerateAccessToken(details);
+            var accessToken = _jwtService.GenerateAccessToken(details);
 
             var refreshToken = _jwtService.GenerateRefreshToken();
 
-            var refreshTokenSave = await _identityService.SaveRefreshToken(refreshToken, request.userDto.Id, cancellationToken);
+            var refreshTokenSave = await _identityService.SaveRefreshToken(refreshToken, user.Value.Id, cancellationToken);
             if (refreshTokenSave.IsFailure)
-                return Result.Failure<AuthResponse>(checkResult.Error);
+                return Result.Failure<AuthResponse>(refreshTokenSave.Error);
 
             var result = new AuthResponse
             {
-                AccessToken = acceaccessToken,
+                AccessToken = accessToken,
                 RefreshToken = refreshToken
             };
             return Result.Success(result);

@@ -1,7 +1,6 @@
-using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Interfaces;
+using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
-using MediatR;
 
 namespace EcomCourse.Application.Services
 {
@@ -16,7 +15,7 @@ namespace EcomCourse.Application.Services
             _identityService = identityService;
         }
 
-        public async Task CompensateAsyncTask(Guid userId, Guid customerId, CancellationToken cancellationToken)
+        public async Task<Result> CompensateAsyncTask(Guid userId, Guid customerId, CancellationToken cancellationToken)
         {
             if (customerId != Guid.Empty)
             {
@@ -24,17 +23,18 @@ namespace EcomCourse.Application.Services
 
                 if (customer is not null)
                 {
-                    var deleteResult = await _customerStore.DeleteAsync(customer.Id, cancellationToken);
-                    if (!deleteResult)
+                    var deleteCustomerResult = await _customerStore.DeleteAsync(customer.Id, cancellationToken);
+                    if (!deleteCustomerResult)
                     {
-                        throw new InvalidOperationException(
-                            $"Failed to delete customer with ID: {customerId}");
+                        return Result.Failure(new DomainError("Compensation.CustomerDeleteFailed", "Failed to delete customer"));
                     }
                 }
-
-                
             }
-            await _identityService.DeleteUserAsync(userId, cancellationToken);
+            var deleteUserResult = await _identityService.DeleteUserAsync(userId, cancellationToken);
+            if (deleteUserResult.IsFailure)
+                return deleteUserResult;
+
+            return Result.Success();
         }
     }
 }   

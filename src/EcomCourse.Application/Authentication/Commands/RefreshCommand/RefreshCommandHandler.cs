@@ -16,8 +16,6 @@ namespace EcomCourse.Application.Authentication.Commands.RefreshCommand
         public async Task<Result<AuthResponse>> Handle(RefreshCommand request, CancellationToken cancellationToken)
         {
             var refreshResult = await _identityService.CheckRefreshToken(request.refreshToken, cancellationToken);
-            if (refreshResult.IsFailure)
-                return refreshResult;
 
             return refreshResult;
         }

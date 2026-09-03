@@ -43,18 +43,20 @@ namespace EcomCourse.Infrastructure.Services
 
             return true;
         }
-        public async Task<ApplicationUserDto?> GetUserAsync(string email, CancellationToken cancellationToken)
+        public async Task<Result<ApplicationUserDto>> GetUserAsync(string email, CancellationToken cancellationToken)
         {
             var existingUser = await _manager.FindByEmailAsync(email);
 
             if (existingUser is null)
-                return null;
+                return Result.Failure<ApplicationUserDto>(new DomainError("Identity.UserNotFound", "User not found"));
             var result = new ApplicationUserDto
             {
                 Id = existingUser.Id,
-                Email = existingUser.Email
+                Email = existingUser.Email,
+                CustomerId = existingUser.CustomerId
             };
-            return result;
+
+            return Result.Success(result);
         }
 
         public async Task<Result> CreateUserAsync(RegisterDto dto, CancellationToken cancellationToken)
@@ -179,7 +181,8 @@ namespace EcomCourse.Infrastructure.Services
                 UserId = userId,
                 Token = refreshToken,
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
-                IsRevoked = false
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.RefreshTokens.Add(entity);

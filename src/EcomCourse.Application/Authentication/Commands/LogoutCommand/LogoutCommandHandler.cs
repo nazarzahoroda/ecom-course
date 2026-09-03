@@ -15,9 +15,6 @@ namespace EcomCourse.Application.Authentication.Commands.LogoutCommand
         public async Task<Result> Handle(LogoutCommand request, CancellationToken cancellationToken)
         {
             var revokeResult = await _identityService.RevokeRefreshToken(request.refreshToken, cancellationToken);
-
-            if (revokeResult.IsFailure)
-                return revokeResult;
             return revokeResult;
         }
     }

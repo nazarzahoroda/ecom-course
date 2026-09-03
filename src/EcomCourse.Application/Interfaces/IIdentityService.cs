@@ -6,7 +6,7 @@ namespace EcomCourse.Application.Interfaces
     public interface IIdentityService
     {
         #region sign in
-        Task<ApplicationUserDto?> GetUserAsync(string email, CancellationToken cancellationToken);
+        Task<Result<ApplicationUserDto>> GetUserAsync(string email, CancellationToken cancellationToken);
         Task<bool> IsUserExist(string email, CancellationToken cancellationToken);
 
         Task<Result> CreateUserAsync(RegisterDto dto, CancellationToken cancellationToken);

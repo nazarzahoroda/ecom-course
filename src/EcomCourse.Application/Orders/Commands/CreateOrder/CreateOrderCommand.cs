@@ -8,5 +8,5 @@ public record OrderLineItemRequest(
     decimal UnitPrice);
 
 public record CreateOrderCommand(
-    Guid CustomerId,
-    List<OrderLineItemRequest> Items) : ICommand<Guid>;
+    Guid customerId,
+    List<OrderLineItemRequest> items) : ICommand<Guid>;
