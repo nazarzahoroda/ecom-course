@@ -74,6 +74,37 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         Assert.NotNull(products);
         Assert.Contains(products, product => product.Id == productId);
+
+        var updateProductRequest = new
+        {
+            Name = "Updated Integration Test Product",
+            Amount = 1299.99m,
+            Currency = Currency.EUR,
+            SKU = createProductRequest.SKU,
+            CategoryId = categoryId
+        };
+
+        var updateResponse = await _client.PutAsJsonAsync(
+            $"/products/{productId}",
+            updateProductRequest);
+
+        Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
+
+        var getUpdatedResponse = await _client.GetAsync(
+            $"/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.OK, getUpdatedResponse.StatusCode);
+
+        var updatedProduct = await getUpdatedResponse.Content
+            .ReadFromJsonAsync<ProductDto>();
+
+        Assert.NotNull(updatedProduct);
+        Assert.Equal(productId, updatedProduct.Id);
+        Assert.Equal("Updated Integration Test Product", updatedProduct.Name);
+        Assert.Equal(1299.99m, updatedProduct.Amount);
+        Assert.Equal(Currency.EUR, updatedProduct.Currency);
+        Assert.Equal(createProductRequest.SKU, updatedProduct.SKU);
+        Assert.Equal(categoryId, updatedProduct.CategoryId);
     }
 
     [Fact]

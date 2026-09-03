@@ -65,5 +65,32 @@ namespace EcomCourse.Domain.Products
 
             return Result.Success(product);
         }
+
+        public Result Update(string name, decimal amount, Currency currency, string sku, Guid categoryId)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return Result.Failure(ProductErrors.ProductNameEmpty);
+
+            if (name.Length > 100)
+                return Result.Failure(ProductErrors.ProductNameTooLong);
+
+            var priceResult = Price.Create(amount, currency);
+            if (priceResult.IsFailure)
+                return Result.Failure(priceResult.Error);
+
+            var skuResult = SKU.Create(sku);
+            if (skuResult.IsFailure)
+                return Result.Failure(skuResult.Error);
+
+            if (categoryId == Guid.Empty)
+                return Result.Failure(ProductErrors.CategoryIdEmpty);
+
+            Name = name.Trim();
+            Price = priceResult.Value!;
+            SKU = skuResult.Value!;
+            CategoryId = categoryId;
+
+            return Result.Success();
+        }
     }
 }

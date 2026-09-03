@@ -19,4 +19,13 @@ public interface IProductService
 
     Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
         CancellationToken cancellationToken = default);
+
+    Task<Result> UpdateAsync(
+        Guid id,
+        string name,
+        decimal amount,
+        Currency currency,
+        string sku,
+        Guid categoryId,
+        CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using EcomCourse.Application.Products.Commands.Create;
+using EcomCourse.Application.Products.Commands.Update;
 using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products.Queries.GetById;
 using MediatR;
@@ -67,5 +68,29 @@ public sealed class ProductsController : ControllerBase
         var result = await _sender.Send(query, cancellationToken);
 
         return Ok(result.Value);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(
+        Guid id,
+        UpdateProductRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateProductCommand(
+            id,
+            request.Name,
+            request.Amount,
+            request.Currency,
+            request.SKU,
+            request.CategoryId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result.Error);
+        }
+
+        return NoContent();
     }
 }

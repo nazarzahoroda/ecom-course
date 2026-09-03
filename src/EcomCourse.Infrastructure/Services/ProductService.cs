@@ -104,4 +104,61 @@ public sealed class ProductService : IProductService
 
         return Result.Success<IReadOnlyList<ProductDto>>(products);
     }
+
+    public async Task<Result> UpdateAsync(
+        Guid id,
+        string name,
+        decimal amount,
+        Currency currency,
+        string sku,
+        Guid categoryId,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await _dbContext.Products
+            .FirstOrDefaultAsync(
+                product => product.Id == id,
+                cancellationToken);
+
+        if (product is null)
+        {
+            return Result.Failure(ProductErrors.NotFound(id));
+        }
+
+        var categoryExists = await _dbContext.Categories
+            .AnyAsync(
+                category => category.Id == categoryId,
+                cancellationToken);
+
+        if (!categoryExists)
+        {
+            return Result.Failure(ProductErrors.CategoryNotFound(categoryId));
+        }
+
+        var skuExists = await _dbContext.Products
+            .AnyAsync(
+                product => product.Id != id &&
+                           product.SKU.Value == sku,
+                           cancellationToken);
+
+        if (skuExists)
+        {
+            return Result.Failure(ProductErrors.SKUAlreadyExists(sku));
+        }
+
+        var updateResult = product.Update(
+            name,
+            amount,
+            currency,
+            sku,
+            categoryId);
+
+        if (updateResult.IsFailure)
+        {
+            return Result.Failure(updateResult.Error);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
 }
