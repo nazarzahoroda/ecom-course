@@ -161,4 +161,25 @@ public sealed class ProductService : IProductService
 
         return Result.Success();
     }
+
+    public async Task<Result> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var product = await _dbContext.Products
+            .FirstOrDefaultAsync(
+                product => product.Id == id,
+                cancellationToken);
+
+        if (product is null)
+        {
+            return Result.Failure(ProductErrors.NotFound(id));
+        }
+
+        _dbContext.Products.Remove(product);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
 }

@@ -1,4 +1,5 @@
 using EcomCourse.Application.Products.Commands.Create;
+using EcomCourse.Application.Products.Commands.Delete;
 using EcomCourse.Application.Products.Commands.Update;
 using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products.Queries.GetById;
@@ -83,6 +84,23 @@ public sealed class ProductsController : ControllerBase
             request.Currency,
             request.SKU,
             request.CategoryId);
+
+        var result = await _sender.Send(command, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(result.Error);
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var command = new DeleteProductCommand(id);
 
         var result = await _sender.Send(command, cancellationToken);
 

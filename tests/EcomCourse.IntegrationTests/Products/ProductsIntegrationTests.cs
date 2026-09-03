@@ -105,6 +105,16 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal(Currency.EUR, updatedProduct.Currency);
         Assert.Equal(createProductRequest.SKU, updatedProduct.SKU);
         Assert.Equal(categoryId, updatedProduct.CategoryId);
+
+        var deleteResponse = await _client.DeleteAsync(
+            $"/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var getDeletedResponse = await _client.GetAsync(
+            $"/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, getDeletedResponse.StatusCode);
     }
 
     [Fact]

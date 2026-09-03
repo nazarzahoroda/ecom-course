@@ -28,4 +28,8 @@ public interface IProductService
         string sku,
         Guid categoryId,
         CancellationToken cancellationToken = default);
+
+    Task<Result> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
 }
