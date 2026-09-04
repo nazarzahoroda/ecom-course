@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentValidation;
 using MediatR;
 using EcomCourse.Application.Common.Behavior;
+using EcomCourse.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.Application
@@ -17,11 +18,10 @@ public static class DependencyInjection
                 cfg.RegisterServicesFromAssembly(assembly);
                 cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
-
-            services.AddValidatorsFromAssembly(assembly);
-
+        services.AddScoped<CompensateAsync>();
         return services;
     }
+}
 
     }
 }

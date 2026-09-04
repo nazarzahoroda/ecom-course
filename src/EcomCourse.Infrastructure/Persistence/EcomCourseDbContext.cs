@@ -1,3 +1,4 @@
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Interfaces;
@@ -18,9 +19,11 @@ namespace EcomCourse.Infrastructure.Persistence;
 
         public DbSet<OrderLine> OrderLines => Set<OrderLine>();
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(EcomCourseDbContext).Assembly);
+    public DbSet<Customer> Customers => Set<Customer>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(EcomCourseDbContext).Assembly);
 
             base.OnModelCreating(modelBuilder);
         }
