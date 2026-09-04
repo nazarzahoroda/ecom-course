@@ -5,6 +5,8 @@ using EcomCourse.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using EcomCourse.Application.Categories.Services;
+using EcomCourse.Infrastructure.Services;
 
 namespace EcomCourse.Infrastructure;
 
@@ -21,6 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
+	services.AddScoped<ICategoryService, CategoryService>();
 
         return services;
     }
