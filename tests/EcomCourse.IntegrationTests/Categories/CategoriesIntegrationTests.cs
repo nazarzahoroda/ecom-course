@@ -67,4 +67,38 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
         Assert.Equal(HttpStatusCode.NotFound, deletedResponse.StatusCode);   
     }
+
+    [Fact]
+    public async Task GetCategoryById_WhenCategoryDoesNotExist_ShouldReturnNotFound()
+    {
+        var categoryId = Guid.NewGuid();
+
+        var response = await _client.GetAsync(
+            $"/api/categories/{categoryId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_WhenCategoryDoesNotExist_ShouldReturnNotFound()
+    {
+        var categoryId = Guid.NewGuid();
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/categories/{categoryId}",
+            new { name = "Electronics" });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteCategory_WhenCategoryDoesNotExist_ShouldReturnNotFound()
+    {
+        var categoryId = Guid.NewGuid();
+
+        var response = await _client.DeleteAsync(
+            $"/api/categories/{categoryId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

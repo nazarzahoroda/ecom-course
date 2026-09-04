@@ -5,7 +5,6 @@ using EcomCourse.Application.Categories.Commands.Delete;
 using EcomCourse.Application.Categories.Commands.Update;
 using EcomCourse.Application.Categories.Queries.GetAll;
 using EcomCourse.Application.Categories.Queries.GetById;
-using EcomCourse.Domain.Categories;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -91,6 +90,8 @@ public sealed class CategoriesController : ControllerBase
 
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCategory(
     Guid id,
     [FromBody] UpdateCategoryRequest request,
@@ -116,6 +117,8 @@ public sealed class CategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteCategory(
     Guid id,
     CancellationToken cancellationToken)
