@@ -3,6 +3,7 @@ using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
+using EcomCourse.Infrastructure.Interfaces;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using EcomCourse.Infrastructure.Services;
@@ -10,7 +11,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 namespace EcomCourse.Infrastructure;
 
 public static class DependencyInjection
@@ -22,7 +22,9 @@ public static class DependencyInjection
         var connectionString = ConnectionStringResolver.Resolve(configuration);
 
         services.AddDbContext<EcomCourseDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        {
+            options.UseSqlServer(connectionString);
+        });
 
         services.AddDbContext<IdentityDbContext>(options =>
         {
@@ -44,6 +46,7 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtService, JwtService>();
             
+        services.AddScoped<IApplicationDbContext, EcomCourseDbContext>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
 
