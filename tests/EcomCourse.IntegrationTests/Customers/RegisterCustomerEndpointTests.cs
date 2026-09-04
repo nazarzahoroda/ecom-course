@@ -64,27 +64,30 @@ public sealed class RegisterCustomerEndpointTests
 
     private sealed class InMemoryCustomerStore : ICustomerStore
     {
-        private readonly List<Customer> _customers = [];
+        private readonly List<Customer> _customers = new List<Customer>();
 
         public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken)
         {
             var exists = _customers.Any(customer => customer.Email.Equals(email));
-
             return Task.FromResult(exists);
         }
 
         public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
         {
             _customers.Add(customer);
-
             return Task.FromResult(true);
         }
 
         public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         {
             var customer = _customers.FirstOrDefault(customer => customer.Id == id);
-
             return Task.FromResult(customer);
+        }
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var removed = _customers.RemoveAll(c => c.Id == id) > 0;
+            return Task.FromResult(removed);
         }
     }
 }
