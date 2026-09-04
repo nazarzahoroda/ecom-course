@@ -15,7 +15,7 @@ public sealed class GetOrderWithLinesQueryHandler : IQueryHandler<GetOrderWithLi
 
     public async Task<Result<OrderResponse>> Handle(GetOrderWithLinesQuery request, CancellationToken cancellationToken)
     {
-        var order = await _orderRepository.GetByIdAsync(request.OrderId, cancellationToken);
+        var order = await _orderRepository.GetByIdAsync(request.orderId, cancellationToken);
 
         if (order is null)
         {
