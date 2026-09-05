@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using EcomCourse.Infrastructure.Persistence.Identity.Authorization;
+using EcomCourse.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
 namespace EcomCourse.Infrastructure.Tests.Authorization;

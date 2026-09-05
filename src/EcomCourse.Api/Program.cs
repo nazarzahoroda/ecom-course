@@ -1,8 +1,8 @@
 using EcomCourse.Api.Middleware;
 using EcomCourse.Application;
 using EcomCourse.Infrastructure;
+using EcomCourse.Infrastructure.Authorization;
 using EcomCourse.Infrastructure.Persistence.Identity;
-using EcomCourse.Infrastructure.Persistence.Identity.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi;
 
@@ -20,9 +20,9 @@ builder.Services.AddAuthorization(options =>
         {
             policy.RequireAuthenticatedUser();
 
-            policy.AddRequirements(
-                new SameCustomerOrAdminRequirement());
-        });
+            policy.AddRequirements(new SameCustomerOrAdminRequirement());
+        }
+    );
 });
 
 builder.Services.AddScoped<IAuthorizationHandler, SameCustomerOrAdminHandler>();
@@ -31,10 +31,10 @@ builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(ClientCorsPolicy, policy =>
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+    options.AddPolicy(
+        ClientCorsPolicy,
+        policy => policy.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()
+    );
 });
 
 builder.Services.AddOpenApi();
@@ -49,14 +49,14 @@ builder.Services.AddSwaggerGen(options =>
             Scheme = "bearer",
             BearerFormat = "JWT",
             In = ParameterLocation.Header,
-            Description = "Enter your JWT token."
-        });
+            Description = "Enter your JWT token.",
+        }
+    );
 
-    options.AddSecurityRequirement(document =>
-        new OpenApiSecurityRequirement
-        {
-            [new OpenApiSecuritySchemeReference("Bearer", document)] = []
-        });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
+    });
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -77,13 +77,15 @@ app.UseHttpsRedirection();
 
 app.UseCors(ClientCorsPolicy);
 
-app.MapGet("/", () =>
-{
-    return "Everything is okay";
-})
-.WithName("GetHealthCheck");
+app.MapGet(
+        "/",
+        () =>
+        {
+            return "Everything is okay";
+        }
+    )
+    .WithName("GetHealthCheck");
 
 app.MapControllers();
 
 app.Run();
-

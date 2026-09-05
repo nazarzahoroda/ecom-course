@@ -3,7 +3,6 @@ using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
-using EcomCourse.Infrastructure.Interfaces;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using EcomCourse.Infrastructure.Services;
@@ -11,13 +10,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
 namespace EcomCourse.Infrastructure;
 
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration
+    )
     {
         var connectionString = ConnectionStringResolver.Resolve(configuration);
 
@@ -33,24 +34,31 @@ public static class DependencyInjection
 
         services.AddJWTAuth(configuration);
 
-        services.AddIdentityCore<ApplicationUser>(options =>
-        {
-            options.Password.RequireDigit = true;
-            options.Password.RequiredLength = 8;
-            options.Password.RequireUppercase = true;
-            options.Password.RequireLowercase = true;
-            options.Password.RequireNonAlphanumeric = true;
-        }).AddRoles<IdentityRole<Guid>>()
-        .AddEntityFrameworkStores<IdentityDbContext>()
-        .AddSignInManager().AddDefaultTokenProviders();
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Password.RequireDigit = true;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<IdentityDbContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
 
         services.AddScoped<IJwtService, JwtService>();
-            
-        services.AddScoped<IApplicationDbContext, EcomCourseDbContext>();
+
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
 
         services.AddScoped<IIdentityService, IdentityService>();
+
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUserContext, UserContext>();
+
+        services.AddScoped<ICartService, CartService>();
 
         return services;
     }

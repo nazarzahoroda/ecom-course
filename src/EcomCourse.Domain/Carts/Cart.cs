@@ -13,7 +13,8 @@ namespace EcomCourse.Domain.Carts
 
         public IReadOnlyCollection<CartItem> Items => _items.AsReadOnly();
 
-        private Cart() : base(Guid.Empty) { }
+        private Cart()
+            : base(Guid.Empty) { }
 
         public Cart(Guid id, Guid customerId)
             : base(id)
@@ -28,13 +29,9 @@ namespace EcomCourse.Domain.Carts
 
             if (isActive.IsFailure)
                 return Result.Failure(isActive.Error);
-
-            var existingItem = _items.FirstOrDefault(x => x.ProductId == productId);
-
-            if (existingItem is not null)
-            {
-                return existingItem.ChangeQuantity(quantity);
-            }
+            var item = _items.FirstOrDefault(x => x.ProductId == productId);
+            if (item is not null)
+                return Result.Failure(CartErrors.ItemExists);
 
             var newItem = CartItem.Create(productId, quantity);
 
@@ -47,20 +44,21 @@ namespace EcomCourse.Domain.Carts
 
             return Result.Success();
         }
-        //public Result UpdateItemQuantity(Guid productId, int quantity)
-        //{
-        //    var isActive = EnsureActive();
 
-        //    if (isActive.IsFailure)
-        //        return Result.Failure(isActive.Error);
+        public Result UpdateItemQuantity(Guid productId, int quantity)
+        {
+            var isActive = EnsureActive();
 
-        //    var item = _items.FirstOrDefault(x => x.ProductId == productId);
+            if (isActive.IsFailure)
+                return Result.Failure(isActive.Error);
 
-        //    if (item is null)
-        //        return Result.Failure(CartErrors.NotFound);
+            var item = _items.FirstOrDefault(x => x.ProductId == productId);
 
-        //    return item.ChangeQuantity(quantity);
-        //}
+            if (item is null)
+                return Result.Failure(CartErrors.CartItemNotFound);
+
+            return item.ChangeQuantity(quantity);
+        }
 
         public Result RemoveItem(Guid productId)
         {
@@ -72,30 +70,12 @@ namespace EcomCourse.Domain.Carts
             var item = _items.FirstOrDefault(x => x.ProductId == productId);
 
             if (item is null)
-                return Result.Failure(CartErrors.NotFound);
+                return Result.Failure(CartErrors.CartItemNotFound);
 
             _items.Remove(item);
 
             return Result.Success();
         }
-
-        //public Result<CartCheckoutData> Checkout()
-        //{
-        //    var isActive = EnsureActive();
-
-        //    if (isActive.IsFailure)
-        //        return Result.Failure<CartCheckoutData>(isActive.Error);
-
-        //    if (_items.Count == 0)
-        //        return Result.Failure<CartCheckoutData>(CartErrors.NotFound);
-
-        //    Status = CartStatus.CheckedOut;
-
-        //    var data = new CartCheckoutData
-        //      (CustomerId, _items.Select(x => new CartCheckoutItem(x.ProductId, x.Quantity)).ToList());
-
-        //    return Result.Success(data);
-        //}
 
         private Result EnsureActive()
         {

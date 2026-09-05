@@ -1,57 +1,115 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using EcomCourse.Application.Carts.Commands.AddItemToCartCommand;
+using System.Security.Claims;
+using System.Text;
 using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Xunit;
 
-namespace EcomCourse.IntegrationTests.Carts
+namespace EcomCourse.IntegrationTests.Carts;
+
+public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    public class CartIntegrationTests: IClassFixture<WebApplicationFactory<Program>>
+    private readonly HttpClient _httpClient;
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public CartIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        private readonly HttpClient _httpClient;
-        private readonly EcomCourseDbContext _context;
+        _factory = factory;
+        _httpClient = factory.CreateClient();
+    }
 
-        public CartIntegrationTests(WebApplicationFactory<Program> factory)
+    [Fact]
+    public async Task CartFlow_ShouldAddUpdateAndRemoveItems()
+    {
+        var customerId = Guid.NewGuid();
+        var product1Id = Guid.NewGuid();
+        var product2Id = Guid.NewGuid();
+
+        var token = GenerateToken(customerId);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            token
+        );
+
+        var addRes1 = await _httpClient.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = product1Id, Quantity = 2 }
+        );
+        Assert.Equal(HttpStatusCode.OK, addRes1.StatusCode);
+
+        var addRes2 = await _httpClient.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = product2Id, Quantity = 3 }
+        );
+        Assert.Equal(HttpStatusCode.OK, addRes2.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
         {
-            _httpClient = factory.CreateClient();
-            var scope = factory.Services.CreateScope();
-            _context = scope.ServiceProvider
-                .GetRequiredService<EcomCourseDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+            var item1 = await db.CartItems.FirstOrDefaultAsync(x =>
+                x.ProductId == product1Id && x.Cart.CustomerId == customerId
+            );
+            var item2 = await db.CartItems.FirstOrDefaultAsync(x =>
+                x.ProductId == product2Id && x.Cart.CustomerId == customerId
+            );
+
+            Assert.NotNull(item1);
+            Assert.NotNull(item2);
+
+            var updateRes = await _httpClient.PutAsJsonAsync(
+                $"/api/Cart/items",
+                new UpdateCartItemQuantityDto { ProductId = item1.ProductId, Quantity = 5 }
+            );
+            Assert.Equal(HttpStatusCode.OK, updateRes.StatusCode);
+
+            var deleteRes = await _httpClient.DeleteAsync($"/api/Cart/items/{item2.Id}");
+            Assert.Equal(HttpStatusCode.OK, deleteRes.StatusCode);
         }
-        [Fact]
-        public async Task CartFlow_ShouldAddUpdateAndRemoveItems()
+
+        using (var scope = _factory.Services.CreateScope())
         {
-            var customerId = Guid.NewGuid();
-            var product1Id = Guid.NewGuid();
-            var product2Id = Guid.NewGuid();
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
 
-            var addItem1 = new AddItemToCartDto(product1Id, 2);
+            var remainingItems = await db
+                .CartItems.Where(x => x.Cart.CustomerId == customerId)
+                .ToListAsync();
 
-            var response1 = await _httpClient.PostAsJsonAsync($"/api/Cart/items?customerId={customerId}", addItem1);
-
-            response1.EnsureSuccessStatusCode();
-
-            var addItem2 = new AddItemToCartDto(product2Id, 3);
-
-            var response2 = await _httpClient.PostAsJsonAsync($"/api/Cart/items?customerId={customerId}", addItem2);
-
-            response2.EnsureSuccessStatusCode();
-
-            var updateCommand = new AddItemToCartDto(product1Id, 5);
-
-            var updateResponse = await _httpClient.PostAsJsonAsync($"/api/Cart/items?customerId={customerId}", updateCommand);
-
-            updateResponse.EnsureSuccessStatusCode();
-
-            var cartItem = await _context.CartItems.SingleOrDefaultAsync(x => x.ProductId == product2Id
-            && x.Cart.CustomerId == customerId);
-
-            var removeResponse = await _httpClient.DeleteAsync($"/api/Cart/items/{cartItem!.Id}");
-
-            removeResponse.EnsureSuccessStatusCode();
+            Assert.Single(remainingItems);
+            Assert.Equal(product1Id, remainingItems[0].ProductId);
+            Assert.Equal(5, remainingItems[0].Quantity);
         }
+    }
+
+    private static string GenerateToken(Guid customerId)
+    {
+        var key = Encoding.UTF8.GetBytes("Very_Super_Puper_Secret_Key123!321");
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(
+                new[]
+                {
+                    new Claim("CustomerId", customerId.ToString()),
+                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+                }
+            ),
+            Issuer = "EcomCourse",
+            Audience = "EcomCourseClient",
+            Expires = DateTime.UtcNow.AddMinutes(30),
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature
+            ),
+        };
+
+        var handler = new JwtSecurityTokenHandler();
+        return handler.WriteToken(handler.CreateToken(descriptor));
     }
 }

@@ -1,14 +1,13 @@
 using EcomCourse.Domain.Carts;
 
-namespace EcomCourse.UnitTests
+namespace EcomCourse.UnitTests.CartTest
 {
     public class CartTests
     {
         [Fact]
         public void ItemCannotBeAddedToCartWhenNotActive()
         {
-            var cart = new Cart(
-                Guid.NewGuid(), Guid.NewGuid());
+            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
 
             cart.Abandon();
 
@@ -17,11 +16,11 @@ namespace EcomCourse.UnitTests
             Assert.True(result.IsFailure);
             Assert.Equal(CartErrors.CartNotActive, result.Error);
         }
+
         [Fact]
         public void ItemCannotBeAddedToCartWhenNotActiveCheckout()
         {
-            var cart = new Cart(
-                Guid.NewGuid(), Guid.NewGuid());
+            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
 
             cart.Checkout();
 
@@ -30,6 +29,7 @@ namespace EcomCourse.UnitTests
             Assert.True(result.IsFailure);
             Assert.Equal(CartErrors.CartNotActive, result.Error);
         }
+
         [Fact]
         public void CreateItemQuantityWithZeroQuantityHaveToFail()
         {
@@ -39,10 +39,10 @@ namespace EcomCourse.UnitTests
 
             var result = cart.AddItem(productId, 0);
 
-
             Assert.True(result.IsFailure);
             Assert.Equal(CartErrors.InvalidQuantity, result.Error);
         }
+
         [Fact]
         public void UpdateItemQuantityWithZeroQuantityHaveToFail()
         {
@@ -52,7 +52,7 @@ namespace EcomCourse.UnitTests
 
             cart.AddItem(productId, 2);
 
-            var result = cart.AddItem(productId, 0);
+            var result = cart.UpdateItemQuantity(productId, 0);
 
             Assert.True(result.IsFailure);
             Assert.Equal(CartErrors.InvalidQuantity, result.Error);
