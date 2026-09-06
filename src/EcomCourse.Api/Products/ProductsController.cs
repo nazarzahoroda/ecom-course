@@ -1,4 +1,6 @@
+using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Commands.Create;
+using EcomCourse.Application.Products.Queries.GetById;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -44,8 +46,35 @@ public sealed class ProductsController : ControllerBase
             });
         }
 
-        return Created(
-            $"/api/products/{result.Value}",
+        return CreatedAtAction(
+            nameof(GetProductById),
+            new { id = result.Value },
             result.Value);
+    }
+
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetProductById(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetProductByIdQuery(id);
+
+        var result = await _sender.Send(
+            query,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = result.Error.Code,
+                Detail = result.Error.Description,
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        return Ok(result.Value);
     }
 }
