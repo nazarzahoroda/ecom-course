@@ -15,11 +15,11 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        var items = request.Items
+        var items = request.items
             .Select(i => (i.ProductId, i.Quantity, i.UnitPrice))
             .ToList();
 
-        var orderResult = Order.Create(request.CustomerId, items);
+        var orderResult = Order.Create(request.customerId, items);
 
         if (orderResult.IsFailure)
         {
