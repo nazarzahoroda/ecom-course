@@ -1,43 +1,33 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EcomCourse.Api.Middleware;
 
-public sealed class GlobalExceptionHandler : IExceptionHandler
+public partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IHostEnvironment env) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        ProblemDetails problemDetails;
+        LogUnhandledException(logger, exception.Message, exception);
 
-        if (exception is ValidationException validationException)
+        var problemDetails = new ProblemDetails
         {
-            problemDetails = new ProblemDetails
-            {
-                Title = "Validation Error",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = validationException.Message
-            };
-        }
-        else
-        {
-            problemDetails = new ProblemDetails
-            {
-                Title = "Server Error",
-                Status = StatusCodes.Status500InternalServerError,
-                Detail = exception.Message
-            };
-        }
+            Status = StatusCodes.Status500InternalServerError,
+            Title = "Server Error",
+            Detail = env.IsDevelopment() ? exception.StackTrace : "An unexpected error occurred."
+        };
 
         httpContext.Response.StatusCode = problemDetails.Status.Value;
-
-        await httpContext.Response.WriteAsJsonAsync(
-            problemDetails,
-            cancellationToken);
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
         return true;
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception occurred: {ErrorMessage}")]
+    private static partial void LogUnhandledException(ILogger logger, string errorMessage, Exception exception);
 }

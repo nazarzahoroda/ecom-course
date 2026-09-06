@@ -24,7 +24,7 @@ public class GetOrderWithLinesQueryHandlerTests
         var query = new GetOrderWithLinesQuery(Guid.NewGuid());
 
         // Мокаємо репозиторій так, щоб він повертав null
-        _orderRepositoryMock.GetByIdAsync(query.OrderId, Arg.Any<CancellationToken>())
+        _orderRepositoryMock.GetByIdAsync(query.orderId, Arg.Any<CancellationToken>())
             .Returns((Order?)null);
 
         // Act

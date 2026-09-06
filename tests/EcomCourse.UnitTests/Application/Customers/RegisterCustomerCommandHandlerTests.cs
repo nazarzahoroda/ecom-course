@@ -19,14 +19,14 @@ public class RegisterCustomerCommandHandlerTests
             "Polubotka",
             "Lviv",
             "79066",
-            "Ukraine");
+            "Ukraine"
+        );
 
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.NotEqual(Guid.Empty, result.Value);
     }
-
 
     [Fact]
     public async Task HandleReturnsFailureWhenEmailAlreadyExists()
@@ -42,7 +42,8 @@ public class RegisterCustomerCommandHandlerTests
             "Polubotka",
             "Lviv",
             "79066",
-            "Ukraine");
+            "Ukraine"
+        );
 
         var firstResult = await handler.Handle(command, CancellationToken.None);
         var secondResult = await handler.Handle(command, CancellationToken.None);
@@ -65,7 +66,8 @@ public class RegisterCustomerCommandHandlerTests
             "Polubotka",
             "Lviv",
             "79066",
-            "Ukraine");
+            "Ukraine"
+        );
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -86,7 +88,8 @@ public class RegisterCustomerCommandHandlerTests
             "Polubotka",
             "Lviv",
             "79066",
-            "Ukraine");
+            "Ukraine"
+        );
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -129,7 +132,12 @@ public class RegisterCustomerCommandHandlerTests
 
             return Task.FromResult(customer);
         }
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var removedCount = _customers.RemoveAll(customer => customer.Id == id);
+
+            return Task.FromResult(removedCount > 0);
+        }
     }
-
-
 }

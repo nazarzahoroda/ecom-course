@@ -32,7 +32,8 @@ public class GetCustomerByIdQueryHandlerTests
             "Polubotka",
             "Lviv",
             "79066",
-            "Ukraine");
+            "Ukraine"
+        );
 
         await store.AddAsync(customerResult.Value!, CancellationToken.None);
 
@@ -74,6 +75,11 @@ public class GetCustomerByIdQueryHandlerTests
             var customer = _customers.FirstOrDefault(customer => customer.Id == id);
             return Task.FromResult(customer);
         }
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var removedCount = _customers.RemoveAll(customer => customer.Id == id);
+            return Task.FromResult(removedCount > 0);
+        }
     }
 }
-

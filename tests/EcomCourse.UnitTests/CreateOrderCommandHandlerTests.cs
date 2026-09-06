@@ -55,7 +55,7 @@ public class CreateOrderCommandHandlerTests
             .AddAsync(
                 Arg.Is<Order>(o =>
                     o.Id == result.Value &&
-                    o.CustomerId == command.CustomerId &&
+                    o.CustomerId == command.customerId &&
                     o.Total == 250m),
                 Arg.Any<CancellationToken>());
     }

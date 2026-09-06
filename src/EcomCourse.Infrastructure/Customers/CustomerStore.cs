@@ -43,6 +43,18 @@ public sealed class CustomerStore : ICustomerStore
             .FirstOrDefaultAsync(customer => customer.Id == id, cancellationToken);
     }
 
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var customer = await _dbContext.Customers.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        if (customer is null)
+        {
+            return false;
+        }
+        _dbContext.Customers.Remove(customer);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
         return exception.InnerException is SqlException sqlException
