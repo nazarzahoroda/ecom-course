@@ -21,6 +21,11 @@ public sealed class Price
             return Result.Failure<Price>(PriceErrors.AmountInvalid);      
         }
 
+        if (!Enum.IsDefined(currency))
+        {
+            return Result.Failure<Price>(PriceErrors.CurrencyInvalid);
+        }
+
         return Result.Success(new Price(amount, currency));
     }
 }
