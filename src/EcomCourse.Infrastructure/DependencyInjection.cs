@@ -1,4 +1,5 @@
 using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Application.Categories.Services;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
@@ -43,9 +44,10 @@ public static class DependencyInjection
         .AddSignInManager().AddDefaultTokenProviders();
 
         services.AddScoped<IJwtService, JwtService>();
-            
+
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
+        services.AddScoped<ICategoryService, CategoryService>();
 
         services.AddScoped<IIdentityService, IdentityService>();
 
