@@ -1,3 +1,4 @@
+using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Commands.Create;
 using EcomCourse.Application.Products.Queries.GetById;
@@ -74,6 +75,22 @@ public sealed class ProductsController : ControllerBase
                 Status = StatusCodes.Status404NotFound
             });
         }
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<ProductDto>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProducts(
+        CancellationToken cancellationToken)
+    {
+        var query = new GetProductsQuery();
+
+        var result = await _sender.Send(
+            query,
+            cancellationToken);
 
         return Ok(result.Value);
     }
