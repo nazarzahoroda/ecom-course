@@ -16,5 +16,13 @@ namespace EcomCourse.Domain.Products
         public static readonly DomainError CategoryIdEmpty = new(
             "CategoryIdEmpty",
             "Category Id cannot be empty.");
+
+        public static DomainError CategoryNotFound(Guid categoryId) => new(
+            "Product.CategoryNotFound",
+            $"Category {categoryId} was not found.");
+
+        public static DomainError SKUAlreadyExists(string sku) => new(
+            "Product.SKUAlreadyExists",
+            $"Product with SKU {sku} already exists.");
     }
 }
