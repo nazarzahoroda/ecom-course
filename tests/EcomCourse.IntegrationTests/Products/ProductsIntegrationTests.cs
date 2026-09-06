@@ -75,6 +75,35 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         Assert.NotNull(products);
         Assert.Contains(products, product => product.Id == productId);
+
+        var updateProductRequest = new UpdateProductRequest(
+            "Updated Integration Test Product",
+            1299.99m,
+            Currency.EUR,
+            createProductRequest.SKU,
+            categoryId);
+
+        var updateResponse = await _client.PutAsJsonAsync(
+            $"/api/products/{productId}",
+            updateProductRequest);
+
+        Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
+
+        var getUpdatedResponse = await _client.GetAsync(
+            $"/api/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.OK, getUpdatedResponse.StatusCode);
+
+        var updatedProduct = await getUpdatedResponse.Content
+            .ReadFromJsonAsync<ProductDto>();
+
+        Assert.NotNull(updatedProduct);
+        Assert.Equal(productId, updatedProduct.Id);
+        Assert.Equal("Updated Integration Test Product", updatedProduct.Name);
+        Assert.Equal(1299.99m, updatedProduct.Amount);
+        Assert.Equal(Currency.EUR, updatedProduct.Currency);
+        Assert.Equal(createProductRequest.SKU, updatedProduct.SKU);
+        Assert.Equal(categoryId, updatedProduct.CategoryId);
     }
 
     [Fact]
@@ -84,6 +113,25 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         var response = await _client.GetAsync(
             $"/api/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_WhenProductDoesNotExist_ShouldReturnNotFound()
+    {
+        var productId = Guid.NewGuid();
+
+        var updateProductRequest = new UpdateProductRequest(
+            "Updated Product",
+            1299.99m,
+            Currency.EUR,
+            "UPD-0001",
+            Guid.NewGuid());
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/products/{productId}",
+            updateProductRequest);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

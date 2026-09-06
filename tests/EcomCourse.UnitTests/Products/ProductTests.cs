@@ -100,6 +100,218 @@ namespace EcomCourse.UnitTests.Products
             Assert.Equal(ProductErrors.CategoryIdEmpty, result.Error);
         }
 
-        
+        [Fact]
+        public void Update_WithValidData_ShouldUpdateProduct()
+        {
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                Guid.NewGuid());
+
+            var product = productResult.Value!;
+            var newCategoryId = Guid.NewGuid();
+
+            var result = product.Update(
+                "iPhone 16",
+                999.99m,
+                Currency.USD,
+                "IPH-1234",
+                newCategoryId);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("iPhone 16", product.Name);
+            Assert.Equal(999.99m, product.Price.Amount);
+            Assert.Equal(Currency.USD, product.Price.Currency);
+            Assert.Equal("IPH-1234", product.SKU.Value);
+            Assert.Equal(newCategoryId, product.CategoryId);
+        }
+
+        [Fact]
+        public void Update_WithEmptyName_ShouldReturnFailureAndKeepOriginalState()
+        {
+            var categoryId = Guid.NewGuid();
+
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                categoryId);
+
+            var product = productResult.Value!;
+
+            var result = product.Update(
+                string.Empty,
+                999.99m,
+                Currency.USD,
+                "IPH-1234",
+                Guid.NewGuid());
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(ProductErrors.ProductNameEmpty, result.Error);
+
+            Assert.Equal("Samsung", product.Name);
+            Assert.Equal(100m, product.Price.Amount);
+            Assert.Equal(Currency.UAH, product.Price.Currency);
+            Assert.Equal("TVL-2026", product.SKU.Value);
+            Assert.Equal(categoryId, product.CategoryId);
+        }
+
+        [Fact]
+        public void Update_WithNegativeAmount_ShouldReturnFailureAndKeepOriginalState()
+        {
+            var categoryId = Guid.NewGuid();
+
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                categoryId);
+
+            var product = productResult.Value!;
+
+            var result = product.Update(
+                "iPhone 16",
+                -1m,
+                Currency.USD,
+                "IPH-1234",
+                Guid.NewGuid());
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(PriceErrors.AmountInvalid, result.Error);
+
+            Assert.Equal("Samsung", product.Name);
+            Assert.Equal(100m, product.Price.Amount);
+            Assert.Equal(Currency.UAH, product.Price.Currency);
+            Assert.Equal("TVL-2026", product.SKU.Value);
+            Assert.Equal(categoryId, product.CategoryId);
+        }
+
+        [Fact]
+        public void Update_WithInvalidCurrency_ShouldReturnFailureAndKeepOriginalState()
+        {
+            var categoryId = Guid.NewGuid();
+
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                categoryId);
+
+            var product = productResult.Value!;
+
+            var result = product.Update(
+                "iPhone 16",
+                999.99m,
+                (Currency)999,
+                "IPH-1234",
+                Guid.NewGuid());
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(PriceErrors.CurrencyInvalid, result.Error);
+
+            Assert.Equal("Samsung", product.Name);
+            Assert.Equal(100m, product.Price.Amount);
+            Assert.Equal(Currency.UAH, product.Price.Currency);
+            Assert.Equal("TVL-2026", product.SKU.Value);
+            Assert.Equal(categoryId, product.CategoryId);
+        }
+
+        [Fact]
+        public void Update_WithInvalidSKU_ShouldReturnFailureAndKeepOriginalState()
+        {
+            var categoryId = Guid.NewGuid();
+
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                categoryId);
+
+            var product = productResult.Value!;
+
+            var result = product.Update(
+                "iPhone 16",
+                999.99m,
+                Currency.USD,
+                "INVALID",
+                Guid.NewGuid());
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(SKUErrors.SKUInvalidFormat, result.Error);
+
+            Assert.Equal("Samsung", product.Name);
+            Assert.Equal(100m, product.Price.Amount);
+            Assert.Equal(Currency.UAH, product.Price.Currency);
+            Assert.Equal("TVL-2026", product.SKU.Value);
+            Assert.Equal(categoryId, product.CategoryId);
+        }
+
+        [Fact]
+        public void Update_WithEmptyCategoryId_ShouldReturnFailureAndKeepOriginalState()
+        {
+            var categoryId = Guid.NewGuid();
+
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                categoryId);
+
+            var product = productResult.Value!;
+
+            var result = product.Update(
+                "iPhone 16",
+                999.99m,
+                Currency.USD,
+                "IPH-1234",
+                Guid.Empty);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(ProductErrors.CategoryIdEmpty, result.Error);
+
+            Assert.Equal("Samsung", product.Name);
+            Assert.Equal(100m, product.Price.Amount);
+            Assert.Equal(Currency.UAH, product.Price.Currency);
+            Assert.Equal("TVL-2026", product.SKU.Value);
+            Assert.Equal(categoryId, product.CategoryId);
+        }
+
+        [Fact]
+        public void Update_WithNameTooLong_ShouldReturnFailureAndKeepOriginalState()
+        {
+            var categoryId = Guid.NewGuid();
+
+            var productResult = Product.Create(
+                "Samsung",
+                100m,
+                Currency.UAH,
+                "TVL-2026",
+                categoryId);
+
+            var product = productResult.Value!;
+
+            var result = product.Update(
+                new string('A', 101),
+                999.99m,
+                Currency.USD,
+                "IPH-1234",
+                Guid.NewGuid());
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(ProductErrors.ProductNameTooLong, result.Error);
+
+            Assert.Equal("Samsung", product.Name);
+            Assert.Equal(100m, product.Price.Amount);
+            Assert.Equal(Currency.UAH, product.Price.Currency);
+            Assert.Equal("TVL-2026", product.SKU.Value);
+            Assert.Equal(categoryId, product.CategoryId);
+        }
     }
 }

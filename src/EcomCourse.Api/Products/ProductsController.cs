@@ -1,3 +1,4 @@
+using EcomCourse.Application.Products.Commands.Update;
 using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Commands.Create;
@@ -93,5 +94,49 @@ public sealed class ProductsController : ControllerBase
             cancellationToken);
 
         return Ok(result.Value);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateProduct(
+        Guid id,
+        [FromBody] UpdateProductRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateProductCommand(
+            id,
+            request.Name,
+            request.Amount,
+            request.Currency,
+            request.SKU,
+            request.CategoryId);
+
+        var result = await _sender.Send(
+            command,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "Product.NotFound")
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            return BadRequest(new ProblemDetails
+            {
+                Title = result.Error.Code,
+                Detail = result.Error.Description,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        return NoContent();
     }
 }
