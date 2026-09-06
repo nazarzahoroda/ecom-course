@@ -1,8 +1,4 @@
-<<<<<<< ours
 using EcomCourse.Application.Behaviors;
-=======
-using EcomCourse.Application.Services;
->>>>>>> theirs
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.Application;
@@ -11,7 +7,6 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-<<<<<<< ours
         var assembly = typeof(DependencyInjection).Assembly;
 
         services.AddSingleton(TimeProvider.System);
@@ -24,13 +19,6 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
         });
 
-=======
-        services.AddMediatR(cfg =>
-        {
-            cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
-        });
-        services.AddScoped<CompensateAsync>();
->>>>>>> theirs
         return services;
     }
 }
