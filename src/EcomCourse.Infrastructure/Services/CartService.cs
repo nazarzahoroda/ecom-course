@@ -3,6 +3,7 @@ using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +42,15 @@ namespace EcomCourse.Infrastructure.Services
                 cart = new Cart(Guid.NewGuid(), customerId);
 
                 _context.Carts.Add(cart);
+            }
+            var productExists = await _context.Products.AnyAsync(
+                p => p.Id == dto.ProductId,
+                cancellationToken
+            );
+
+            if (!productExists)
+            {
+                return Result.Failure(ProductErrors.NotFound(dto.ProductId));
             }
             var result = cart.AddItem(dto.ProductId, dto.Quantity);
 
