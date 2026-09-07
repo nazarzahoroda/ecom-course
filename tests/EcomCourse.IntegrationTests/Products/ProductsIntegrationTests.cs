@@ -117,6 +117,68 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     }
 
     [Fact]
+    public async Task CreateProduct_WhenCategoryDoesNotExist_ShouldReturnBadRequest()
+    {
+        var createProductRequest = new CreateProductRequest(
+            "Product Without Category",
+            100m,
+            Currency.USD,
+            "CAT-0001",
+            Guid.NewGuid());
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/products",
+            createProductRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateProduct_WhenSKUAlreadyExists_ShouldReturnBadRequest()
+    {
+        var createCategoryRequest =
+            new CreateCategoryRequest("Duplicate SKU Test Category");
+
+        var categoryResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            createCategoryRequest);
+
+        Assert.Equal(HttpStatusCode.Created, categoryResponse.StatusCode);
+
+        var categoryId = await categoryResponse.Content.ReadFromJsonAsync<Guid>();
+
+        Assert.NotEqual(Guid.Empty, categoryId);
+
+        var sku = $"{(char)Random.Shared.Next('A', 'Z' + 1)}{(char)Random.Shared.Next('A', 'Z' + 1)}{(char)Random.Shared.Next('A', 'Z' + 1)}-{Random.Shared.Next(10000):D4}";
+
+        var firstProductRequest = new CreateProductRequest(
+            "First Product",
+            100m,
+            Currency.USD,
+            sku,
+            categoryId);
+
+        var firstProductResponse = await _client.PostAsJsonAsync(
+            "/api/products",
+            firstProductRequest);
+
+        Assert.Equal(HttpStatusCode.Created, firstProductResponse.StatusCode);
+
+        var secondProductRequest = new CreateProductRequest(
+            "Second Product",
+            200m,
+            Currency.EUR,
+            sku,
+            categoryId);
+
+        var secondProductResponse = await _client.PostAsJsonAsync(
+            "/api/products",
+            secondProductRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, secondProductResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task GetProductById_WhenProductDoesNotExist_ShouldReturnNotFound()
     {
         var productId = Guid.NewGuid();
@@ -125,6 +187,58 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
             $"/api/products/{productId}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_WhenCategoryDoesNotExist_ShouldReturnBadRequest()
+    {
+        var createCategoryRequest =
+            new CreateCategoryRequest("Update Missing Category Test");
+
+        var categoryResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            createCategoryRequest);
+
+        Assert.Equal(HttpStatusCode.Created, categoryResponse.StatusCode);
+
+        var categoryId = await categoryResponse.Content.ReadFromJsonAsync<Guid>();
+
+        Assert.NotEqual(Guid.Empty, categoryId);
+
+        var sku = $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                  $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                  $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                  $"-{Random.Shared.Next(10000):D4}";
+
+        var createProductRequest = new CreateProductRequest(
+            "Product To Update",
+            100m,
+            Currency.USD,
+            sku,
+            categoryId);
+
+        var createProductResponse = await _client.PostAsJsonAsync(
+            "/api/products",
+            createProductRequest);
+
+        Assert.Equal(HttpStatusCode.Created, createProductResponse.StatusCode);
+
+        var productId = await createProductResponse.Content.ReadFromJsonAsync<Guid>();
+
+        Assert.NotEqual(Guid.Empty, productId);
+
+        var updateProductRequest = new UpdateProductRequest(
+            "Updated Product",
+            150m,
+            Currency.EUR,
+            sku,
+            Guid.NewGuid());
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/products/{productId}",
+            updateProductRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -144,6 +258,77 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
             updateProductRequest);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_WhenSKUAlreadyExists_ShouldReturnBadRequest()
+    {
+        var createCategoryRequest =
+            new CreateCategoryRequest("Update Duplicate SKU Test Category");
+
+        var categoryResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            createCategoryRequest);
+
+        Assert.Equal(HttpStatusCode.Created, categoryResponse.StatusCode);
+
+        var categoryId = await categoryResponse.Content.ReadFromJsonAsync<Guid>();
+
+        Assert.NotEqual(Guid.Empty, categoryId);
+
+        var firstSku = $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                       $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                       $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                       $"-{Random.Shared.Next(10000):D4}";
+
+        var secondSku = $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                        $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                        $"{(char)Random.Shared.Next('A', 'Z' + 1)}" +
+                        $"-{Random.Shared.Next(10000):D4}";
+
+        var firstProductRequest = new CreateProductRequest(
+            "First Product",
+            100m,
+            Currency.USD,
+            firstSku,
+            categoryId);
+
+        var firstProductResponse = await _client.PostAsJsonAsync(
+            "/api/products",
+            firstProductRequest);
+
+        Assert.Equal(HttpStatusCode.Created, firstProductResponse.StatusCode);
+
+        var secondProductRequest = new CreateProductRequest(
+            "Second Product",
+            200m,
+            Currency.EUR,
+            secondSku,
+            categoryId);
+
+        var secondProductResponse = await _client.PostAsJsonAsync(
+            "/api/products",
+            secondProductRequest);
+
+        Assert.Equal(HttpStatusCode.Created, secondProductResponse.StatusCode);
+
+        var secondProductId =
+            await secondProductResponse.Content.ReadFromJsonAsync<Guid>();
+
+        Assert.NotEqual(Guid.Empty, secondProductId);
+
+        var updateProductRequest = new UpdateProductRequest(
+            "Updated Second Product",
+            250m,
+            Currency.USD,
+            firstSku,
+            categoryId);
+
+        var response = await _client.PutAsJsonAsync(
+            $"/api/products/{secondProductId}",
+            updateProductRequest);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

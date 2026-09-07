@@ -1,9 +1,10 @@
+using EcomCourse.Application.Products;
+using EcomCourse.Application.Products.Commands.Create;
 using EcomCourse.Application.Products.Commands.Delete;
 using EcomCourse.Application.Products.Commands.Update;
 using EcomCourse.Application.Products.Queries.GetAll;
-using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Commands.Create;
 using EcomCourse.Application.Products.Queries.GetById;
+using EcomCourse.Domain.Products;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -120,7 +121,7 @@ public sealed class ProductsController : ControllerBase
 
         if (result.IsFailure)
         {
-            if (result.Error.Code == "Product.NotFound")
+            if (result.Error.Code == ProductErrors.NotFound(id).Code)
             {
                 return NotFound(new ProblemDetails
                 {
