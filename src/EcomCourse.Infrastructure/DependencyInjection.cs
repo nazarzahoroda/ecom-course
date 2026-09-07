@@ -1,5 +1,6 @@
 using EcomCourse.Application.Authentication.Interfaces;
 using EcomCourse.Application.Categories.Services;
+using EcomCourse.Application.Products.Services;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
@@ -48,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICustomerStore, CustomerStore>();
         services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IProductService, ProductService>();
 
         services.AddScoped<IIdentityService, IdentityService>();
 
