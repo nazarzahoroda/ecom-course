@@ -59,7 +59,7 @@ public class OrdersIntegrationTests
                 new(Guid.NewGuid(), 1, 50m)
             });
 
-        // Act 
+        // Act
         var createResponse = await _client.PostAsJsonAsync("/api/orders", command);
 
         var responseBody = await createResponse.Content.ReadAsStringAsync();
@@ -70,7 +70,7 @@ public class OrdersIntegrationTests
         var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
         Assert.NotEqual(Guid.Empty, orderId);
 
-        // Act 
+        // Act
         var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
 
         // Assert

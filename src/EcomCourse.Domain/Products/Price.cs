@@ -14,11 +14,11 @@ public sealed class Price
 
     public Currency Currency { get; private set; }
 
-    public static Result<Price> Create(decimal amount, Currency currency)  
+    public static Result<Price> Create(decimal amount, Currency currency)
     {
         if (amount < 0)
         {
-            return Result.Failure<Price>(PriceErrors.AmountInvalid);      
+            return Result.Failure<Price>(PriceErrors.AmountInvalid);
         }
 
         if (!Enum.IsDefined(currency))

@@ -13,7 +13,7 @@ public sealed class RegisterCustomerEndpointTests
     public async Task RegisterCustomerReturnsCreatedAndConflictForDuplicateEmail()
     {
         await using var application = new CustomerApiApplication();
-        
+
         var client = application
             .WithWebHostBuilder(builder =>
             {
