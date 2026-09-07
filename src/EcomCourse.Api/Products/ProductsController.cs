@@ -1,3 +1,4 @@
+using EcomCourse.Application.Products.Commands.Delete;
 using EcomCourse.Application.Products.Commands.Update;
 using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products;
@@ -134,6 +135,32 @@ public sealed class ProductsController : ControllerBase
                 Title = result.Error.Code,
                 Detail = result.Error.Description,
                 Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteProduct(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var command = new DeleteProductCommand(id);
+
+        var result = await _sender.Send(
+            command,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = result.Error.Code,
+                Detail = result.Error.Description,
+                Status = StatusCodes.Status404NotFound
             });
         }
 

@@ -104,6 +104,16 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal(Currency.EUR, updatedProduct.Currency);
         Assert.Equal(createProductRequest.SKU, updatedProduct.SKU);
         Assert.Equal(categoryId, updatedProduct.CategoryId);
+
+        var deleteResponse = await _client.DeleteAsync(
+            $"/api/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        var getDeletedResponse = await _client.GetAsync(
+            $"/api/products/{productId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, getDeletedResponse.StatusCode);
     }
 
     [Fact]
@@ -132,6 +142,17 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
         var response = await _client.PutAsJsonAsync(
             $"/api/products/{productId}",
             updateProductRequest);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteProduct_WhenProductDoesNotExist_ShouldReturnNotFound()
+    {
+        var productId = Guid.NewGuid();
+
+        var response = await _client.DeleteAsync(
+            $"/api/products/{productId}");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
