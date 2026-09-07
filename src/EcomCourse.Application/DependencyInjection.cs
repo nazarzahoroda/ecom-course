@@ -1,23 +1,27 @@
 using System.Reflection;
 using EcomCourse.Application.Common.Behavior;
 using EcomCourse.Application.Services;
+using EcomCourse.Application.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EcomCourse.Application
-{
-    public static class DependencyInjection
-    {
-        public static IServiceCollection AddApplication(this IServiceCollection services)
-        {
-            var assembly = Assembly.GetExecutingAssembly();
+namespace EcomCourse.Application;
 
-            services.AddMediatR(cfg =>
-            {
-                cfg.RegisterServicesFromAssembly(assembly);
-                cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-            });
-            services.AddScoped<CompensateAsync>();
-            return services;
-        }
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        var assembly = typeof(DependencyInjection).Assembly;
+
+        services.AddSingleton(TimeProvider.System);
+
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssembly(assembly);
+
+            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
+        });
+        services.AddScoped<CompensateAsync>();
+        return services;
     }
 }

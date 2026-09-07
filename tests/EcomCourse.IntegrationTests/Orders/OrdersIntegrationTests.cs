@@ -1,3 +1,8 @@
+using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
@@ -11,17 +16,28 @@ namespace EcomCourse.IntegrationTests.Orders;
 
 public class OrdersIntegrationTests
 {
+    private const string _testAuthenticationScheme = "TestScheme";
     private readonly HttpClient _client;
+    private readonly Guid _customerId = Guid.NewGuid();
 
     public OrdersIntegrationTests()
     {
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "TestConnectionString");
-
         var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureServices(services =>
                 {
+                    services.AddSingleton(new TestCustomer(_customerId));
+
+                    services
+                        .AddAuthentication(options =>
+                        {
+                            options.DefaultAuthenticateScheme = _testAuthenticationScheme;
+                            options.DefaultChallengeScheme = _testAuthenticationScheme;
+                        })
+                        .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                            _testAuthenticationScheme,
+                            options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
                 });
@@ -34,7 +50,7 @@ public class OrdersIntegrationTests
     public async Task CreateOrder_And_GetOrderWithLines_ShouldReturnCorrectData()
     {
         // Arrange
-        var customerId = Guid.NewGuid();
+        var customerId = _customerId;
         var command = new CreateOrderCommand(
             customerId,
             new List<OrderLineItemRequest>
@@ -43,7 +59,7 @@ public class OrdersIntegrationTests
                 new(Guid.NewGuid(), 1, 50m)
             });
 
-        // Act 
+        // Act
         var createResponse = await _client.PostAsJsonAsync("/api/orders", command);
 
         var responseBody = await createResponse.Content.ReadAsStringAsync();
@@ -54,7 +70,7 @@ public class OrdersIntegrationTests
         var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
         Assert.NotEqual(Guid.Empty, orderId);
 
-        // Act 
+        // Act
         var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
 
         // Assert
@@ -76,6 +92,45 @@ public class OrdersIntegrationTests
         Assert.Equal(200m, firstLine.LineTotal);
     }
 
+    private sealed record TestCustomer(Guid CustomerId);
+
+    private sealed class TestAuthenticationHandler
+        : AuthenticationHandler<AuthenticationSchemeOptions>
+    {
+        private readonly TestCustomer _testCustomer;
+
+        public TestAuthenticationHandler(
+            IOptionsMonitor<AuthenticationSchemeOptions> options,
+            ILoggerFactory logger,
+            UrlEncoder encoder,
+            TestCustomer testCustomer)
+            : base(options, logger, encoder)
+        {
+            _testCustomer = testCustomer;
+        }
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            var claims = new[]
+            {
+                new Claim("CustomerId", _testCustomer.CustomerId.ToString())
+            };
+
+            var identity = new ClaimsIdentity(
+                claims,
+                _testAuthenticationScheme);
+
+            var principal = new ClaimsPrincipal(identity);
+
+            var ticket = new AuthenticationTicket(
+                principal,
+                _testAuthenticationScheme);
+
+            return Task.FromResult(
+                AuthenticateResult.Success(ticket));
+        }
+    }
+
     private sealed class InMemoryOrderRepository : IOrderRepository
     {
         private readonly List<Order> _orders = [];
@@ -91,6 +146,11 @@ public class OrdersIntegrationTests
         {
             _orders.Add(order);
 
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Order order, CancellationToken cancellationToken = default)
+        {
             return Task.CompletedTask;
         }
     }

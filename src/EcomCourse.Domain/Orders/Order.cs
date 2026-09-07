@@ -50,4 +50,23 @@ public class Order : Entity<Guid>
 
         return Result.Success(order);
     }
+
+    public Result MarkAsPaid()
+    {
+        if (Status != OrderStatus.Pending)
+        {
+            return Result.Failure(OrderErrors.InvalidStatusTransition);
+        }
+        Status = OrderStatus.Paid;
+        return Result.Success();
+    }
+    public Result Cancel()
+    {
+        if (Status != OrderStatus.Pending)
+        {
+            return Result.Failure(OrderErrors.InvalidStatusTransition);
+        }
+        Status = OrderStatus.Cancelled;
+        return Result.Success();
+    }
 }

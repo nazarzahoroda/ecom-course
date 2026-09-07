@@ -12,41 +12,33 @@ public sealed class RegisterCustomerEndpointTests
     [Fact]
     public async Task RegisterCustomerReturnsCreatedAndConflictForDuplicateEmail()
     {
-        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "TestConnectionString");
-
         await using var application = new CustomerApiApplication();
-        try
-        {
-            var client = application
-                .WithWebHostBuilder(builder =>
+
+        var client = application
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
                 {
-                    builder.ConfigureServices(services =>
-                    {
-                        services.RemoveAll<ICustomerStore>();
-                        services.AddSingleton<ICustomerStore, InMemoryCustomerStore>();
-                    });
-                })
+                    services.RemoveAll<ICustomerStore>();
+                    services.AddSingleton<ICustomerStore, InMemoryCustomerStore>();
+                });
+            })
                 .CreateClient();
 
-            var request = new RegisterCustomerRequest(
-                Guid.NewGuid(),
-                "Ivan",
-                "ivan@example.com",
-                "Polubotka",
-                "Lviv",
-                "79066",
-                "Ukraine");
+        var request = new RegisterCustomerRequest(
+            Guid.NewGuid(),
+            "Ivan",
+            "ivan@example.com",
+            "Polubotka",
+            "Lviv",
+            "79066",
+            "Ukraine");
 
-            var firstResponse = await client.PostAsJsonAsync("/customers/register", request);
-            var secondResponse = await client.PostAsJsonAsync("/customers/register", request);
+        var firstResponse = await client.PostAsJsonAsync("/customers/register", request);
+        var secondResponse = await client.PostAsJsonAsync("/customers/register", request);
 
-            Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
-            Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", null);
-        }
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
     }
 
     private sealed record RegisterCustomerRequest(

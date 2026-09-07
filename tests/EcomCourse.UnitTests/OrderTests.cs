@@ -98,4 +98,87 @@ public class OrderTests
         Assert.Equal(2, line.Quantity);
         Assert.Equal(150m, line.UnitPrice);
     }
+
+    private static Order CreatePendingOrder()
+    {
+        var result = Order.Create(
+            Guid.NewGuid(),
+            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m) });
+
+        return result.Value!;
+    }
+
+    [Fact]
+    public void MarkAsPaid_ShouldSetStatusToPaid_WhenOrderIsPending()
+    {
+        var order = CreatePendingOrder();
+
+        var result = order.MarkAsPaid();
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(OrderStatus.Paid, order.Status);
+    }
+
+    [Fact]
+    public void Cancel_ShouldSetStatusToCancelled_WhenOrderIsPending()
+    {
+        var order = CreatePendingOrder();
+
+        var result = order.Cancel();
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
+
+    [Fact]
+    public void MarkAsPaid_ShouldReturnFailure_WhenOrderIsAlreadyPaid()
+    {
+        var order = CreatePendingOrder();
+        order.MarkAsPaid();
+
+        var result = order.MarkAsPaid();
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+        Assert.Equal(OrderStatus.Paid, order.Status);
+    }
+
+    [Fact]
+    public void Cancel_ShouldReturnFailure_WhenOrderIsAlreadyCancelled()
+    {
+        var order = CreatePendingOrder();
+        order.Cancel();
+
+        var result = order.Cancel();
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
+
+    [Fact]
+    public void Cancel_ShouldReturnFailure_WhenOrderIsPaid()
+    {
+        var order = CreatePendingOrder();
+        order.MarkAsPaid();
+
+        var result = order.Cancel();
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+        Assert.Equal(OrderStatus.Paid, order.Status);
+    }
+
+    [Fact]
+    public void MarkAsPaid_ShouldReturnFailure_WhenOrderIsCancelled()
+    {
+        var order = CreatePendingOrder();
+        order.Cancel();
+
+        var result = order.MarkAsPaid();
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
 }

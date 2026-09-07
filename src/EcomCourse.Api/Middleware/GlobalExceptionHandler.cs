@@ -1,33 +1,31 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
-namespace EcomCourse.Api.Middleware;
-
-public partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IHostEnvironment env) : IExceptionHandler
+namespace EcomCourse.Api.Middleware
 {
-    public async ValueTask<bool> TryHandleAsync(
-        HttpContext httpContext,
-        Exception exception,
-        CancellationToken cancellationToken)
+    public class GlobalExceptionHandler : IExceptionHandler
     {
-        LogUnhandledException(logger, exception.Message, exception);
 
-        var problemDetails = new ProblemDetails
+        public async ValueTask<bool> TryHandleAsync(
+         HttpContext httpContext,
+         Exception exception,
+         CancellationToken cancellationToken)
         {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Server Error",
-            Detail = env.IsDevelopment() ? exception.StackTrace : "An unexpected error occurred."
-        };
+            var problemDetails = new ProblemDetails
+            {
+                Title = "Server Error",
+                Status = StatusCodes.Status500InternalServerError,
+                Detail = exception.Message
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+            };
 
-        return true;
+            httpContext.Response.StatusCode = problemDetails.Status.Value;
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+
+
+            return true;
+        }
+
     }
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception occurred: {ErrorMessage}")]
-    private static partial void LogUnhandledException(ILogger logger, string errorMessage, Exception exception);
 }
