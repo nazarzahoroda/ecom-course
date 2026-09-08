@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EcomCourse.Api.Middleware
 {
-    public class GlobalExceptionHandler : IExceptionHandler
+    public partial class GlobalExceptionHandler(
+        ILogger<GlobalExceptionHandler> logger,
+        IHostEnvironment env) : IExceptionHandler
     {
 
         public async ValueTask<bool> TryHandleAsync(
@@ -12,11 +16,14 @@ namespace EcomCourse.Api.Middleware
          Exception exception,
          CancellationToken cancellationToken)
         {
+            LogUnhandledException(logger, exception.Message, exception);
             var problemDetails = new ProblemDetails
             {
                 Title = "Server Error",
                 Status = StatusCodes.Status500InternalServerError,
-                Detail = exception.Message
+                Detail = env.IsDevelopment()
+                    ? exception.StackTrace
+                    : "An unexpected error occurred."
 
             };
 
@@ -26,6 +33,14 @@ namespace EcomCourse.Api.Middleware
 
             return true;
         }
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Unhandled exception occurred: {ErrorMessage}")]
+        private static partial void LogUnhandledException(
+            ILogger logger,
+            string errorMessage,
+            Exception exception);
 
     }
 }

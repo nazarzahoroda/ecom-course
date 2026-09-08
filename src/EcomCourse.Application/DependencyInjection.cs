@@ -1,4 +1,5 @@
 using EcomCourse.Application.Behaviors;
+using EcomCourse.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.Application;
@@ -10,6 +11,7 @@ public static class DependencyInjection
         var assembly = typeof(DependencyInjection).Assembly;
 
         services.AddSingleton(TimeProvider.System);
+        services.AddScoped<CompensateAsync>();
 
         services.AddMediatR(cfg =>
         {
