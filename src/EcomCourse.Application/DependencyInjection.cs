@@ -1,10 +1,4 @@
-using System.Reflection;
-using EcomCourse.Application.Common.Behavior;
-using EcomCourse.Application.Services;
 using EcomCourse.Application.Behaviors;
-using EcomCourse.Application.Services;
-using System.Reflection;
-using EcomCourse.Application.Common.Behavior;
 using EcomCourse.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -96,7 +96,7 @@ public class RegisterCommandHandlerTests
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
-        var userDto = new ApplicationUserDto { Id = dto.UserId, Email = dto.Email };
+        var userDto = new ApplicationUserDto { Id = dto.UserId!.Value, Email = dto.Email };
 
         _identityServiceMock
             .Setup(x => x.IsUserExist(dto.Email, It.IsAny<CancellationToken>()))
@@ -111,7 +111,7 @@ public class RegisterCommandHandlerTests
             .ReturnsAsync(false);
 
         _identityServiceMock
-            .Setup(x => x.DeleteUserAsync(dto.UserId, It.IsAny<CancellationToken>()))
+            .Setup(x => x.DeleteUserAsync(dto.UserId.Value, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -120,7 +120,7 @@ public class RegisterCommandHandlerTests
         Assert.Equal("Customer.CreateFailed", result.Error.Code);
 
         _identityServiceMock.Verify(
-            x => x.DeleteUserAsync(dto.UserId, It.IsAny<CancellationToken>()),
+            x => x.DeleteUserAsync(dto.UserId.Value, It.IsAny<CancellationToken>()),
             Times.Once
         );
     }
@@ -130,7 +130,7 @@ public class RegisterCommandHandlerTests
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
-        var userDto = new ApplicationUserDto { Id = dto.UserId, Email = dto.Email };
+        var userDto = new ApplicationUserDto { Id = dto.UserId!.Value, Email = dto.Email };
 
         _identityServiceMock
             .Setup(x => x.IsUserExist(dto.Email, It.IsAny<CancellationToken>()))
@@ -146,7 +146,11 @@ public class RegisterCommandHandlerTests
 
         _identityServiceMock
             .Setup(x =>
-                x.SetCustomerIdAsync(dto.UserId, It.IsAny<Guid>(), It.IsAny<CancellationToken>())
+                x.SetCustomerIdAsync(
+                    dto.UserId.Value,
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()
+                )
             )
             .ReturnsAsync(Result.Success());
 
@@ -155,7 +159,12 @@ public class RegisterCommandHandlerTests
         Assert.True(result.IsSuccess);
 
         _identityServiceMock.Verify(
-            x => x.SetCustomerIdAsync(dto.UserId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            x =>
+                x.SetCustomerIdAsync(
+                    dto.UserId.Value,
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()
+                ),
             Times.Once
         );
 
