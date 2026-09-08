@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using EcomCourse.Application.Authentication.Commands.LoginCommand;
 using EcomCourse.Application.Authentication.Commands.LogoutCommand;
 using EcomCourse.Application.Authentication.Commands.RefreshCommand;
@@ -8,6 +9,7 @@ using EcomCourse.Domain.Common;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -21,28 +23,33 @@ namespace EcomCourse.Api.Controllers
     {
         private readonly ISender _sender;
 
-
         public AuthController(ISender sender)
         {
             _sender = sender;
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterDto dto, CancellationToken cancellationToken)
+        public async Task<IActionResult> Register(
+            RegisterDto dto,
+            CancellationToken cancellationToken
+        )
         {
             var request = new RegisterCommand(dto);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest
-                });
+                return BadRequest(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status400BadRequest,
+                    }
+                );
             }
-                return StatusCode(StatusCodes.Status201Created);
+            return StatusCode(StatusCodes.Status201Created);
         }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto, CancellationToken cancellationToken)
         {
@@ -50,32 +57,61 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest
-                });
+                return BadRequest(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status400BadRequest,
+                    }
+                );
             }
-            return Ok(result.Value);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(60),
+            };
+
+            Response.Cookies.Append("access_token", result.Value!.AccessToken, cookieOptions);
+
+            Response.Cookies.Append(
+                "refresh_token",
+                result.Value.RefreshToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7),
+                }
+            );
+            return Ok();
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh(RefreshDto dto, CancellationToken cancellationToken)
+        public async Task<IActionResult> Refresh(
+            RefreshDto dto,
+            CancellationToken cancellationToken
+        )
         {
             var request = new RefreshCommand(dto.RefreshToken);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest
-                });
+                return BadRequest(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status400BadRequest,
+                    }
+                );
             }
             return Ok(result.Value);
         }
+
         [HttpPost("logout")]
         public async Task<IActionResult> Logout(LogoutDto dto, CancellationToken cancellationToken)
         {
@@ -83,14 +119,31 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest
-                });
+                return BadRequest(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status400BadRequest,
+                    }
+                );
             }
             return Ok();
+        }
+
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var userDetails = new
+            {
+                UserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+                Email = User.FindFirstValue(ClaimTypes.Email),
+                CustomerId = User.FindFirstValue("CustomerId"),
+                Roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value),
+            };
+
+            return Ok(userDetails);
         }
     }
 }
