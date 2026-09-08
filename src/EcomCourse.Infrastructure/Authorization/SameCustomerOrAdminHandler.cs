@@ -1,17 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 
-namespace EcomCourse.Infrastructure.Persistence.Identity.Authorization
+namespace EcomCourse.Infrastructure.Authorization
 {
     public record CustomerResource(Guid CustomerId);
+
     public class SameCustomerOrAdminHandler
-        : AuthorizationHandler<
-            SameCustomerOrAdminRequirement,
-            CustomerResource>
+        : AuthorizationHandler<SameCustomerOrAdminRequirement, CustomerResource>
     {
         protected override Task HandleRequirementAsync(
             AuthorizationHandlerContext context,
             SameCustomerOrAdminRequirement requirement,
-            CustomerResource resource)
+            CustomerResource resource
+        )
         {
             if (context.User.IsInRole("Admin"))
             {
@@ -19,17 +19,14 @@ namespace EcomCourse.Infrastructure.Persistence.Identity.Authorization
                 return Task.CompletedTask;
             }
 
-            var customerIdClaim =
-                context.User.FindFirst("CustomerId");
+            var customerIdClaim = context.User.FindFirst("CustomerId");
 
             if (customerIdClaim is null)
             {
                 return Task.CompletedTask;
             }
 
-            if (!Guid.TryParse(
-                    customerIdClaim.Value,
-                    out var customerId))
+            if (!Guid.TryParse(customerIdClaim.Value, out var customerId))
             {
                 return Task.CompletedTask;
             }

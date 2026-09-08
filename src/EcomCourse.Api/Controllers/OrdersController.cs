@@ -1,7 +1,7 @@
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Orders;
-using EcomCourse.Infrastructure.Persistence.Identity.Authorization;
+using EcomCourse.Infrastructure.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -37,25 +37,32 @@ public class OrdersController : ControllerBase
         {
             if (result.Error == OrderErrors.NotFound)
             {
-                return NotFound(new ProblemDetails
+                return NotFound(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status404NotFound,
+                    }
+                );
+            }
+
+            return BadRequest(
+                new ProblemDetails
                 {
                     Title = result.Error.Code,
                     Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-
-            return BadRequest(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status400BadRequest
-            });
+                    Status = StatusCodes.Status400BadRequest,
+                }
+            );
         }
         var resource = new CustomerResource(result.Value!.CustomerId);
 
-        var authorizationResult = await _authorizationService.AuthorizeAsync(User, resource,
-           "SameCustomerOrAdmin");
+        var authorizationResult = await _authorizationService.AuthorizeAsync(
+            User,
+            resource,
+            "SameCustomerOrAdmin"
+        );
 
         if (!authorizationResult.Succeeded)
         {
@@ -64,6 +71,7 @@ public class OrdersController : ControllerBase
 
         return Ok(result.Value);
     }
+
     [Authorize]
     [HttpPost]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
@@ -71,24 +79,24 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateOrder(
         [FromBody] CreateOrderCommand command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status400BadRequest
-            });
+            return BadRequest(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status400BadRequest,
+                }
+            );
         }
 
-        return CreatedAtAction(
-            nameof(GetOrderById),
-            new { id = result.Value },
-            result.Value);
+        return CreatedAtAction(nameof(GetOrderById), new { id = result.Value }, result.Value);
     }
 
     [HttpPost("{id:guid}/pay")]

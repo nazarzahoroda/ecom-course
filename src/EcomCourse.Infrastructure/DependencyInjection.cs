@@ -19,12 +19,15 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration
+    )
     {
         var connectionString = ConnectionStringResolver.Resolve(configuration);
 
         services.AddDbContext<EcomCourseDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        {
+            options.UseSqlServer(connectionString);
+        });
 
         services.AddDbContext<IdentityDbContext>(options =>
         {
@@ -33,16 +36,19 @@ public static class DependencyInjection
 
         services.AddJWTAuth(configuration);
 
-        services.AddIdentityCore<ApplicationUser>(options =>
-        {
-            options.Password.RequireDigit = true;
-            options.Password.RequiredLength = 8;
-            options.Password.RequireUppercase = true;
-            options.Password.RequireLowercase = true;
-            options.Password.RequireNonAlphanumeric = true;
-        }).AddRoles<IdentityRole<Guid>>()
-        .AddEntityFrameworkStores<IdentityDbContext>()
-        .AddSignInManager().AddDefaultTokenProviders();
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Password.RequireDigit = true;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<IdentityDbContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
 
         services.AddScoped<IJwtService, JwtService>();
 
@@ -52,6 +58,11 @@ public static class DependencyInjection
         services.AddScoped<IProductService, ProductService>();
 
         services.AddScoped<IIdentityService, IdentityService>();
+
+        services.AddHttpContextAccessor();
+        services.AddScoped<IUserContext, UserContext>();
+
+        services.AddScoped<ICartService, CartService>();
 
         return services;
     }

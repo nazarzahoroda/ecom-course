@@ -23,11 +23,11 @@ public class GlobalExceptionHandlerTests
 
         _handler = new GlobalExceptionHandler(
             NullLogger<GlobalExceptionHandler>.Instance,
-            _envMock);
+            _envMock
+        );
 
         _context = new DefaultHttpContext();
         _context.Response.Body = new MemoryStream();
-
     }
 
     [Fact]

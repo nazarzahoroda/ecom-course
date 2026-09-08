@@ -1,3 +1,6 @@
+using System.Reflection;
+using EcomCourse.Application.Common.Behavior;
+using EcomCourse.Application.Services;
 using EcomCourse.Application.Behaviors;
 using EcomCourse.Application.Services;
 using System.Reflection;
@@ -22,8 +25,7 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
         });
-            services.AddScoped<CompensateAsync>();
-
-            return services;
+        services.AddScoped<CompensateAsync>();
+        return services;
     }
 }

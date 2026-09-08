@@ -1,4 +1,5 @@
 using EcomCourse.Domain.Categories;
+using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
@@ -9,9 +10,10 @@ namespace EcomCourse.Infrastructure.Persistence;
 public class EcomCourseDbContext : DbContext
 {
     public EcomCourseDbContext(DbContextOptions<EcomCourseDbContext> options)
-        : base(options)
-    {
-    }
+        : base(options) { }
+
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
 
     public DbSet<Order> Orders => Set<Order>();
 

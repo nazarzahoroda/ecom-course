@@ -6,6 +6,7 @@ using EcomCourse.Application.Categories.Commands.Update;
 using EcomCourse.Application.Categories.Queries.GetAll;
 using EcomCourse.Application.Categories.Queries.GetById;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcomCourse.Api.Controllers;
@@ -22,27 +23,29 @@ public sealed class CategoriesController : ControllerBase
         _sender = sender;
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateCategory(
         [FromBody] CreateCategoryRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var command = new CreateCategoryCommand(request.Name);
 
-        var result = await _sender.Send(
-            command,
-            cancellationToken);
+        var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status400BadRequest
-            });
+            return BadRequest(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status400BadRequest,
+                }
+            );
         }
 
         return CreatedAtAction(nameof(GetCategoryById), new { id = result.Value }, result.Value);
@@ -51,24 +54,22 @@ public sealed class CategoriesController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCategoryById(
-    Guid id,
-    CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCategoryById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetCategoryByIdQuery(id);
 
-        var result = await _sender.Send(
-            query,
-            cancellationToken);
+        var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status404NotFound
-            });
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
         }
 
         return Ok(result.Value);
@@ -76,52 +77,49 @@ public sealed class CategoriesController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(List<CategoryDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetCategories(
-    CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCategories(CancellationToken cancellationToken)
     {
         var query = new GetCategoriesQuery();
 
-        var result = await _sender.Send(
-            query,
-            cancellationToken);
+        var result = await _sender.Send(query, cancellationToken);
 
         return Ok(result.Value);
     }
 
-
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCategory(
-    Guid id,
-    [FromBody] UpdateCategoryRequest request,
-    CancellationToken cancellationToken)
+        Guid id,
+        [FromBody] UpdateCategoryRequest request,
+        CancellationToken cancellationToken
+    )
     {
-        var command = new UpdateCategoryCommand(
-            id,
-            request.Name);
+        var command = new UpdateCategoryCommand(id, request.Name);
 
         var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsFailure)
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status404NotFound
-            });
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
         }
 
         return NoContent();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteCategory(
-    Guid id,
-    CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeleteCategoryCommand(id);
 
@@ -129,16 +127,16 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status404NotFound
-            });
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
         }
 
         return NoContent();
     }
 }
-
-
