@@ -5,12 +5,12 @@ namespace EcomCourse.Infrastructure.Persistence.Identity
 {
     public static class IdentitySeederExtension
     {
-        public static async Task SeedIdentityAsync(
-            this WebApplication app)
+        public static async Task SeedIdentityAsync(this WebApplication app)
         {
             using var scope = app.Services.CreateScope();
 
             await IdentitySeeder.SeedRolesAsync(scope.ServiceProvider);
+            await IdentitySeeder.SeedAdminUserAsync(scope.ServiceProvider);
         }
     }
 }
