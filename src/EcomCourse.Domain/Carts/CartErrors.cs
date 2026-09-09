@@ -10,6 +10,7 @@ namespace EcomCourse.Domain.Carts
         );
 
         public static readonly DomainError CartNotFound = new("Cart.NotFound", "Not found");
+        public static readonly DomainError CartIsEmpty = new("Cart.IsEmpty", "Cart is empty");
         public static readonly DomainError CartItemNotFound = new("CartItem.NotFound", "Not found");
         public static readonly DomainError ItemExists = new(
             "CartItem.ItemExists",

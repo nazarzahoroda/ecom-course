@@ -1,4 +1,5 @@
 using EcomCourse.Application.Carts.Commands.AddItemToCartCommand;
+using EcomCourse.Application.Carts.Commands.CartCheckout;
 using EcomCourse.Application.Carts.Commands.RemoveItemFromCartCommand;
 using EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand;
 using EcomCourse.Application.Carts.DTOs;
@@ -101,6 +102,34 @@ namespace EcomCourse.Api.Controllers
                     );
             }
 
+            return Ok(result.Value);
+        }
+
+        [HttpPost("checkout")]
+        public async Task<IActionResult> Checkout(CancellationToken cancellationToken)
+        {
+            var request = new CartCheckoutCommand();
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
+            {
+                return result.Error.Code == "Cart.NotFound"
+                    ? NotFound(
+                        new ProblemDetails
+                        {
+                            Title = result.Error.Code,
+                            Detail = result.Error.Description,
+                            Status = StatusCodes.Status404NotFound,
+                        }
+                    )
+                    : BadRequest(
+                        new ProblemDetails
+                        {
+                            Title = result.Error.Code,
+                            Detail = result.Error.Description,
+                            Status = StatusCodes.Status400BadRequest,
+                        }
+                    );
+            }
             return Ok(result.Value);
         }
     }
