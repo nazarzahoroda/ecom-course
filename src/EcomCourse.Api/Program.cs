@@ -33,7 +33,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(
         ClientCorsPolicy,
-        policy => policy.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()
+        policy =>
+            policy
+                .WithOrigins("http://localhost:4200")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials()
     );
 });
 
@@ -63,6 +68,7 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 await app.SeedIdentityAsync();
+app.UseCors(ClientCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseExceptionHandler();
@@ -74,8 +80,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseCors(ClientCorsPolicy);
 
 app.MapGet(
         "/",
