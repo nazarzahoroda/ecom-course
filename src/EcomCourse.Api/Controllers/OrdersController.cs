@@ -1,3 +1,4 @@
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Orders.Commands.CancelOrder;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
@@ -19,11 +20,13 @@ public class OrdersController : ControllerBase
 {
     private readonly ISender _sender;
     private readonly IAuthorizationService _authorizationService;
+    private readonly IUserContext _userContext;
 
-    public OrdersController(ISender sender, IAuthorizationService authorizationService)
+    public OrdersController(ISender sender, IAuthorizationService authorizationService, IUserContext userContext)
     {
         _sender = sender;
         _authorizationService = authorizationService;
+        _userContext = userContext;
     }
 
 
@@ -36,12 +39,7 @@ public class OrdersController : ControllerBase
     [FromQuery] int pageSize = 10,
     CancellationToken cancellationToken = default)
     {
-        var customerIdClaim = User.FindFirst("CustomerId");
-
-        if (customerIdClaim is null || !Guid.TryParse(customerIdClaim.Value, out var customerId))
-        {
-            return Forbid();
-        }
+        var customerId = _userContext.CustomerId;
 
         var query = new GetOrdersQuery(customerId, page, pageSize);
         var result = await _sender.Send(query, cancellationToken);
@@ -186,4 +184,6 @@ public class OrdersController : ControllerBase
 
         return NoContent();
     }
+
+    
 }

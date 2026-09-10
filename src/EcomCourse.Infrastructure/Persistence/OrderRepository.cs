@@ -54,7 +54,6 @@ public sealed class OrderRepository : IOrderRepository
 
         var orders = await query
             .Include(o => o.Lines)
-            .OrderByDescending(o => o.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
