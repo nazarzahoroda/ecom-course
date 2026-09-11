@@ -153,5 +153,26 @@ public class OrdersIntegrationTests
         {
             return Task.CompletedTask;
         }
+
+        public Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetByCustomerIdAsync(
+    Guid customerId,
+    int page,
+    int pageSize,
+    CancellationToken cancellationToken = default)
+        {
+            var filtered = _orders
+                .Where(order => order.CustomerId == customerId)
+                .ToList();
+
+            var totalCount = filtered.Count;
+
+            var pagedOrders = filtered
+                .OrderByDescending(order => order.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Task.FromResult<(IReadOnlyList<Order>, int)>((pagedOrders, totalCount));
+        }
     }
 }

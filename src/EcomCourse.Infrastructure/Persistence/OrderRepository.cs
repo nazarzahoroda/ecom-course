@@ -40,4 +40,24 @@ public sealed class OrderRepository : IOrderRepository
         _dbContext.Orders.Update(order);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetByCustomerIdAsync(
+    Guid customerId,
+    int page,
+    int pageSize,
+    CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Orders
+            .Where(o => o.CustomerId == customerId);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var orders = await query
+            .Include(o => o.Lines)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (orders, totalCount);
+    }
 }

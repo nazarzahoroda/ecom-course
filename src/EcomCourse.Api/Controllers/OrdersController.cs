@@ -1,4 +1,8 @@
+using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Orders.Commands.CancelOrder;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
+using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
+using EcomCourse.Application.Orders.Queries.GetOrders;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Authorization;
@@ -6,8 +10,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using EcomCourse.Application.Orders.Commands.CancelOrder;
-using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
 
 namespace EcomCourse.Api.Controllers;
 
@@ -18,12 +20,34 @@ public class OrdersController : ControllerBase
 {
     private readonly ISender _sender;
     private readonly IAuthorizationService _authorizationService;
+    private readonly IUserContext _userContext;
 
-    public OrdersController(ISender sender, IAuthorizationService authorizationService)
+    public OrdersController(ISender sender, IAuthorizationService authorizationService, IUserContext userContext)
     {
         _sender = sender;
         _authorizationService = authorizationService;
+        _userContext = userContext;
     }
+
+
+    [Authorize]
+    [HttpGet]
+    [ProducesResponseType(typeof(GetOrdersResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetOrders(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    CancellationToken cancellationToken = default)
+    {
+        var customerId = _userContext.CustomerId;
+
+        var query = new GetOrdersQuery(customerId, page, pageSize);
+        var result = await _sender.Send(query, cancellationToken);
+
+        return Ok(result.Value);
+    }
+
+
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
@@ -160,4 +184,6 @@ public class OrdersController : ControllerBase
 
         return NoContent();
     }
+
+    
 }

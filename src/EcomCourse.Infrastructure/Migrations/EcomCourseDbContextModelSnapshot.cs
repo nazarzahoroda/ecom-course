@@ -22,22 +22,6 @@ namespace EcomCourse.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("EcomCourse.Domain.Categories.Category", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Categories", (string)null);
-                });
-
             modelBuilder.Entity("EcomCourse.Domain.Carts.Cart", b =>
                 {
                     b.Property<Guid>("Id")
@@ -75,6 +59,22 @@ namespace EcomCourse.Infrastructure.Migrations
                     b.HasIndex("CartId");
 
                     b.ToTable("CartItems");
+                });
+
+            modelBuilder.Entity("EcomCourse.Domain.Categories.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("EcomCourse.Domain.Customers.Customer", b =>
@@ -159,6 +159,17 @@ namespace EcomCourse.Infrastructure.Migrations
                     b.ToTable("Products", (string)null);
                 });
 
+            modelBuilder.Entity("EcomCourse.Domain.Carts.CartItem", b =>
+                {
+                    b.HasOne("EcomCourse.Domain.Carts.Cart", "Cart")
+                        .WithMany("Items")
+                        .HasForeignKey("CartId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cart");
+                });
+
             modelBuilder.Entity("EcomCourse.Domain.Customers.Customer", b =>
                 {
                     b.OwnsOne("EcomCourse.Domain.Customers.Address", "Address", b1 =>
@@ -188,7 +199,7 @@ namespace EcomCourse.Infrastructure.Migrations
 
                             b1.HasKey("CustomerId");
 
-                            b1.ToTable("Customers", (string)null);
+                            b1.ToTable("Customers");
 
                             b1.WithOwner()
                                 .HasForeignKey("CustomerId");
@@ -210,7 +221,7 @@ namespace EcomCourse.Infrastructure.Migrations
                             b1.HasIndex("Value")
                                 .IsUnique();
 
-                            b1.ToTable("Customers", (string)null);
+                            b1.ToTable("Customers");
 
                             b1.WithOwner()
                                 .HasForeignKey("CustomerId");
@@ -223,28 +234,12 @@ namespace EcomCourse.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("EcomCourse.Domain.Carts.CartItem", b =>
-                {
-                    b.HasOne("EcomCourse.Domain.Carts.Cart", "Cart")
-                        .WithMany("Items")
-                        .HasForeignKey("CartId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cart");
-                });
-
             modelBuilder.Entity("EcomCourse.Domain.Orders.OrderLine", b =>
                 {
                     b.HasOne("EcomCourse.Domain.Orders.Order", null)
                         .WithMany("Lines")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade);
-                });
-
-            modelBuilder.Entity("EcomCourse.Domain.Carts.Cart", b =>
-                {
-                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("EcomCourse.Domain.Products.Product", b =>
@@ -305,6 +300,11 @@ namespace EcomCourse.Infrastructure.Migrations
 
                     b.Navigation("SKU")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("EcomCourse.Domain.Carts.Cart", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("EcomCourse.Domain.Orders.Order", b =>
