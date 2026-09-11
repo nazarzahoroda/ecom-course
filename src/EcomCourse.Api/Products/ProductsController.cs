@@ -4,6 +4,7 @@ using EcomCourse.Application.Products.Commands.Delete;
 using EcomCourse.Application.Products.Commands.Update;
 using EcomCourse.Application.Products.Queries.GetAll;
 using EcomCourse.Application.Products.Queries.GetById;
+using EcomCourse.Application.Products.Queries.GetTop;
 using EcomCourse.Domain.Products;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -86,6 +87,17 @@ public sealed class ProductsController : ControllerBase
     public async Task<IActionResult> GetProducts(CancellationToken cancellationToken)
     {
         var query = new GetProductsQuery();
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet("top")]
+    [ProducesResponseType(typeof(IReadOnlyList<ProductDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTopProducts(CancellationToken cancellationToken)
+    {
+        var query = new GetTopProductsQuery();
 
         var result = await _sender.Send(query, cancellationToken);
 

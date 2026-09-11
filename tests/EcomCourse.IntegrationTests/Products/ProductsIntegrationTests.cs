@@ -341,4 +341,19 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetTopProducts_ShouldReturnAtMostFourProducts()
+    {
+        var response = await _client.GetAsync(
+            "/api/products/top");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var products = await response.Content
+            .ReadFromJsonAsync<List<ProductDto>>();
+
+        Assert.NotNull(products);
+        Assert.True(products.Count <= 4);
+    }
 }
