@@ -9,18 +9,21 @@ public interface ICategoryService
         CancellationToken cancellationToken = default);
 
     Task<Result<CategoryDto>> GetByIdAsync(
-    Guid id,
-    CancellationToken cancellationToken = default);
+        Guid id,
+        CancellationToken cancellationToken = default);
 
     Task<Result<List<CategoryDto>>> GetAllAsync(
-    CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default);
+
+    Task<Result<List<CategoryDto>>> GetTopAsync(
+        CancellationToken cancellationToken = default);
 
     Task<Result> UpdateAsync(
-    Guid id,
-    string name,
-    CancellationToken cancellationToken = default);
+        Guid id,
+        string name,
+        CancellationToken cancellationToken = default);
 
     Task<Result> DeleteAsync(
-    Guid id,
-    CancellationToken cancellationToken = default);
+        Guid id,
+        CancellationToken cancellationToken = default);
 }
