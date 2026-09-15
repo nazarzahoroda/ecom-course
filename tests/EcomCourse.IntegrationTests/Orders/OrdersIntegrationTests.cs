@@ -7,7 +7,11 @@ using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
+using EcomCourse.Application.Products;
+using EcomCourse.Application.Products.Services;
+using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -19,6 +23,7 @@ public class OrdersIntegrationTests
     private const string _testAuthenticationScheme = "TestScheme";
     private readonly HttpClient _client;
     private readonly Guid _customerId = Guid.NewGuid();
+    private readonly FakeProductService _productService = new();
 
     public OrdersIntegrationTests()
     {
@@ -40,6 +45,8 @@ public class OrdersIntegrationTests
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+                    services.RemoveAll<IProductService>();
+                    services.AddSingleton<IProductService>(_productService);
                 });
             });
 
@@ -51,12 +58,21 @@ public class OrdersIntegrationTests
     {
         // Arrange
         var customerId = _customerId;
+
+        var firstProductId = Guid.NewGuid();
+        var secondProductId = Guid.NewGuid();
+
+        _productService.SetPrice(firstProductId, 100m);
+        _productService.SetPrice(secondProductId, 50m);
+
+        // Client-supplied UnitPrice is intentionally wrong (999m) to prove the server
+        // always charges the price from IProductService, never the client's number.
         var command = new CreateOrderCommand(
             customerId,
             new List<OrderLineItemRequest>
             {
-                new(Guid.NewGuid(), 2, 100m),
-                new(Guid.NewGuid(), 1, 50m)
+                new(firstProductId, 2, 999m),
+                new(secondProductId, 1, 999m)
             });
 
         // Act
@@ -174,5 +190,52 @@ public class OrdersIntegrationTests
 
             return Task.FromResult<(IReadOnlyList<Order>, int)>((pagedOrders, totalCount));
         }
+    }
+
+    private sealed class FakeProductService : IProductService
+    {
+        private readonly Dictionary<Guid, decimal> _prices = [];
+
+        public void SetPrice(Guid productId, decimal amount) => _prices[productId] = amount;
+
+        public Task<Result<Guid>> CreateAsync(
+            string name,
+            decimal amount,
+            Currency currency,
+            string sku,
+            Guid categoryId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Result<ProductDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            if (!_prices.TryGetValue(id, out var amount))
+            {
+                return Task.FromResult(Result.Failure<ProductDto>(ProductErrors.NotFound(id)));
+            }
+
+            var dto = new ProductDto(id, "Test product", amount, Currency.USD, "SKU-TEST", Guid.NewGuid());
+
+            return Task.FromResult(Result.Success(dto));
+        }
+
+        public Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Result<IReadOnlyList<ProductDto>>> GetTopAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Result> UpdateAsync(
+            Guid id,
+            string name,
+            decimal amount,
+            Currency currency,
+            string sku,
+            Guid categoryId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }
