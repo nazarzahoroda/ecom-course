@@ -22,6 +22,62 @@ namespace EcomCourse.Infrastructure.Services
             _currentUserService = currentUserService;
         }
 
+        public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
+            CancellationToken cancellationToken
+        )
+        {
+            var customerId = _currentUserService.CustomerId;
+
+            var cart = await _context
+                .Carts.AsNoTracking()
+                .Include(c => c.Items)
+                .FirstOrDefaultAsync(
+                    c => c.CustomerId == customerId && c.Status == CartStatus.Active,
+                    cancellationToken
+                );
+
+            if (cart is null || cart.Items.Count == 0)
+            {
+                return Result.Success(
+                    new CartDetailsDto(Guid.Empty, new List<CartItemDetailsDto>(), 0m)
+                );
+            }
+
+            var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
+
+            var products = await _context
+                .Products.AsNoTracking()
+                .Where(p => productIds.Contains(p.Id))
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.Price.Amount,
+                    p.SKU.Value,
+                })
+                .ToDictionaryAsync(p => p.Id, cancellationToken);
+
+            var itemsDto = cart
+                .Items.Where(item => products.ContainsKey(item.ProductId))
+                .Select(item =>
+                {
+                    var product = products[item.ProductId];
+                    return new CartItemDetailsDto(
+                        item.Id,
+                        item.ProductId,
+                        product.Name,
+                        product.Value,
+                        product.Amount,
+                        item.Quantity
+                    );
+                })
+                .ToList();
+
+            var totalAmount = itemsDto.Sum(i => i.UnitPrice * i.Quantity);
+
+            return Result.Success(new CartDetailsDto(cart.Id, itemsDto, totalAmount));
+        }
+
         public async Task<Result> AddItemToCartAsync(
             AddItemToCartDto dto,
             CancellationToken cancellationToken
