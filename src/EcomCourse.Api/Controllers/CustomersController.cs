@@ -2,7 +2,9 @@ using EcomCourse.Api.Customers;
 using EcomCourse.Application.Customers.GetCustomerById;
 using EcomCourse.Application.Customers.RegisterCustomer;
 using EcomCourse.Domain.Customers;
+using EcomCourse.Infrastructure.Authorization;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcomCourse.Api.Controllers;
@@ -13,10 +15,12 @@ namespace EcomCourse.Api.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IAuthorizationService _authorizationService;
 
-    public CustomersController(ISender sender)
+    public CustomersController(ISender sender, IAuthorizationService authorizationService)
     {
         _sender = sender;
+        _authorizationService = authorizationService;
     }
 
     [HttpPost("register")]
@@ -25,7 +29,8 @@ public class CustomersController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RegisterCustomer(
         [FromBody] RegisterCustomerRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var command = new RegisterCustomerCommand(
             request.UserId,
@@ -34,7 +39,8 @@ public class CustomersController : ControllerBase
             request.Street,
             request.City,
             request.PostalCode,
-            request.Country);
+            request.Country
+        );
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -43,7 +49,7 @@ public class CustomersController : ControllerBase
             var problemDetails = new ProblemDetails
             {
                 Title = result.Error.Code,
-                Detail = result.Error.Description
+                Detail = result.Error.Description,
             };
 
             if (result.Error == CustomerErrors.EmailAlreadyExists)
@@ -61,12 +67,11 @@ public class CustomersController : ControllerBase
         return Created($"/customers/{result.Value}", result.Value);
     }
 
+    [Authorize]
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(CustomerResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCustomerById(
-        Guid id,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCustomerById(Guid id, CancellationToken cancellationToken)
     {
         var query = new GetCustomerByIdQuery(id);
 
@@ -74,12 +79,25 @@ public class CustomersController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status404NotFound
-            });
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
+        }
+
+        var authorizationResult = await _authorizationService.AuthorizeAsync(
+            User,
+            result.Value!.Id,
+            "SameCustomerOrAdmin"
+        );
+
+        if (!authorizationResult.Succeeded)
+        {
+            return Forbid();
         }
 
         return Ok(result.Value);
