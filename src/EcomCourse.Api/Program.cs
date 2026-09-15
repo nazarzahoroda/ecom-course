@@ -67,7 +67,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
-await app.SeedIdentityAsync();
+await app.SeedRolesAsync();
 app.UseCors(ClientCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
@@ -77,6 +77,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    await app.SeedAdminAsync();
 }
 
 app.UseHttpsRedirection();
