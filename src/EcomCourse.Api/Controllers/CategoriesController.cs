@@ -5,6 +5,7 @@ using EcomCourse.Application.Categories.Commands.Delete;
 using EcomCourse.Application.Categories.Commands.Update;
 using EcomCourse.Application.Categories.Queries.GetAll;
 using EcomCourse.Application.Categories.Queries.GetById;
+using EcomCourse.Application.Categories.Queries.GetTop;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -80,6 +81,18 @@ public sealed class CategoriesController : ControllerBase
     public async Task<IActionResult> GetCategories(CancellationToken cancellationToken)
     {
         var query = new GetCategoriesQuery();
+
+        var result = await _sender.Send(query, cancellationToken);
+
+        return Ok(result.Value);
+    }
+
+    [HttpGet("top")]
+    [ProducesResponseType(typeof(List<CategoryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTopCategories(
+        CancellationToken cancellationToken)
+    {
+        var query = new GetTopCategoriesQuery();
 
         var result = await _sender.Send(query, cancellationToken);
 

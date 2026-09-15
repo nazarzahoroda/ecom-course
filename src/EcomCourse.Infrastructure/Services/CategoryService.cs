@@ -74,6 +74,20 @@ namespace EcomCourse.Infrastructure.Services
             return Result.Success(categories);
         }
 
+        public async Task<Result<List<CategoryDto>>> GetTopAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var categories = await _dbContext.Categories
+                .AsNoTracking()
+                .Take(4)
+                .Select(category => new CategoryDto(
+                    category.Id,
+                    category.Name))
+                .ToListAsync(cancellationToken);
+
+            return Result.Success(categories);
+        }
+
         public async Task<Result> UpdateAsync(
             Guid id,
             string name,

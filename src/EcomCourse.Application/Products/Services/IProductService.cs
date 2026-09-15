@@ -20,6 +20,9 @@ public interface IProductService
     Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
         CancellationToken cancellationToken = default);
 
+    Task<Result<IReadOnlyList<ProductDto>>> GetTopAsync(
+        CancellationToken cancellationToken = default);
+
     Task<Result> UpdateAsync(
         Guid id,
         string name,

@@ -101,4 +101,19 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetTopCategories_ShouldReturnAtMostFourCategories()
+    {
+        var response = await _client.GetAsync(
+            "/api/categories/top");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var categories = await response.Content
+            .ReadFromJsonAsync<List<CategoryDto>>();
+
+        Assert.NotNull(categories);
+        Assert.True(categories.Count <= 4);
+    }
 }
