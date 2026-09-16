@@ -26,7 +26,11 @@ namespace EcomCourse.Application.Services
                     var deleteCustomerResult = await _customerStore.DeleteAsync(customer.Id, cancellationToken);
                     if (!deleteCustomerResult)
                     {
-                        return Result.Failure(new DomainError("Compensation.CustomerDeleteFailed", "Failed to delete customer"));
+                        return Result.Failure(
+                            new DomainError(
+                                "Compensation.CustomerDeleteFailed",
+                                "Failed to delete customer",
+                                ErrorType.Conflict));
                     }
                 }
             }
