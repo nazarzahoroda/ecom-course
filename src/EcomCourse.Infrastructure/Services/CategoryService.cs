@@ -31,6 +31,18 @@ namespace EcomCourse.Infrastructure.Services
 
             var category = categoryResult.Value!;
 
+            var nameExists = await _dbContext.Categories
+                .AsNoTracking()
+                .AnyAsync(
+                    existingCategory => existingCategory.Name == category.Name,
+                    cancellationToken);
+
+            if (nameExists)
+            {
+                return Result.Failure<Guid>(
+                    CategoryErrors.NameAlreadyExists);
+            }
+
             _dbContext.Categories.Add(category);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -109,6 +121,20 @@ namespace EcomCourse.Infrastructure.Services
             if (updateResult.IsFailure)
             {
                 return Result.Failure(updateResult.Error);
+            }
+
+            var nameExists = await _dbContext.Categories
+                .AsNoTracking()
+                .AnyAsync(
+                    existingCategory =>
+                        existingCategory.Id != id &&
+                        existingCategory.Name == category.Name,
+                    cancellationToken);
+
+            if (nameExists)
+            {
+                return Result.Failure(
+                    CategoryErrors.NameAlreadyExists);
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);

@@ -6,6 +6,7 @@ using EcomCourse.Application.Categories.Commands.Update;
 using EcomCourse.Application.Categories.Queries.GetAll;
 using EcomCourse.Application.Categories.Queries.GetById;
 using EcomCourse.Application.Categories.Queries.GetTop;
+using EcomCourse.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -103,6 +104,7 @@ public sealed class CategoriesController : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateCategory(
         Guid id,
         [FromBody] UpdateCategoryRequest request,
@@ -115,12 +117,24 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
+            if (result.Error.Code == CategoryErrors.NotFound(id).Code)
+            {
+                return NotFound(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status404NotFound,
+                    }
+                );
+            }
+
+            return BadRequest(
                 new ProblemDetails
                 {
                     Title = result.Error.Code,
                     Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
+                    Status = StatusCodes.Status400BadRequest,
                 }
             );
         }
