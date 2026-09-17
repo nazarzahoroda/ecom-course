@@ -6,9 +6,9 @@ using MediatR;
 namespace EcomCourse.Application.Common.Behavior
 {
     public class ValidationBehavior<TRequest, TResponse>
-    : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
-    where TResponse : Result
+        : IPipelineBehavior<TRequest, TResponse>
+        where TRequest : IRequest<TResponse>
+        where TResponse : Result
     {
         private readonly IEnumerable<IValidator<TRequest>> _validators;
 
@@ -20,24 +20,15 @@ namespace EcomCourse.Application.Common.Behavior
             RequestHandlerDelegate<TResponse> next,
             CancellationToken cancellationToken)
         {
-            if (_validators is ICollection<IValidator<TRequest>> validatorsCollection)
+            if (!_validators.Any())
             {
-                if (validatorsCollection.Count == 0)
-                {
-                    return await next(cancellationToken);
-                }
-            }
-            else
-            {
-                using var enumerator = _validators.GetEnumerator();
-                if (!enumerator.MoveNext())
-                {
-                    return await next(cancellationToken);
-                }
+                return await next(cancellationToken);
             }
 
+            var context = new ValidationContext<TRequest>(request);
+
             var validationResults = await Task.WhenAll(
-                _validators.Select(v => v.ValidateAsync(request, cancellationToken)));
+                _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
 
             DomainError[] errors = validationResults
                 .SelectMany(validationResult => validationResult.Errors)
@@ -67,15 +58,14 @@ namespace EcomCourse.Application.Common.Behavior
             if (typeof(TResult).IsGenericType && typeof(TResult).GetGenericTypeDefinition() == typeof(Result<>))
             {
                 var valueType = typeof(TResult).GenericTypeArguments[0];
-                var combinedMessage = string.Join("; ", errors.Select(e => e.Description));
 
-                var combinedError = new DomainError("Validation", combinedMessage);
+                var validationResultType = typeof(ValidationResult<>).MakeGenericType(valueType);
 
-                var failureMethod = typeof(Result)
-                    .GetMethod(nameof(Result.Failure), BindingFlags.Public | BindingFlags.Static)?
-                    .MakeGenericMethod(valueType);
+                var withErrorsMethod = validationResultType.GetMethod(
+                    nameof(ValidationResult.WithErrors),
+                    BindingFlags.Public | BindingFlags.Static);
 
-                var result = failureMethod!.Invoke(null, new object[] { combinedError })!;
+                var result = withErrorsMethod!.Invoke(null, new object[] { errors })!;
                 return (TResult)result;
             }
 

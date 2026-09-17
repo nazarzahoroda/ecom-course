@@ -1,25 +1,27 @@
-using EcomCourse.Application.Behaviors;
-using EcomCourse.Application.Services;
+using System.Reflection;
+using EcomCourse.Application.Common.Behavior;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace EcomCourse.Application;
-
-public static class DependencyInjection
+namespace EcomCourse.Application
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static class DependencyInjection
     {
-        var assembly = typeof(DependencyInjection).Assembly;
-
-        services.AddSingleton(TimeProvider.System);
-
-        services.AddMediatR(cfg =>
+        public static IServiceCollection AddApplication(this IServiceCollection services)
         {
-            cfg.RegisterServicesFromAssembly(assembly);
+            var assembly = Assembly.GetExecutingAssembly();
 
-            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
-            cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
-        });
-        services.AddScoped<CompensateAsync>();
-        return services;
+            services.AddValidatorsFromAssembly(assembly);
+
+            services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssembly(assembly);
+
+                cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+                cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            });
+
+            return services;
+        }
     }
 }
