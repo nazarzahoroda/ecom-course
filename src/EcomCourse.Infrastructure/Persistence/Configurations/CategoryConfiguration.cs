@@ -16,5 +16,10 @@ public sealed class CategoryConfiguration
         builder.Property(category => category.Name)
             .IsRequired()
             .HasMaxLength(100);
+
+        builder.HasOne(category => category.Parent)
+            .WithMany(category => category.Children)
+            .HasForeignKey(category => category.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

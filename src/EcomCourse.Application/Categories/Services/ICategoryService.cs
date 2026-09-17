@@ -6,6 +6,7 @@ public interface ICategoryService
 {
     Task<Result<Guid>> CreateAsync(
         string name,
+        Guid? parentId = null,
         CancellationToken cancellationToken = default);
 
     Task<Result<CategoryDto>> GetByIdAsync(
@@ -18,9 +19,13 @@ public interface ICategoryService
     Task<Result<List<CategoryDto>>> GetTopAsync(
         CancellationToken cancellationToken = default);
 
+    Task<Result<List<CategoryTreeDto>>> GetTreeAsync(
+        CancellationToken cancellationToken = default);
+
     Task<Result> UpdateAsync(
         Guid id,
         string name,
+        Guid? parentId = null,
         CancellationToken cancellationToken = default);
 
     Task<Result> DeleteAsync(

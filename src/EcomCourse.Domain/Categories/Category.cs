@@ -9,30 +9,43 @@ namespace EcomCourse.Domain.Categories
 
         }
 
-        private Category(Guid id, string name)
+        private Category(Guid id, string name, Guid? parentId)
         {
             Id = id;
             Name = name;
+            ParentId = parentId;
         }
 
         public Guid Id { get; private set; }
 
         public string Name { get; private set; } = null!;
 
-        public static Result<Category> Create(string name)
+        public Guid? ParentId { get; private set; }
+
+        public Category? Parent { get; private set; }
+
+        public ICollection<Category> Children { get; private set; }
+            = new List<Category>();
+
+        public static Result<Category> Create(
+            string name,
+            Guid? parentId = null)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                return Result.Failure<Category>(CategoryErrors.NameEmpty);       
+                return Result.Failure<Category>(CategoryErrors.NameEmpty);
             }
 
             if (name.Length > 100)
             {
-                return Result.Failure<Category>(CategoryErrors.NameTooLong);     
+                return Result.Failure<Category>(CategoryErrors.NameTooLong);
             }
 
-            var category = new Category(Guid.NewGuid(), name.Trim());
-                
+            var category = new Category(
+                Guid.NewGuid(),
+                name.Trim(),
+                parentId);
+
             return Result.Success(category);
         }
 
@@ -49,6 +62,19 @@ namespace EcomCourse.Domain.Categories
             }
 
             Name = name.Trim();
+
+            return Result.Success();
+        }
+
+        public Result UpdateParent(Guid? parentId)
+        {
+            if (parentId == Id)
+            {
+                return Result.Failure(
+                    CategoryErrors.CyclicReference);
+            }
+
+            ParentId = parentId;
 
             return Result.Success();
         }

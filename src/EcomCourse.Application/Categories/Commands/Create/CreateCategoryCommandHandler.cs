@@ -21,6 +21,7 @@ public sealed class CreateCategoryCommandHandler
     {
         return await _categoryService.CreateAsync(
             request.Name,
+            request.ParentId,
             cancellationToken);
     }
 }

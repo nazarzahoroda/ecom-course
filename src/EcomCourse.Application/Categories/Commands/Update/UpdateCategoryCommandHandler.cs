@@ -22,6 +22,7 @@ namespace EcomCourse.Application.Categories.Commands.Update
             return await _categoryService.UpdateAsync(
                 request.Id,
                 request.Name,
+                request.ParentId,
                 cancellationToken);
         }
     }

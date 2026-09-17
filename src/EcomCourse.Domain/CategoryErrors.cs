@@ -15,5 +15,9 @@ namespace EcomCourse.Domain
         public static DomainError NotFound(Guid id) => new(
             "Category.NotFound",
             $"Category '{id}' was not found.");
+
+        public static readonly DomainError CyclicReference = new(
+            "Category.CyclicReference",
+            "Category cannot reference itself or one of its descendants as parent.");
     }
 }

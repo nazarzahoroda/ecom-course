@@ -17,6 +17,18 @@ namespace EcomCourse.UnitTests.Categories
         }
 
         [Fact]
+        public void Create_WithParentId_ShouldSetParentId()
+        {
+            var name = "Smartphones";
+            var parentId = Guid.NewGuid();
+
+            var result = Category.Create(name, parentId);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(parentId, result.Value!.ParentId);
+        }
+
+        [Fact]
         public void Create_WithEmptyName_ShouldReturnFailure()
         {
             var name = "";
@@ -75,6 +87,43 @@ namespace EcomCourse.UnitTests.Categories
             Assert.True(result.IsFailure);
             Assert.Equal(CategoryErrors.NameTooLong, result.Error);
             Assert.Equal(originalName, category.Name);
+        }
+
+        [Fact]
+        public void UpdateParent_WithOwnId_ShouldReturnFailure()
+        {
+            var category = Category.Create("Electronics").Value!;
+
+            var result = category.UpdateParent(category.Id);
+
+            Assert.True(result.IsFailure);
+            Assert.Null(category.ParentId);
+        }
+
+        [Fact]
+        public void UpdateParent_WithDifferentParentId_ShouldReturnSuccess()
+        {
+            var category = Category.Create("Smartphones").Value!;
+            var parentId = Guid.NewGuid();
+
+            var result = category.UpdateParent(parentId);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(parentId, category.ParentId);
+        }
+
+        [Fact]
+        public void UpdateParent_WithNull_ShouldRemoveParent()
+        {
+            var parentId = Guid.NewGuid();
+            var category = Category.Create(
+                "Smartphones",
+                parentId).Value!;
+
+            var result = category.UpdateParent(null);
+
+            Assert.True(result.IsSuccess);
+            Assert.Null(category.ParentId);
         }
     }
 }
