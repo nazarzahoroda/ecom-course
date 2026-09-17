@@ -13,20 +13,35 @@ public class CreateOrderCommandHandlerTests
     private readonly IOrderRepository _orderRepositoryMock;
     private readonly IProductService _productServiceMock;
     private readonly CreateOrderCommandHandler _handler;
+    private readonly Dictionary<Guid, decimal> _prices = [];
 
     public CreateOrderCommandHandlerTests()
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
         _productServiceMock = Substitute.For<IProductService>();
         _handler = new CreateOrderCommandHandler(_orderRepositoryMock, _productServiceMock);
+
+        _productServiceMock
+            .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                var missingId = ids.FirstOrDefault(id => !_prices.ContainsKey(id));
+
+                if (missingId != default)
+                {
+                    return Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingId));
+                }
+
+                IReadOnlyList<ProductDto> dtos = ids
+                    .Select(id => new ProductDto(id, "Test product", _prices[id], Currency.USD, "SKU-1", Guid.NewGuid()))
+                    .ToList();
+
+                return Result.Success(dtos);
+            });
     }
 
-    private void MockProductPrice(Guid productId, decimal amount)
-    {
-        var dto = new ProductDto(productId, "Test product", amount, Currency.USD, "SKU-1", Guid.NewGuid());
-        _productServiceMock.GetByIdAsync(productId, Arg.Any<CancellationToken>())
-            .Returns(Result.Success(dto));
-    }
+    private void MockProductPrice(Guid productId, decimal amount) => _prices[productId] = amount;
 
     [Fact]
     public async Task Handle_ShouldReturnFailure_WhenItemsListIsEmpty()
@@ -59,8 +74,8 @@ public class CreateOrderCommandHandlerTests
             Guid.NewGuid(),
             new List<OrderLineItemRequest>
             {
-                new(firstProductId, 2, 999m),
-                new(secondProductId, 1, 999m)
+                new(firstProductId, 2),
+                new(secondProductId, 1)
             });
 
         // Act
@@ -80,19 +95,16 @@ public class CreateOrderCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnFailure_AndIgnoreClientSuppliedPrice_WhenProductDoesNotExist()
+    public async Task Handle_ShouldReturnFailure_WhenProductDoesNotExist()
     {
         // Arrange
         var missingProductId = Guid.NewGuid();
-
-        _productServiceMock.GetByIdAsync(missingProductId, Arg.Any<CancellationToken>())
-            .Returns(Result.Failure<ProductDto>(ProductErrors.NotFound(missingProductId)));
 
         var command = new CreateOrderCommand(
             Guid.NewGuid(),
             new List<OrderLineItemRequest>
             {
-                new(missingProductId, 1, 1m)
+                new(missingProductId, 1)
             });
 
         // Act

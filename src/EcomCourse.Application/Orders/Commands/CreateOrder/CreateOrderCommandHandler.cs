@@ -18,19 +18,20 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        var items = new List<(Guid ProductId, int Quantity, decimal UnitPrice)>();
+        var productIds = request.items.Select(item => item.ProductId).Distinct().ToList();
 
-        foreach (var item in request.items)
+        var productsResult = await _productService.GetByIdsAsync(productIds, cancellationToken);
+
+        if (productsResult.IsFailure)
         {
-            var productResult = await _productService.GetByIdAsync(item.ProductId, cancellationToken);
-
-            if (productResult.IsFailure)
-            {
-                return Result.Failure<Guid>(productResult.Error);
-            }
-
-            items.Add((item.ProductId, item.Quantity, productResult.Value!.Amount));
+            return Result.Failure<Guid>(productsResult.Error);
         }
+
+        var priceByProductId = productsResult.Value!.ToDictionary(product => product.Id, product => product.Amount);
+
+        var items = request.items
+            .Select(item => (item.ProductId, item.Quantity, UnitPrice: priceByProductId[item.ProductId]))
+            .ToList();
 
         var orderResult = Order.Create(request.customerId, items);
 

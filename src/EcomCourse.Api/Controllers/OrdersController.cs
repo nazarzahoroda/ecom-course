@@ -103,9 +103,8 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateOrder(
-    [FromBody] CreateOrderRequest request,
-    CancellationToken cancellationToken
-)
+        [FromBody] CreateOrderRequest request,
+        CancellationToken cancellationToken)
     {
         var command = new CreateOrderCommand(_userContext.CustomerId, request.Items);
         var result = await _sender.Send(command, cancellationToken);

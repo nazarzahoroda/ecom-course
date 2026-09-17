@@ -65,14 +65,14 @@ public class OrdersIntegrationTests
         _productService.SetPrice(firstProductId, 100m);
         _productService.SetPrice(secondProductId, 50m);
 
-        // Client-supplied UnitPrice is intentionally wrong (999m) to prove the server
-        // always charges the price from IProductService, never the client's number.
+        // UnitPrice isn't part of the wire contract at all — the server always
+        // charges the price from IProductService, never a client-supplied number.
         var command = new CreateOrderCommand(
             customerId,
             new List<OrderLineItemRequest>
             {
-                new(firstProductId, 2, 999m),
-                new(secondProductId, 1, 999m)
+                new(firstProductId, 2),
+                new(secondProductId, 1)
             });
 
         // Act
@@ -106,6 +106,38 @@ public class OrdersIntegrationTests
         var firstLine = orderDetails.Lines.First(l => l.Quantity == 2);
         Assert.Equal(100m, firstLine.UnitPrice);
         Assert.Equal(200m, firstLine.LineTotal);
+    }
+
+    [Fact]
+    public async Task CreateOrder_ShouldIgnoreClientSuppliedCustomerId_AndUseAuthenticatedCustomer()
+    {
+        // Arrange
+        var spoofedCustomerId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+
+        _productService.SetPrice(productId, 100m);
+
+        // The request body carries a customerId belonging to a different customer;
+        // the API must ignore it and use the authenticated user's id instead.
+        var payload = new
+        {
+            customerId = spoofedCustomerId,
+            items = new[] { new { productId, quantity = 1 } }
+        };
+
+        // Act
+        var createResponse = await _client.PostAsJsonAsync("/api/orders", payload);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+        var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
+        var orderDetails = await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
+
+        Assert.NotNull(orderDetails);
+        Assert.Equal(_customerId, orderDetails.CustomerId);
+        Assert.NotEqual(spoofedCustomerId, orderDetails.CustomerId);
     }
 
     private sealed record TestCustomer(Guid CustomerId);
@@ -217,6 +249,24 @@ public class OrdersIntegrationTests
             var dto = new ProductDto(id, "Test product", amount, Currency.USD, "SKU-TEST", Guid.NewGuid());
 
             return Task.FromResult(Result.Success(dto));
+        }
+
+        public Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
+            IReadOnlyCollection<Guid> ids,
+            CancellationToken cancellationToken = default)
+        {
+            var missingId = ids.FirstOrDefault(id => !_prices.ContainsKey(id));
+
+            if (missingId != default)
+            {
+                return Task.FromResult(Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingId)));
+            }
+
+            IReadOnlyList<ProductDto> dtos = ids
+                .Select(id => new ProductDto(id, "Test product", _prices[id], Currency.USD, "SKU-TEST", Guid.NewGuid()))
+                .ToList();
+
+            return Task.FromResult(Result.Success(dtos));
         }
 
         public Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(CancellationToken cancellationToken = default) =>
