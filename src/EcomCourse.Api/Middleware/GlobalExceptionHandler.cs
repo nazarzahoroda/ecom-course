@@ -20,17 +20,22 @@ namespace EcomCourse.Api.Middleware
         public async ValueTask<bool> TryHandleAsync(
             HttpContext httpContext,
             Exception exception,
-            CancellationToken cancellationToken
-        )
+            CancellationToken cancellationToken)
         {
-            LogUnhandledException(_logger, exception.Message, exception);
+            var traceId = httpContext.TraceIdentifier;
+
+            LogUnhandledException(_logger, traceId, exception);
 
             var problemDetails = new ProblemDetails
             {
                 Title = "Server Error",
                 Status = StatusCodes.Status500InternalServerError,
-                Detail = _env.IsDevelopment() ? exception.ToString() : "An unexpected error occurred",
+                Detail = _env.IsDevelopment()
+                    ? exception.ToString()
+                    : "An unexpected error occurred",
             };
+
+            problemDetails.Extensions["traceId"] = traceId;
 
             httpContext.Response.StatusCode = problemDetails.Status.Value;
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
@@ -41,7 +46,10 @@ namespace EcomCourse.Api.Middleware
         [LoggerMessage(
             EventId = 1,
             Level = LogLevel.Error,
-            Message = "An unhandled exception occurred: {ErrorMessage}")]
-        private static partial void LogUnhandledException(ILogger logger, string errorMessage, Exception exception);
+            Message = "An unhandled exception occurred. TraceId: {TraceId}")]
+        private static partial void LogUnhandledException(
+            ILogger logger,
+            string traceId,
+            Exception exception);
     }
 }
