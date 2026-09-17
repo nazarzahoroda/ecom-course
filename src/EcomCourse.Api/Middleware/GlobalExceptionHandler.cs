@@ -21,14 +21,19 @@ namespace EcomCourse.Api.Middleware
             CancellationToken cancellationToken
         )
         {
+            var isUnauthorized = exception is UnauthorizedAccessException;
+            var statusCode = isUnauthorized
+                ? StatusCodes.Status401Unauthorized
+                : StatusCodes.Status500InternalServerError;
+
             var problemDetails = new ProblemDetails
             {
-                Title = "Server Error",
-                Status = StatusCodes.Status500InternalServerError,
+                Title = isUnauthorized ? "Unauthorized" : "Server Error",
+                Status = statusCode,
                 Detail = exception.Message,
             };
 
-            httpContext.Response.StatusCode = problemDetails.Status.Value;
+            httpContext.Response.StatusCode = statusCode;
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
