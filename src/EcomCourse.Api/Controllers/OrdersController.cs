@@ -49,8 +49,11 @@ public class OrdersController : ControllerBase
 
 
 
+    [Authorize]
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetOrderById(Guid id, CancellationToken cancellationToken)
     {
@@ -123,12 +126,22 @@ public class OrdersController : ControllerBase
         return CreatedAtAction(nameof(GetOrderById), new { id = result.Value }, result.Value);
     }
 
+    [Authorize]
     [HttpPost("{id:guid}/pay")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> MarkOrderAsPaid(Guid id, CancellationToken cancellationToken)
     {
+        var authorizationFailure = await AuthorizeOrderAccessAsync(id, cancellationToken);
+
+        if (authorizationFailure is not null)
+        {
+            return authorizationFailure;
+        }
+
         var result = await _sender.Send(new MarkOrderAsPaidCommand(id), cancellationToken);
 
         if (result.IsFailure)
@@ -154,12 +167,22 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
     [HttpPost("{id:guid}/cancel")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CancelOrder(Guid id, CancellationToken cancellationToken)
     {
+        var authorizationFailure = await AuthorizeOrderAccessAsync(id, cancellationToken);
+
+        if (authorizationFailure is not null)
+        {
+            return authorizationFailure;
+        }
+
         var result = await _sender.Send(new CancelOrderCommand(id), cancellationToken);
 
         if (result.IsFailure)
@@ -185,5 +208,31 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 
-    
+    private async Task<IActionResult?> AuthorizeOrderAccessAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        var query = new GetOrderWithLinesQuery(orderId);
+        var result = await _sender.Send(query, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = result.Error.Code,
+                    Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
+        }
+
+        var resource = new CustomerResource(result.Value!.CustomerId);
+
+        var authorizationResult = await _authorizationService.AuthorizeAsync(
+            User,
+            resource,
+            "SameCustomerOrAdmin"
+        );
+
+        return authorizationResult.Succeeded ? null : Forbid();
+    }
 }
