@@ -8,6 +8,7 @@ using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -55,8 +56,8 @@ public class OrdersIntegrationTests
             customerId,
             new List<OrderLineItemRequest>
             {
-                new(Guid.NewGuid(), 2, 100m),
-                new(Guid.NewGuid(), 1, 50m)
+                new(Guid.NewGuid(), 2, 100m, Currency.USD),
+                new(Guid.NewGuid(), 1, 50m, Currency.USD)
             });
 
         // Act
@@ -83,12 +84,14 @@ public class OrdersIntegrationTests
         Assert.Equal(customerId, orderDetails.CustomerId);
 
         Assert.Equal(250m, orderDetails.Total);
+        Assert.Equal(Currency.USD, orderDetails.Currency);
 
         // Сheck lines
         Assert.Equal(2, orderDetails.Lines.Count);
 
         var firstLine = orderDetails.Lines.First(l => l.Quantity == 2);
         Assert.Equal(100m, firstLine.UnitPrice);
+        Assert.Equal(Currency.USD, firstLine.Currency);
         Assert.Equal(200m, firstLine.LineTotal);
     }
 

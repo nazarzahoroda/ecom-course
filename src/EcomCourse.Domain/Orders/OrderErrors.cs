@@ -20,6 +20,14 @@ public static class OrderErrors
         "Order.InvalidUnitPrice",
         "Product unit price cannot be negative.");
 
+    public static readonly DomainError InvalidCurrency = new(
+        "Order.InvalidCurrency",
+        "Product currency is not a recognized currency.");
+
+    public static readonly DomainError MixedCurrencies = new(
+        "Order.MixedCurrencies",
+        "All order lines must use the same currency.");
+
     public static readonly DomainError InvalidStatusTransition = new(
         "Order.InvalidStatusTransition",
         "This order status transition is not allowed.");

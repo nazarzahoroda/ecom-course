@@ -16,7 +16,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
         var items = request.items
-            .Select(i => (i.ProductId, i.Quantity, i.UnitPrice))
+            .Select(i => (i.ProductId, i.Quantity, i.UnitPrice, i.Currency))
             .ToList();
 
         var orderResult = Order.Create(request.customerId, items);

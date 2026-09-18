@@ -1,5 +1,6 @@
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 using NSubstitute;
 
 namespace EcomCourse.UnitTests.Application.Orders;
@@ -40,8 +41,8 @@ public class CreateOrderCommandHandlerTests
             Guid.NewGuid(),
             new List<OrderLineItemRequest>
             {
-                new(Guid.NewGuid(), 2, 100m),
-                new(Guid.NewGuid(), 1, 50m)
+                new(Guid.NewGuid(), 2, 100m, Currency.USD),
+                new(Guid.NewGuid(), 1, 50m, Currency.USD)
             });
 
         // Act
@@ -56,7 +57,31 @@ public class CreateOrderCommandHandlerTests
                 Arg.Is<Order>(o =>
                     o.Id == result.Value &&
                     o.CustomerId == command.customerId &&
-                    o.Total == 250m),
+                    o.Total == 250m &&
+                    o.Currency == Currency.USD),
                 Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnFailure_WhenLinesUseDifferentCurrencies()
+    {
+        // Arrange
+        var command = new CreateOrderCommand(
+            Guid.NewGuid(),
+            new List<OrderLineItemRequest>
+            {
+                new(Guid.NewGuid(), 1, 100m, Currency.USD),
+                new(Guid.NewGuid(), 1, 100m, Currency.UAH)
+            });
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.MixedCurrencies, result.Error);
+
+        await _orderRepositoryMock.DidNotReceive()
+            .AddAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
 }

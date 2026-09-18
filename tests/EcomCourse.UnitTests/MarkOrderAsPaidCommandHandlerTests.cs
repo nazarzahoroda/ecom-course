@@ -1,5 +1,6 @@
 using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 using NSubstitute;
 
 namespace EcomCourse.UnitTests.Application.Orders;
@@ -19,7 +20,7 @@ public class MarkOrderAsPaidCommandHandlerTests
     {
         var result = Order.Create(
             Guid.NewGuid(),
-            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m) });
+            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) });
 
         return result.Value!;
     }
