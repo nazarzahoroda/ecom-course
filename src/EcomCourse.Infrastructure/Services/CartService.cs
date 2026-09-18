@@ -52,8 +52,8 @@ namespace EcomCourse.Infrastructure.Services
                 {
                     p.Id,
                     p.Name,
-                    p.Price.Amount,
-                    p.SKU.Value,
+                    UnitPrice = p.Price.Amount,
+                    Sku = p.SKU.Value,
                 })
                 .ToDictionaryAsync(p => p.Id, cancellationToken);
 
@@ -62,14 +62,15 @@ namespace EcomCourse.Infrastructure.Services
                 .Select(item =>
                 {
                     var product = products[item.ProductId];
-                    return new CartItemDetailsDto(
-                        item.Id,
-                        item.ProductId,
-                        product.Name,
-                        product.Value,
-                        product.Amount,
-                        item.Quantity
-                    );
+                    return new CartItemDetailsDto
+                    {
+                        Id = item.Id,
+                        ProductId = item.ProductId,
+                        Name = product.Name,
+                        Sku = product.Sku,
+                        UnitPrice = product.UnitPrice,
+                        Quantity = item.Quantity,
+                    };
                 })
                 .ToList();
 

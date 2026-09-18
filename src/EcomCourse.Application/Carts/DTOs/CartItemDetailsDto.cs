@@ -1,11 +1,12 @@
 namespace EcomCourse.Application.Carts.DTOs
 {
-    public record CartItemDetailsDto(
-        Guid Id,
-        Guid ProductId,
-        string Name,
-        string Sku,
-        decimal UnitPrice,
-        int Quantity
-    );
+    public class CartItemDetailsDto
+    {
+        public Guid Id { get; set; }
+        public Guid ProductId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Sku { get; set; } = string.Empty;
+        public decimal UnitPrice { get; set; }
+        public int Quantity { get; set; }
+    }
 }
