@@ -93,10 +93,40 @@ public sealed class ProductService : IProductService
     }
 
     public async Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
+        string? name = null,
+        Guid? categoryId = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
         CancellationToken cancellationToken = default)
     {
-        var products = await _dbContext.Products
-            .AsNoTracking()
+        var query = _dbContext.Products
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(product =>
+                product.Name.Contains(name));
+        }
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(product =>
+                product.CategoryId == categoryId.Value);
+        }
+
+        if (minPrice.HasValue)
+        {
+            query = query.Where(product =>
+                product.Price.Amount >= minPrice.Value);
+        }
+
+        if (maxPrice.HasValue)
+        {
+            query = query.Where(product =>
+                product.Price.Amount <= maxPrice.Value);
+        }
+
+        var products = await query
             .Select(product => new ProductDto(
                 product.Id,
                 product.Name,

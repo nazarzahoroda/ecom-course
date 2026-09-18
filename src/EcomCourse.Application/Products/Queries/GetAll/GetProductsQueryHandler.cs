@@ -18,6 +18,11 @@ public sealed class GetProductsQueryHandler
         GetProductsQuery request,
         CancellationToken cancellationToken)
     {
-        return await _productService.GetAllAsync(cancellationToken);
+        return await _productService.GetAllAsync(
+            request.Name,
+            request.CategoryId,
+            request.MinPrice,
+            request.MaxPrice,
+            cancellationToken);
     }
 }

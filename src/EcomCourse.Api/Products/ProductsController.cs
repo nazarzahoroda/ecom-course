@@ -84,9 +84,18 @@ public sealed class ProductsController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ProductDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetProducts(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetProducts(
+        string? name,
+        Guid? categoryId,
+        decimal? minPrice,
+        decimal? maxPrice,
+        CancellationToken cancellationToken)
     {
-        var query = new GetProductsQuery();
+        var query = new GetProductsQuery(
+            name,
+            categoryId,
+            minPrice,
+            maxPrice);
 
         var result = await _sender.Send(query, cancellationToken);
 
