@@ -68,6 +68,10 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 await app.SeedRolesAsync();
+if (app.Environment.IsDevelopment())
+{
+    await app.SeedAdminAsync();
+}
 app.UseCors(ClientCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
@@ -77,7 +81,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    await app.SeedAdminAsync();
 }
 
 app.UseHttpsRedirection();
