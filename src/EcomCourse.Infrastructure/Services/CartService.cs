@@ -53,6 +53,7 @@ namespace EcomCourse.Infrastructure.Services
                     p.Id,
                     p.Name,
                     UnitPrice = p.Price.Amount,
+                    Currency = p.Price.Currency.ToString(),
                     Sku = p.SKU.Value,
                 })
                 .ToDictionaryAsync(p => p.Id, cancellationToken);
@@ -74,6 +75,7 @@ namespace EcomCourse.Infrastructure.Services
                         Name = product.Name,
                         Sku = product.Sku,
                         UnitPrice = product.UnitPrice,
+                        Currency = product.Currency,
                         Quantity = item.Quantity,
                     };
                 })

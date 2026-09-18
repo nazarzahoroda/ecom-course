@@ -7,6 +7,7 @@ namespace EcomCourse.Application.Carts.DTOs
         public string Name { get; set; } = string.Empty;
         public string Sku { get; set; } = string.Empty;
         public decimal UnitPrice { get; set; }
+        public string Currency { get; set; } = string.Empty;
         public int Quantity { get; set; }
     }
 }
