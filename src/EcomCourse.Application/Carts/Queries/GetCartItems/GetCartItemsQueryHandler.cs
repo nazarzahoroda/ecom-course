@@ -5,17 +5,17 @@ using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Carts.Queries.GetCartItems
 {
-    public class GetCartItemsQueryHandler : IQueryHandler<GetCartItemsQuery, CartDetailsDto>
+    public class GetCartDetailsQueryHandler : IQueryHandler<GetCartDetailsQuery, CartDetailsDto>
     {
         private readonly ICartService _cartService;
 
-        public GetCartItemsQueryHandler(ICartService cartService)
+        public GetCartDetailsQueryHandler(ICartService cartService)
         {
             _cartService = cartService;
         }
 
         public async Task<Result<CartDetailsDto>> Handle(
-            GetCartItemsQuery request,
+            GetCartDetailsQuery request,
             CancellationToken cancellationToken
         )
         {

@@ -105,17 +105,25 @@ namespace EcomCourse.UnitTests.CartTest
         }
 
         [Fact]
-        public async Task GetActiveCartDetailsAsync_WhenProductMissingInCatalog_ExcludesMissingItemFromDtoAndTotal()
+        public async Task GetActiveCartDetailsAsync_WhenProductMissingInCatalog_ReturnsFailure()
         {
             var customerId = Guid.NewGuid();
             _currentUserServiceMock.Setup(x => x.CustomerId).Returns(customerId);
 
-            var category = Category.Create("Clothes").Value!;
-            var price = Price.Create(30.00m, Currency.USD).Value!;
-            var sku = SKU.Create("SKU-2002").Value!;
+            var category = Category.Create("Clothes").Value;
+            Assert.NotNull(category);
+
+            var price = Price.Create(30.00m, Currency.USD).Value;
+            Assert.NotNull(price);
+
+            var sku = SKU.Create($"SKU-{Random.Shared.Next(1000, 9999)}").Value;
+            Assert.NotNull(sku);
+
             var activeProduct = Product
                 .Create("Existing Product", price.Amount, price.Currency, sku.Value, category.Id)
-                .Value!;
+                .Value;
+            Assert.NotNull(activeProduct);
+
             var deletedProductId = Guid.NewGuid();
 
             var cart = new Cart(Guid.NewGuid(), customerId);
@@ -135,11 +143,8 @@ namespace EcomCourse.UnitTests.CartTest
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
 
-            Assert.True(result.IsSuccess);
-            Assert.Equal(cart.Id, result.Value!.CartId);
-            Assert.Single(result.Value.Items);
-            Assert.Equal(activeProduct.Id, result.Value.Items.First().ProductId);
-            Assert.Equal(30.00m, result.Value.TotalAmount);
+            Assert.True(result.IsFailure);
+            Assert.Equal(ProductErrors.Unavailable.Code, result.Error.Code);
         }
     }
 }

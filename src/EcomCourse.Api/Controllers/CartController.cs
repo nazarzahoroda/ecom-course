@@ -25,7 +25,7 @@ namespace EcomCourse.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCartItems(CancellationToken cancellationToken)
         {
-            var request = new GetCartItemsQuery();
+            var request = new GetCartDetailsQuery();
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
