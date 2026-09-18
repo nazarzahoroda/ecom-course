@@ -1,7 +1,4 @@
-using EcomCourse.Api.Customers;
 using EcomCourse.Application.Customers.GetCustomerById;
-using EcomCourse.Application.Customers.RegisterCustomer;
-using EcomCourse.Domain.Customers;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
