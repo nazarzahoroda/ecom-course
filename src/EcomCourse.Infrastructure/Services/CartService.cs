@@ -57,6 +57,11 @@ namespace EcomCourse.Infrastructure.Services
                 })
                 .ToDictionaryAsync(p => p.Id, cancellationToken);
 
+            var missingProductIds = productIds.Except(products.Keys).ToList();
+
+            if (missingProductIds.Count > 0)
+                return Result.Failure<CartDetailsDto>(ProductErrors.Unavailable);
+
             var itemsDto = cart
                 .Items.Where(item => products.ContainsKey(item.ProductId))
                 .Select(item =>
