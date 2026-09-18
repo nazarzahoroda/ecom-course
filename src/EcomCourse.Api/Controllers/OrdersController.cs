@@ -57,46 +57,14 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetOrderById(Guid id, CancellationToken cancellationToken)
     {
-        var query = new GetOrderWithLinesQuery(id);
-        var result = await _sender.Send(query, cancellationToken);
+        var (order, authorizationFailure) = await AuthorizeOrderAccessAsync(id, cancellationToken);
 
-        if (result.IsFailure)
+        if (authorizationFailure is not null)
         {
-            if (result.Error == OrderErrors.NotFound)
-            {
-                return NotFound(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status404NotFound,
-                    }
-                );
-            }
-
-            return BadRequest(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest,
-                }
-            );
-        }
-        var resource = new CustomerResource(result.Value!.CustomerId);
-
-        var authorizationResult = await _authorizationService.AuthorizeAsync(
-            User,
-            resource,
-            "SameCustomerOrAdmin"
-        );
-
-        if (!authorizationResult.Succeeded)
-        {
-            return Forbid();
+            return authorizationFailure;
         }
 
-        return Ok(result.Value);
+        return Ok(order);
     }
 
     [Authorize]
@@ -135,7 +103,7 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> MarkOrderAsPaid(Guid id, CancellationToken cancellationToken)
     {
-        var authorizationFailure = await AuthorizeOrderAccessAsync(id, cancellationToken);
+        var (_, authorizationFailure) = await AuthorizeOrderAccessAsync(id, cancellationToken);
 
         if (authorizationFailure is not null)
         {
@@ -176,7 +144,7 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CancelOrder(Guid id, CancellationToken cancellationToken)
     {
-        var authorizationFailure = await AuthorizeOrderAccessAsync(id, cancellationToken);
+        var (_, authorizationFailure) = await AuthorizeOrderAccessAsync(id, cancellationToken);
 
         if (authorizationFailure is not null)
         {
@@ -208,21 +176,23 @@ public class OrdersController : ControllerBase
         return NoContent();
     }
 
-    private async Task<IActionResult?> AuthorizeOrderAccessAsync(Guid orderId, CancellationToken cancellationToken)
+    private async Task<(OrderResponse? Order, IActionResult? Failure)> AuthorizeOrderAccessAsync(
+        Guid orderId,
+        CancellationToken cancellationToken)
     {
         var query = new GetOrderWithLinesQuery(orderId);
         var result = await _sender.Send(query, cancellationToken);
 
         if (result.IsFailure)
         {
-            return NotFound(
+            return (null, NotFound(
                 new ProblemDetails
                 {
                     Title = result.Error.Code,
                     Detail = result.Error.Description,
                     Status = StatusCodes.Status404NotFound,
                 }
-            );
+            ));
         }
 
         var resource = new CustomerResource(result.Value!.CustomerId);
@@ -230,9 +200,9 @@ public class OrdersController : ControllerBase
         var authorizationResult = await _authorizationService.AuthorizeAsync(
             User,
             resource,
-            "SameCustomerOrAdmin"
+            AuthorizationPolicies.SameCustomerOrAdmin
         );
 
-        return authorizationResult.Succeeded ? null : Forbid();
+        return authorizationResult.Succeeded ? (result.Value, null) : (null, Forbid());
     }
 }

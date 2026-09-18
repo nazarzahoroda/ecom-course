@@ -110,6 +110,20 @@ public class OrdersIntegrationTests
         Assert.Equal(HttpStatusCode.Unauthorized, missingResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task GetOrderById_ShouldReturn403_WhenCalledByDifferentCustomer()
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{orderId}", asCustomerId: Guid.NewGuid()));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("pay")]
     [InlineData("cancel")]
