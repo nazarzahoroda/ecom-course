@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -7,6 +8,7 @@ using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +24,8 @@ public class OrdersIntegrationTests
 
     public OrdersIntegrationTests()
     {
+        var customer = CreateCustomer(_customerId);
+
         var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
@@ -40,10 +44,30 @@ public class OrdersIntegrationTests
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+                    services.RemoveAll<ICustomerStore>();
+                    services.AddSingleton<ICustomerStore>(new InMemoryCustomerStore(customer));
                 });
             });
 
         _client = factory.CreateClient();
+    }
+
+    private static Customer CreateCustomer(Guid customerId)
+    {
+        var customer = Customer.Create(
+            Guid.NewGuid(),
+            "Test Customer",
+            $"{customerId}@example.com",
+            "Khreshchatyk St 1",
+            "Kyiv",
+            "01001",
+            "Ukraine").Value!;
+
+        typeof(Customer).BaseType!
+            .GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(customer, customerId);
+
+        return customer;
     }
 
     [Fact]
@@ -173,6 +197,38 @@ public class OrdersIntegrationTests
                 .ToList();
 
             return Task.FromResult<(IReadOnlyList<Order>, int)>((pagedOrders, totalCount));
+        }
+    }
+
+    private sealed class InMemoryCustomerStore : ICustomerStore
+    {
+        private readonly List<Customer> _customers;
+
+        public InMemoryCustomerStore(params Customer[] customers)
+        {
+            _customers = customers.ToList();
+        }
+
+        public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_customers.Any(customer => customer.Email.Equals(email)));
+        }
+
+        public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
+        {
+            _customers.Add(customer);
+            return Task.FromResult(true);
+        }
+
+        public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_customers.FirstOrDefault(customer => customer.Id == id));
+        }
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var removed = _customers.RemoveAll(customer => customer.Id == id) > 0;
+            return Task.FromResult(removed);
         }
     }
 }

@@ -1,4 +1,5 @@
 using EcomCourse.Application.Orders.Queries.GetOrders;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 
 namespace EcomCourse.UnitTests.Application.Orders.GetOrders;
@@ -56,7 +57,9 @@ public class GetOrdersQueryHandlerTests
             (Guid.NewGuid(), 1, 100m)
         };
 
-        return Order.Create(customerId, items).Value!;
+        var address = Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
+
+        return Order.Create(customerId, address, items).Value!;
     }
 
     private sealed class FakeOrderRepository : IOrderRepository

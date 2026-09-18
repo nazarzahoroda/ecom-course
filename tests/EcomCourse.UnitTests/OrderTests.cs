@@ -1,9 +1,13 @@
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 
 namespace EcomCourse.UnitTests.Domain.Orders;
 
 public class OrderTests
 {
+    private static Address CreateAddress() =>
+        Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
+
     [Fact]
     public void Create_ShouldReturnFailure_WhenItemsListIsEmpty()
     {
@@ -11,7 +15,7 @@ public class OrderTests
         var emptyItems = Array.Empty<(Guid ProductId, int Quantity, decimal UnitPrice)>();
 
         // Act
-        var result = Order.Create(customerId, emptyItems);
+        var result = Order.Create(customerId, CreateAddress(), emptyItems);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -29,7 +33,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, invalidItems);
+        var result = Order.Create(customerId, CreateAddress(), invalidItems);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -47,7 +51,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, invalidItems);
+        var result = Order.Create(customerId, CreateAddress(), invalidItems);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -68,7 +72,7 @@ public class OrderTests
         const decimal expectedTotal = 375.5m;
 
         // Act
-        var result = Order.Create(customerId, items);
+        var result = Order.Create(customerId, CreateAddress(), items);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -85,7 +89,7 @@ public class OrderTests
         var productId = Guid.NewGuid();
         var items = new[] { (ProductId: productId, Quantity: 2, UnitPrice: 150m) };
 
-        var result = Order.Create(customerId, items);
+        var result = Order.Create(customerId, CreateAddress(), items);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
@@ -103,6 +107,7 @@ public class OrderTests
     {
         var result = Order.Create(
             Guid.NewGuid(),
+            CreateAddress(),
             new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m) });
 
         return result.Value!;
