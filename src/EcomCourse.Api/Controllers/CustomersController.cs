@@ -1,5 +1,7 @@
 using EcomCourse.Application.Customers.GetCustomerById;
+using EcomCourse.Infrastructure.Authorization;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcomCourse.Api.Controllers;
@@ -10,10 +12,12 @@ namespace EcomCourse.Api.Controllers;
 public class CustomersController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IAuthorizationService _authorizationService;
 
-    public CustomersController(ISender sender)
+    public CustomersController(ISender sender, IAuthorizationService authorizationService)
     {
         _sender = sender;
+        _authorizationService = authorizationService;
     }
 
     [HttpGet("{id:guid}")]
@@ -32,6 +36,25 @@ public class CustomersController : ControllerBase
                 {
                     Title = result.Error.Code,
                     Detail = result.Error.Description,
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
+        }
+        var resource = new CustomerResource(result.Value!.Id);
+
+        var authorizationResult = await _authorizationService.AuthorizeAsync(
+            User,
+            resource,
+            "SameCustomerOrAdmin"
+        );
+
+        if (!authorizationResult.Succeeded)
+        {
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = "Customer.NotFound",
+                    Detail = "Customer was not found.",
                     Status = StatusCodes.Status404NotFound,
                 }
             );
