@@ -1,5 +1,6 @@
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Domain.Orders;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
 namespace EcomCourse.UnitTests.Application.Orders;
@@ -7,12 +8,14 @@ namespace EcomCourse.UnitTests.Application.Orders;
 public class CreateOrderCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepositoryMock;
+    private readonly FakeTimeProvider _timeProvider;
     private readonly CreateOrderCommandHandler _handler;
 
     public CreateOrderCommandHandlerTests()
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
-        _handler = new CreateOrderCommandHandler(_orderRepositoryMock);
+        _timeProvider = new FakeTimeProvider(new DateTimeOffset(2026, 5, 14, 12, 0, 0, TimeSpan.Zero));
+        _handler = new CreateOrderCommandHandler(_orderRepositoryMock, _timeProvider);
     }
 
     [Fact]
@@ -56,7 +59,8 @@ public class CreateOrderCommandHandlerTests
                 Arg.Is<Order>(o =>
                     o.Id == result.Value &&
                     o.CustomerId == command.customerId &&
-                    o.Total == 250m),
+                    o.Total == 250m &&
+                    o.CreatedAt == _timeProvider.GetUtcNow()),
                 Arg.Any<CancellationToken>());
     }
 }
