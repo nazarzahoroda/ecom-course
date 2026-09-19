@@ -88,10 +88,11 @@ public class CustomersController : ControllerBase
                 }
             );
         }
+        var resource = new CustomerResource(result.Value!.Id);
 
         var authorizationResult = await _authorizationService.AuthorizeAsync(
             User,
-            result.Value!.Id,
+            resource,
             "SameCustomerOrAdmin"
         );
 
