@@ -3,6 +3,7 @@ using EcomCourse.Application.Carts.Commands.CartCheckout;
 using EcomCourse.Application.Carts.Commands.RemoveItemFromCartCommand;
 using EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand;
 using EcomCourse.Application.Carts.DTOs;
+using EcomCourse.Application.Carts.Queries.GetCartItems;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,25 @@ namespace EcomCourse.Api.Controllers
         public CartController(ISender sender)
         {
             _sender = sender;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCartItems(CancellationToken cancellationToken)
+        {
+            var request = new GetCartDetailsQuery();
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
+            {
+                return BadRequest(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                        Status = StatusCodes.Status400BadRequest,
+                    }
+                );
+            }
+            return Ok(result.Value);
         }
 
         [HttpPost("items")]

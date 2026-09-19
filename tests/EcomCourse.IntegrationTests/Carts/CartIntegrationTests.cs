@@ -133,6 +133,72 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
         }
     }
 
+    [Fact]
+    public async Task GetActiveCart_HappyPath_Returns200WithFullCartDetails()
+    {
+        var customerId = Guid.NewGuid();
+        var category = Category.Create("Books").Value!;
+        var price = Price.Create(25.00m, Currency.USD).Value!;
+        var sku = SKU.Create($"SKU-{Random.Shared.Next(1000, 9999)}").Value!;
+        var product = Product
+            .Create("Clean Code", price.Amount, price.Currency, sku.Value, category.Id)
+            .Value!;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            db.Categories.Add(category);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+        }
+
+        var token = GenerateToken(customerId);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            token
+        );
+
+        var addRes = await _httpClient.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = product.Id, Quantity = 2 }
+        );
+        Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
+
+        var getRes = await _httpClient.GetAsync("/api/Cart");
+
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+        var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
+
+        Assert.NotNull(details);
+        Assert.NotEqual(Guid.Empty, details.CartId);
+        Assert.Single(details.Items);
+        Assert.Equal("Clean Code", details.Items[0].Name);
+        Assert.Equal(25.00m, details.Items[0].UnitPrice);
+        Assert.Equal(2, details.Items[0].Quantity);
+        Assert.Equal(50.00m, details.TotalAmount);
+    }
+
+    [Fact]
+    public async Task GetActiveCart_WhenNoActiveCartExists_Returns200WithEmptyCartDetails()
+    {
+        var customerId = Guid.NewGuid();
+        var token = GenerateToken(customerId);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            token
+        );
+
+        var getRes = await _httpClient.GetAsync("/api/Cart");
+
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+        var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
+
+        Assert.NotNull(details);
+        Assert.Equal(Guid.Empty, details.CartId);
+        Assert.Empty(details.Items);
+        Assert.Equal(0m, details.TotalAmount);
+    }
+
     private static string GenerateToken(Guid customerId)
     {
         var key = Encoding.UTF8.GetBytes("Very_Super_Puper_Secret_Key123!321");

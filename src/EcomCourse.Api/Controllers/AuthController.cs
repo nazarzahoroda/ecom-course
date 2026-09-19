@@ -70,7 +70,7 @@ namespace EcomCourse.Api.Controllers
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.None,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(60),
             };
 
@@ -83,7 +83,7 @@ namespace EcomCourse.Api.Controllers
                 {
                     HttpOnly = true,
                     Secure = true,
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.None,
                     Expires = DateTimeOffset.UtcNow.AddDays(7),
                 }
             );
@@ -91,13 +91,18 @@ namespace EcomCourse.Api.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh(
-            RefreshDto dto,
-            CancellationToken cancellationToken
-        )
+        public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
         {
-            var request = new RefreshCommand(dto.RefreshToken);
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return BadRequest();
+            }
+
+            var request = new RefreshCommand(refreshToken);
             var result = await _sender.Send(request, cancellationToken);
+
             if (result.IsFailure)
             {
                 return BadRequest(
@@ -109,13 +114,33 @@ namespace EcomCourse.Api.Controllers
                     }
                 );
             }
-            return Ok(result.Value);
+
+            Response.Cookies.Append(
+                "access_token",
+                result.Value!.AccessToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTimeOffset.UtcNow.AddMinutes(60),
+                }
+            );
+
+            return Ok();
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout(LogoutDto dto, CancellationToken cancellationToken)
+        public async Task<IActionResult> Logout(CancellationToken cancellationToken)
         {
-            var request = new LogoutCommand(dto.RefreshToken);
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return BadRequest();
+            }
+
+            var request = new LogoutCommand(refreshToken);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
@@ -128,6 +153,10 @@ namespace EcomCourse.Api.Controllers
                     }
                 );
             }
+
+            Response.Cookies.Delete("access_token");
+            Response.Cookies.Delete("refresh_token");
+
             return Ok();
         }
 
