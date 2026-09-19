@@ -1,4 +1,5 @@
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 
 namespace EcomCourse.UnitTests.Domain.Orders;
 
@@ -8,7 +9,7 @@ public class OrderTests
     public void Create_ShouldReturnFailure_WhenItemsListIsEmpty()
     {
         var customerId = Guid.NewGuid();
-        var emptyItems = Array.Empty<(Guid ProductId, int Quantity, decimal UnitPrice)>();
+        var emptyItems = Array.Empty<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)>();
 
         // Act
         var result = Order.Create(customerId, emptyItems);
@@ -25,7 +26,7 @@ public class OrderTests
         var customerId = Guid.NewGuid();
         var invalidItems = new[]
         {
-            (ProductId: Guid.NewGuid(), Quantity: 0, UnitPrice: 100m)
+            (ProductId: Guid.NewGuid(), Quantity: 0, UnitPrice: 100m, Currency: Currency.USD)
         };
 
         // Act
@@ -43,7 +44,7 @@ public class OrderTests
         var customerId = Guid.NewGuid();
         var invalidItems = new[]
         {
-            (ProductId: Guid.NewGuid(), Quantity: 2, UnitPrice: -50m)
+            (ProductId: Guid.NewGuid(), Quantity: 2, UnitPrice: -50m, Currency: Currency.USD)
         };
 
         // Act
@@ -55,15 +56,52 @@ public class OrderTests
     }
 
     [Fact]
+    public void Create_ShouldReturnFailure_WhenCurrencyIsInvalid()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var invalidItems = new[]
+        {
+            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 100m, Currency: (Currency)999)
+        };
+
+        // Act
+        var result = Order.Create(customerId, invalidItems);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.InvalidCurrency, result.Error);
+    }
+
+    [Fact]
+    public void Create_ShouldReturnFailure_WhenLinesUseDifferentCurrencies()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var items = new[]
+        {
+            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 100m, Currency: Currency.USD),
+            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 100m, Currency: Currency.UAH)
+        };
+
+        // Act
+        var result = Order.Create(customerId, items);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(OrderErrors.MixedCurrencies, result.Error);
+    }
+
+    [Fact]
     public void Create_ShouldCalculateTotalCorrectly_WhenMultipleItemsProvided()
     {
         // Arrange
         var customerId = Guid.NewGuid();
         var items = new[]
         {
-            (ProductId: Guid.NewGuid(), Quantity: 2, UnitPrice: 100m),
-            (ProductId: Guid.NewGuid(), Quantity: 3, UnitPrice: 50m),
-            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 25.5m)
+            (ProductId: Guid.NewGuid(), Quantity: 2, UnitPrice: 100m, Currency: Currency.USD),
+            (ProductId: Guid.NewGuid(), Quantity: 3, UnitPrice: 50m, Currency: Currency.USD),
+            (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 25.5m, Currency: Currency.USD)
         };
         const decimal expectedTotal = 375.5m;
 
@@ -76,6 +114,7 @@ public class OrderTests
         Assert.Equal(expectedTotal, result.Value.Total);
         Assert.Equal(3, result.Value.Lines.Count);
         Assert.Equal(OrderStatus.Pending, result.Value.Status);
+        Assert.Equal(Currency.USD, result.Value.Currency);
     }
 
     [Fact]
@@ -83,7 +122,7 @@ public class OrderTests
     {
         var customerId = Guid.NewGuid();
         var productId = Guid.NewGuid();
-        var items = new[] { (ProductId: productId, Quantity: 2, UnitPrice: 150m) };
+        var items = new[] { (ProductId: productId, Quantity: 2, UnitPrice: 150m, Currency: Currency.USD) };
 
         var result = Order.Create(customerId, items);
 
@@ -97,13 +136,14 @@ public class OrderTests
         Assert.Equal(productId, line.ProductId);
         Assert.Equal(2, line.Quantity);
         Assert.Equal(150m, line.UnitPrice);
+        Assert.Equal(Currency.USD, line.Currency);
     }
 
     private static Order CreatePendingOrder()
     {
         var result = Order.Create(
             Guid.NewGuid(),
-            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m) });
+            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) });
 
         return result.Value!;
     }
