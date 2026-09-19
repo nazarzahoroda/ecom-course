@@ -103,4 +103,35 @@ public class ResultExtensionsTests
         Assert.Equal(error.Code, problemDetails.Title);
         Assert.Equal(error.Description, problemDetails.Detail);
     }
+
+    [Fact]
+    public void ToProblemDetails_WhenResultIsSuccessful_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var result = Result.Success();
+
+        // Act
+        Action action = () => result.ToProblemDetails();
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(action);
+    }
+
+    [Fact]
+    public void ToProblemDetails_WhenErrorTypeIsUnsupported_ThrowsArgumentOutOfRangeException()
+    {
+        // Arrange
+        var error = new DomainError(
+            "Test.Unsupported",
+            "Unsupported error.",
+            ErrorType.None);
+
+        var result = Result.Failure(error);
+
+        // Act
+        Action action = () => result.ToProblemDetails();
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(action);
+    }
 }

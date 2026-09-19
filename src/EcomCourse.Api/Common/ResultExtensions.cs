@@ -7,13 +7,22 @@ public static class ResultExtensions
 {
     public static IActionResult ToProblemDetails(this Result result)
     {
+        if (result.IsSuccess)
+        {
+            throw new InvalidOperationException(
+                "Cannot create ProblemDetails from a successful result.");
+        }
+
         var statusCode = result.Error.Type switch
         {
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.NotFound => StatusCodes.Status404NotFound,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
             ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-            _ => StatusCodes.Status400BadRequest
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(result),
+                result.Error.Type,
+                "Unsupported error type.")
         };
 
         var problemDetails = new ProblemDetails
