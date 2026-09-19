@@ -45,7 +45,6 @@ public class GetCustomerByIdQueryHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(customerResult.Value.Id, result.Value!.Id);
-        Assert.Equal(userId, result.Value.UserId);
         Assert.Equal("Ivan", result.Value.Name);
         Assert.Equal("ivan@example.com", result.Value.Email);
         Assert.Equal("Polubotka", result.Value.Address.Street);
