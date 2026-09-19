@@ -98,7 +98,14 @@ public class CustomersController : ControllerBase
 
         if (!authorizationResult.Succeeded)
         {
-            return Forbid();
+            return NotFound(
+                new ProblemDetails
+                {
+                    Title = "Customer.NotFound",
+                    Detail = "Customer was not found.",
+                    Status = StatusCodes.Status404NotFound,
+                }
+            );
         }
 
         return Ok(result.Value);
