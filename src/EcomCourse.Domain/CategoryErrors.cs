@@ -12,6 +12,10 @@ namespace EcomCourse.Domain
             "Category.NameTooLong",
             "Category name cannot exceed 100 characters.");
 
+        public static readonly DomainError NameAlreadyExists = new(
+            "Category.NameAlreadyExists",
+            "Category with this name already exists.");
+
         public static DomainError NotFound(Guid id) => new(
             "Category.NotFound",
             $"Category '{id}' was not found.");
