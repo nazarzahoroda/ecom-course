@@ -26,7 +26,10 @@ public class LoginCommandHandlerTests
     {
         var dto = new LoginDto { Email = "user@example.com", Password = "Pass!12" };
         var command = new LoginCommand(dto);
-        var error = new DomainError("Identity.UserNotFound", "User not found");
+        var error = new DomainError(
+                        "Identity.UserNotFound",
+                        "User not found",
+                        ErrorType.NotFound);
 
         _identityServiceMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
@@ -60,7 +63,10 @@ public class LoginCommandHandlerTests
 
         var userResult = Result.Success(user);
 
-        var error = new DomainError("Identity.InvalidCredentials", "Invalid credentials.");
+        var error = new DomainError(
+                        "Identity.InvalidCredentials",
+                        "Invalid credentials.",
+                        ErrorType.Unauthorized);
 
         _identityServiceMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
@@ -105,9 +111,9 @@ public class LoginCommandHandlerTests
         var refreshToken = "refresh-token";
 
         var saveError = new DomainError(
-            "Identity.RefreshTokenSaveFailed",
-            "Failed to save refresh token."
-        );
+                            "Identity.RefreshTokenSaveFailed",
+                            "Failed to save refresh token.",
+                            ErrorType.Conflict);
 
         _identityServiceMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))

@@ -143,7 +143,10 @@ public class CompensateAsyncTests
     {
         var userId = Guid.NewGuid();
         var customerId = Guid.Empty;
-        var error = new DomainError("Identity.DeleteFailed", "Failed to delete user");
+        var error = new DomainError(
+                        "Identity.DeleteFailed",
+                        "Failed to delete user",
+                        ErrorType.Conflict);
 
         _identityServiceMock
             .Setup(x => x.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))

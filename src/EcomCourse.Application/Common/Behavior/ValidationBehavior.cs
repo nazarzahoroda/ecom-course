@@ -44,7 +44,8 @@ namespace EcomCourse.Application.Common.Behavior
                 .Where(validationFailure => validationFailure is not null)
                 .Select(failure => new DomainError(
                     failure.PropertyName,
-                    failure.ErrorMessage))
+                    failure.ErrorMessage,
+                    ErrorType.Validation))
                 .Distinct()
                 .ToArray();
 
@@ -69,7 +70,10 @@ namespace EcomCourse.Application.Common.Behavior
                 var valueType = typeof(TResult).GenericTypeArguments[0];
                 var combinedMessage = string.Join("; ", errors.Select(e => e.Description));
 
-                var combinedError = new DomainError("Validation", combinedMessage);
+                var combinedError = new DomainError(
+                    "Validation",
+                    combinedMessage,
+                    ErrorType.Validation);
 
                 var failureMethod = typeof(Result)
                     .GetMethod(nameof(Result.Failure), BindingFlags.Public | BindingFlags.Static)?
