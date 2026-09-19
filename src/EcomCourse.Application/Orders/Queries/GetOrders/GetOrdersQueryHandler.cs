@@ -28,6 +28,11 @@ public sealed class GetOrdersQueryHandler : IQueryHandler<GetOrdersQuery, GetOrd
                 order.CustomerId,
                 order.Status.ToString(),
                 order.Total,
+                new OrderShippingAddressResponse(
+                    order.ShippingAddress.Street,
+                    order.ShippingAddress.City,
+                    order.ShippingAddress.PostalCode,
+                    order.ShippingAddress.Country),
                 order.Lines
                     .Select(line => new OrderLineResponse(
                         line.Id,

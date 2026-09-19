@@ -3,6 +3,7 @@ using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -15,11 +16,13 @@ namespace EcomCourse.Infrastructure.Services
     {
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
+        private readonly ICustomerStore _customerStore;
 
-        public CartService(EcomCourseDbContext context, IUserContext currentUserService)
+        public CartService(EcomCourseDbContext context, IUserContext currentUserService, ICustomerStore customerStore)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _customerStore = customerStore;
         }
 
         public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
@@ -218,7 +221,19 @@ namespace EcomCourse.Infrastructure.Services
                 )
                 .ToList();
 
-            var orderResult = Order.Create(customerId, items);
+            var customer = await _customerStore.GetByIdAsync(customerId, cancellationToken);
+            if (customer is null)
+                return Result.Failure<Guid>(CustomerErrors.NotFound);
+
+            var shippingAddressResult = Address.Create(
+                customer.Address.Street,
+                customer.Address.City,
+                customer.Address.PostalCode,
+                customer.Address.Country);
+            if (shippingAddressResult.IsFailure)
+                return Result.Failure<Guid>(shippingAddressResult.Error);
+
+            var orderResult = Order.Create(customerId, shippingAddressResult.Value!, items);
             if (orderResult.IsFailure)
                 return Result.Failure<Guid>(orderResult.Error);
 

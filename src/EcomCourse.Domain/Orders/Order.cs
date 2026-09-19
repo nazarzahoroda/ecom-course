@@ -1,4 +1,5 @@
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Primitives;
 
 namespace EcomCourse.Domain.Orders;
@@ -8,24 +9,30 @@ public class Order : Entity<Guid>
     private readonly List<OrderLine> _lines = [];
 
     public Guid CustomerId { get; private set; }
+    public Address ShippingAddress { get; private set; }
     public OrderStatus Status { get; private set; }
 
     public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
 
     public decimal Total => _lines.Sum(line => line.Quantity * line.UnitPrice);
 
-    private Order() : base(Guid.Empty) { }
+    private Order() : base(Guid.Empty)
+    {
+        ShippingAddress = null!;
+    }
 
-    private Order(Guid id, Guid customerId, List<OrderLine> lines)
+    private Order(Guid id, Guid customerId, Address shippingAddress, List<OrderLine> lines)
         : base(id)
     {
         CustomerId = customerId;
+        ShippingAddress = shippingAddress;
         Status = OrderStatus.Pending;
         _lines = lines;
     }
 
     public static Result<Order> Create(
         Guid customerId,
+        Address shippingAddress,
         IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice)> items)
     {
         if (items is null || items.Count == 0)
@@ -46,7 +53,7 @@ public class Order : Entity<Guid>
             lines.Add(lineResult.Value!);
         }
 
-        var order = new Order(Guid.NewGuid(), customerId, lines);
+        var order = new Order(Guid.NewGuid(), customerId, shippingAddress, lines);
 
         return Result.Success(order);
     }

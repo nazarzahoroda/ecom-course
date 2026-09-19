@@ -2,11 +2,14 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using EcomCourse.Application.Carts.DTOs;
+using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -82,6 +85,7 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
             db.Categories.Add(category);
             db.Products.Add(product);
+            SeedCustomer(db, customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
             await db.SaveChangesAsync();
         }
 
@@ -123,7 +127,96 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             Assert.Equal(product.Id, order.Lines.First().ProductId);
             Assert.Equal(2, order.Lines.First().Quantity);
             Assert.Equal(100.00m, order.Lines.First().UnitPrice);
+            Assert.Equal("Khreshchatyk St 1", order.ShippingAddress.Street);
+            Assert.Equal("Kyiv", order.ShippingAddress.City);
         }
+    }
+
+    [Fact]
+    public async Task Checkout_SnapshotsShippingAddress_IndependentOfLaterCustomerAddressChanges()
+    {
+        var customerId = Guid.NewGuid();
+
+        var categoryResult = Category.Create("Test Category");
+        var category = categoryResult.Value!;
+
+        var priceResult = Price.Create(50.00m, Currency.USD);
+        var randomSku = $"PRD-{Random.Shared.Next(1000, 9999)}";
+        var skuResult = SKU.Create(randomSku);
+
+        var productResult = Product.Create(
+            "Sample Product",
+            priceResult.Value!.Amount,
+            priceResult.Value!.Currency,
+            skuResult.Value!.Value,
+            category.Id
+        );
+        var product = productResult.Value!;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            db.Categories.Add(category);
+            db.Products.Add(product);
+            SeedCustomer(db, customerId, "Original St 1", "Kyiv", "01001", "Ukraine");
+            await db.SaveChangesAsync();
+        }
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateToken(customerId)
+        );
+
+        await _client.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = product.Id, Quantity = 1 }
+        );
+
+        var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
+        Assert.Equal(HttpStatusCode.OK, checkoutRes.StatusCode);
+
+        var orderId = await checkoutRes.Content.ReadFromJsonAsync<Guid>();
+
+        // Customer moves after the order was placed.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE Customers SET Address_Street = {"New St 99"}, Address_City = {"Lviv"} WHERE Id = {customerId}");
+        }
+
+        var getRes = await _client.GetAsync($"/api/orders/{orderId}");
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+
+        var order = await getRes.Content.ReadFromJsonAsync<OrderResponse>();
+
+        Assert.NotNull(order);
+        Assert.Equal("Original St 1", order.ShippingAddress.Street);
+        Assert.Equal("Kyiv", order.ShippingAddress.City);
+    }
+
+    private static void SeedCustomer(
+        EcomCourseDbContext db,
+        Guid customerId,
+        string street,
+        string city,
+        string postalCode,
+        string country)
+    {
+        var customer = Customer.Create(
+            Guid.NewGuid(),
+            "Test Customer",
+            $"{customerId}@example.com",
+            street,
+            city,
+            postalCode,
+            country).Value!;
+
+        typeof(Customer).BaseType!
+            .GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(customer, customerId);
+
+        db.Customers.Add(customer);
     }
 
     private static string GenerateToken(Guid customerId)
