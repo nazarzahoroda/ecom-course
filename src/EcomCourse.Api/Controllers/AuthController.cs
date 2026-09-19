@@ -126,7 +126,17 @@ namespace EcomCourse.Api.Controllers
                     Expires = DateTimeOffset.UtcNow.AddMinutes(60),
                 }
             );
-
+            Response.Cookies.Append(
+                "refresh_token",
+                result.Value.RefreshToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7),
+                }
+            );
             return Ok();
         }
 

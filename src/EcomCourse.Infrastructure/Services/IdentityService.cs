@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Authentication.Interfaces;
 using EcomCourse.Application.Interfaces;
@@ -5,6 +8,7 @@ using EcomCourse.Domain.Common;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace EcomCourse.Infrastructure.Services
 {
@@ -14,18 +18,21 @@ namespace EcomCourse.Infrastructure.Services
         private readonly IdentityDbContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IJwtService _jwtService;
+        private readonly IConfiguration _configuration;
 
         public IdentityService(
             UserManager<ApplicationUser> manager,
             IdentityDbContext context,
             SignInManager<ApplicationUser> signInManager,
-            IJwtService jwtService
+            IJwtService jwtService,
+            IConfiguration configuration
         )
         {
             _manager = manager;
             _context = context;
             _signInManager = signInManager;
             _jwtService = jwtService;
+            _configuration = configuration;
         }
 
         #region sign in
@@ -204,6 +211,12 @@ namespace EcomCourse.Infrastructure.Services
             return await _manager.GetRolesAsync(user);
         }
         #endregion
+        private static string HashToken(string token)
+        {
+            var bytes = Encoding.UTF8.GetBytes(token);
+            var hashBytes = SHA256.HashData(bytes);
+            return Convert.ToHexString(hashBytes);
+        }
 
         public async Task<Result> SaveRefreshToken(
             string refreshToken,
@@ -211,13 +224,13 @@ namespace EcomCourse.Infrastructure.Services
             CancellationToken cancellationToken
         )
         {
+            var days = _configuration.GetValue<double>("Jwt:RefreshTokenDays");
+            var tokenHash = HashToken(refreshToken);
             var entity = new RefreshToken
             {
-                Id = Guid.NewGuid(),
                 UserId = userId,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7),
-                IsRevoked = false,
+                TokenHash = tokenHash,
+                ExpiresAt = DateTime.UtcNow.AddDays(days),
                 CreatedAt = DateTime.UtcNow,
             };
 
@@ -240,11 +253,12 @@ namespace EcomCourse.Infrastructure.Services
             CancellationToken cancellationToken
         )
         {
+            var tokenHash = HashToken(refreshToken);
+
             var token = await _context
                 .RefreshTokens.Include(x => x.User)
-                .FirstOrDefaultAsync(x => x.Token == refreshToken, cancellationToken);
-            if (token is null)
-                return null;
+                .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
+
             return token;
         }
 
@@ -261,14 +275,32 @@ namespace EcomCourse.Infrastructure.Services
                 );
 
             if (token.IsRevoked)
+            {
+                var userTokens = await _context
+                    .RefreshTokens.Where(t => t.UserId == token.UserId && t.RevokedAt == null)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var t in userTokens)
+                {
+                    t.RevokedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+
                 return Result.Failure<AuthResponse>(
-                    new DomainError("Identity.RefreshToken", "Refresh token is revoked")
+                    new DomainError(
+                        "Identity.RefreshTokenCompromised",
+                        "A token reuse attempt was detected. All sessions have been terminated."
+                    )
                 );
+            }
 
             if (token.ExpiresAt <= DateTime.UtcNow)
                 return Result.Failure<AuthResponse>(
                     new DomainError("Identity.RefreshToken", "Refresh token expired")
                 );
+
+            token.RevokedAt = DateTime.UtcNow;
 
             var roles = await _manager.GetRolesAsync(token.User);
 
@@ -282,10 +314,30 @@ namespace EcomCourse.Infrastructure.Services
 
             var accessToken = _jwtService.GenerateAccessToken(details);
 
+            var newRawRefreshToken = _jwtService.GenerateRefreshToken();
+
+            var newRefreshTokenHash = HashToken(newRawRefreshToken);
+
+            token.ReplacedByTokenHash = newRefreshTokenHash;
+
+            var days = _configuration.GetValue<double>("Jwt:RefreshTokenDays");
+
+            var newRefreshTokenEntity = new RefreshToken
+            {
+                UserId = token.UserId,
+                TokenHash = newRefreshTokenHash,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(days),
+            };
+
+            await _context.RefreshTokens.AddAsync(newRefreshTokenEntity, cancellationToken);
+
+            await _context.SaveChangesAsync(cancellationToken);
+
             var response = new AuthResponse
             {
                 AccessToken = accessToken,
-                RefreshToken = token.Token,
+                RefreshToken = newRawRefreshToken,
             };
 
             return Result.Success(response);
@@ -302,7 +354,10 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError("Identity.RefreshToken", "Refresh token not found")
                 );
 
-            token.IsRevoked = true;
+            if (token.IsRevoked)
+                return Result.Success();
+
+            token.RevokedAt = DateTime.UtcNow;
 
             try
             {
