@@ -92,6 +92,140 @@ public class OrdersIntegrationTests
         Assert.Equal(200m, firstLine.LineTotal);
     }
 
+    [Fact]
+    public async Task GetOrderById_ShouldReturn401_ForAnonymous_RegardlessOfOrderExistence()
+    {
+        // Arrange
+        var existingOrderId = await CreateOrderAsync();
+        var nonExistentOrderId = Guid.NewGuid();
+
+        // Act
+        var existingResponse = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{existingOrderId}", anonymous: true));
+        var missingResponse = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{nonExistentOrderId}", anonymous: true));
+
+        // Assert — anonymous callers can't tell existing and non-existent orders apart.
+        Assert.Equal(HttpStatusCode.Unauthorized, existingResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, missingResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetOrderById_ShouldReturn403_WhenCalledByDifferentCustomer()
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{orderId}", asCustomerId: Guid.NewGuid()));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldReturn401_WhenAnonymous(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}", anonymous: true));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldReturn403_WhenCalledByDifferentCustomer(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}", asCustomerId: Guid.NewGuid()));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldSucceed_WhenCalledByOwningCustomer(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldSucceed_WhenCalledByAdmin(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}", asCustomerId: Guid.NewGuid(), role: "Admin"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    private async Task<Guid> CreateOrderAsync()
+    {
+        var command = new CreateOrderCommand(
+            _customerId,
+            new List<OrderLineItemRequest> { new(Guid.NewGuid(), 1, 10m) });
+
+        var response = await _client.PostAsJsonAsync("/api/orders", command);
+
+        return await response.Content.ReadFromJsonAsync<Guid>();
+    }
+
+    private static HttpRequestMessage BuildRequest(
+        HttpMethod method,
+        string url,
+        bool anonymous = false,
+        Guid? asCustomerId = null,
+        string? role = null)
+    {
+        var request = new HttpRequestMessage(method, url);
+
+        if (anonymous)
+        {
+            request.Headers.Add("X-Test-Anonymous", "true");
+        }
+
+        if (asCustomerId.HasValue)
+        {
+            request.Headers.Add("X-Test-CustomerId", asCustomerId.Value.ToString());
+        }
+
+        if (role is not null)
+        {
+            request.Headers.Add("X-Test-Role", role);
+        }
+
+        return request;
+    }
+
     private sealed record TestCustomer(Guid CustomerId);
 
     private sealed class TestAuthenticationHandler
@@ -111,10 +245,29 @@ public class OrdersIntegrationTests
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var claims = new[]
+            if (Request.Headers.TryGetValue("X-Test-Anonymous", out var anonymous) &&
+                anonymous == "true")
             {
-                new Claim("CustomerId", _testCustomer.CustomerId.ToString())
+                return Task.FromResult(AuthenticateResult.NoResult());
+            }
+
+            var customerId = _testCustomer.CustomerId;
+
+            if (Request.Headers.TryGetValue("X-Test-CustomerId", out var customerIdHeader) &&
+                Guid.TryParse(customerIdHeader, out var overrideCustomerId))
+            {
+                customerId = overrideCustomerId;
+            }
+
+            var claims = new List<Claim>
+            {
+                new("CustomerId", customerId.ToString())
             };
+
+            if (Request.Headers.TryGetValue("X-Test-Role", out var role))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
+            }
 
             var identity = new ClaimsIdentity(
                 claims,
