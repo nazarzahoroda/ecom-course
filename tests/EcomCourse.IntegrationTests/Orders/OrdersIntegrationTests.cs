@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
+using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Orders;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +17,6 @@ namespace EcomCourse.IntegrationTests.Orders;
 
 public class OrdersIntegrationTests
 {
-    private const string _testAuthenticationScheme = "TestScheme";
     private readonly HttpClient _client;
     private readonly Guid _customerId = Guid.NewGuid();
 
@@ -27,16 +27,17 @@ public class OrdersIntegrationTests
             {
                 builder.ConfigureServices(services =>
                 {
-                    services.AddSingleton(new TestCustomer(_customerId));
-
                     services
                         .AddAuthentication(options =>
                         {
-                            options.DefaultAuthenticateScheme = _testAuthenticationScheme;
-                            options.DefaultChallengeScheme = _testAuthenticationScheme;
+                            options.DefaultAuthenticateScheme =
+                                TestAuthenticationHandler.AuthenticationScheme;
+
+                            options.DefaultChallengeScheme =
+                                TestAuthenticationHandler.AuthenticationScheme;
                         })
                         .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                            _testAuthenticationScheme,
+                            TestAuthenticationHandler.AuthenticationScheme,
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
@@ -44,6 +45,10 @@ public class OrdersIntegrationTests
             });
 
         _client = factory.CreateClient();
+
+        _client.DefaultRequestHeaders.Add(
+            "X-Test-CustomerId",
+            _customerId.ToString());
     }
 
     [Fact]
@@ -226,64 +231,6 @@ public class OrdersIntegrationTests
         return request;
     }
 
-    private sealed record TestCustomer(Guid CustomerId);
-
-    private sealed class TestAuthenticationHandler
-        : AuthenticationHandler<AuthenticationSchemeOptions>
-    {
-        private readonly TestCustomer _testCustomer;
-
-        public TestAuthenticationHandler(
-            IOptionsMonitor<AuthenticationSchemeOptions> options,
-            ILoggerFactory logger,
-            UrlEncoder encoder,
-            TestCustomer testCustomer)
-            : base(options, logger, encoder)
-        {
-            _testCustomer = testCustomer;
-        }
-
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-        {
-            if (Request.Headers.TryGetValue("X-Test-Anonymous", out var anonymous) &&
-                anonymous == "true")
-            {
-                return Task.FromResult(AuthenticateResult.NoResult());
-            }
-
-            var customerId = _testCustomer.CustomerId;
-
-            if (Request.Headers.TryGetValue("X-Test-CustomerId", out var customerIdHeader) &&
-                Guid.TryParse(customerIdHeader, out var overrideCustomerId))
-            {
-                customerId = overrideCustomerId;
-            }
-
-            var claims = new List<Claim>
-            {
-                new("CustomerId", customerId.ToString())
-            };
-
-            if (Request.Headers.TryGetValue("X-Test-Role", out var role))
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
-            }
-
-            var identity = new ClaimsIdentity(
-                claims,
-                _testAuthenticationScheme);
-
-            var principal = new ClaimsPrincipal(identity);
-
-            var ticket = new AuthenticationTicket(
-                principal,
-                _testAuthenticationScheme);
-
-            return Task.FromResult(
-                AuthenticateResult.Success(ticket));
-        }
-    }
-
     private sealed class InMemoryOrderRepository : IOrderRepository
     {
         private readonly List<Order> _orders = [];
@@ -308,10 +255,10 @@ public class OrdersIntegrationTests
         }
 
         public Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetByCustomerIdAsync(
-    Guid customerId,
-    int page,
-    int pageSize,
-    CancellationToken cancellationToken = default)
+            Guid customerId,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
         {
             var filtered = _orders
                 .Where(order => order.CustomerId == customerId)

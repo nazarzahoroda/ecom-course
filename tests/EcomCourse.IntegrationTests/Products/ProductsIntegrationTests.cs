@@ -1,15 +1,13 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using EcomCourse.Api.Categories;
 using EcomCourse.Api.Products;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Products;
+using EcomCourse.IntegrationTests.Common;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.IntegrationTests.Products;
 
@@ -19,12 +17,27 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
     public ProductsIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        var authenticatedFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services
+                    .AddAuthentication(options =>
+                    {
+                        options.DefaultAuthenticateScheme =
+                            TestAuthenticationHandler.AuthenticationScheme;
 
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            GenerateAdminToken()
-        );
+                        options.DefaultChallengeScheme =
+                            TestAuthenticationHandler.AuthenticationScheme;
+                    })
+                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                        TestAuthenticationHandler.AuthenticationScheme,
+                        options => { });
+            });
+        });
+
+        _client = authenticatedFactory.CreateClient();
+        _client.DefaultRequestHeaders.Add("X-Test-Role", "Admin");
     }
 
     [Fact]
@@ -365,37 +378,5 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         Assert.NotNull(products);
         Assert.True(products.Count <= 4);
-    }
-
-    private static string GenerateAdminToken()
-    {
-        var key = Encoding.UTF8.GetBytes("Very_Super_Puper_Secret_Key123!321");
-
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(
-                new[]
-                {
-                new Claim(
-                    ClaimTypes.NameIdentifier,
-                    Guid.NewGuid().ToString()),
-                new Claim(
-                    ClaimTypes.Role,
-                    "Admin"),
-                }
-            ),
-            Issuer = "EcomCourse",
-            Audience = "EcomCourseClient",
-            Expires = DateTime.UtcNow.AddMinutes(30),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            ),
-        };
-
-        var handler = new JwtSecurityTokenHandler();
-
-        return handler.WriteToken(
-               handler.CreateToken(descriptor));
     }
 }
