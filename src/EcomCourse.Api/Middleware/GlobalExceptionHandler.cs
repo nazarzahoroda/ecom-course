@@ -25,9 +25,7 @@ namespace EcomCourse.Api.Middleware
             {
                 Title = "Server Error",
                 Status = StatusCodes.Status500InternalServerError,
-                Detail = _env.IsDevelopment()
-                    ? exception.ToString()
-                    : "An unexpected error occurred",
+                Detail = exception.Message,
             };
 
             httpContext.Response.StatusCode = problemDetails.Status.Value;
