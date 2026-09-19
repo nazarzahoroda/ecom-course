@@ -19,6 +19,7 @@ public static class ResultExtensions
             ErrorType.NotFound => StatusCodes.Status404NotFound,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
             ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
+            ErrorType.Failure => StatusCodes.Status500InternalServerError,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(result),
                 result.Error.Type,

@@ -70,7 +70,7 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                     new DomainError(
                         "Customer.CreateFailed",
                         "Failed to create customer",
-                        ErrorType.Conflict));
+                        ErrorType.Failure));
 
             }
             var updateUserResult = await _identityService.SetCustomerIdAsync(user!.Id, customer!.Id, cancellationToken);

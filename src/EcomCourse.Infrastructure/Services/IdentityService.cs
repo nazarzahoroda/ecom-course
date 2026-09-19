@@ -87,7 +87,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.CreateUserFailed",
                         "Failed to create user.",
-                        ErrorType.Conflict)
+                        ErrorType.Validation)
                 );
             }
             return Result.Success(user);
@@ -110,7 +110,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.CreateUserFailed",
                         errors,
-                        ErrorType.Conflict)
+                        ErrorType.Validation)
                 );
             }
             var roleResult = await _manager.AddToRoleAsync(user, "Customer");
@@ -123,7 +123,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.AddRoleFailed",
                         "Failed to add Customer role",
-                        ErrorType.Conflict)
+                        ErrorType.Failure)
                 );
             }
             var result = new ApplicationUserDto { Id = user.Id, Email = user.Email! };
@@ -158,7 +158,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.UpdateUserFailed",
                         "Failed to update user",
-                        ErrorType.Conflict));
+                        ErrorType.Failure));
             }
 
             return Result.Success();
@@ -181,7 +181,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.DeleteUserFailed",
                         "Failed to delete user",
-                        ErrorType.Conflict));
+                        ErrorType.Failure));
             }
             return Result.Success();
         }
@@ -260,7 +260,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.RefreshToken",
                         "Failed to save refresh token",
-                        ErrorType.Conflict));
+                        ErrorType.Failure));
             }
             return Result.Success();
         }
@@ -359,7 +359,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError(
                         "Identity.RefreshToken",
                         "Failed to revoke refresh token",
-                        ErrorType.Conflict));
+                        ErrorType.Failure));
             }
             return Result.Success();
         }

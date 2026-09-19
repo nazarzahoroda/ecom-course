@@ -134,4 +134,28 @@ public class ResultExtensionsTests
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(action);
     }
+
+    [Fact]
+    public void ToProblemDetails_WhenFailureError_ReturnsInternalServerError()
+    {
+        // Arrange
+        var error = new DomainError(
+            "Test.Failure",
+            "Internal operation failed.",
+            ErrorType.Failure);
+
+        var result = Result.Failure(error);
+
+        // Act
+        var actionResult = result.ToProblemDetails();
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(actionResult);
+        var problemDetails = Assert.IsType<ProblemDetails>(objectResult.Value);
+
+        Assert.Equal(StatusCodes.Status500InternalServerError, objectResult.StatusCode);
+        Assert.Equal(StatusCodes.Status500InternalServerError, problemDetails.Status);
+        Assert.Equal(error.Code, problemDetails.Title);
+        Assert.Equal(error.Description, problemDetails.Detail);
+    }
 }

@@ -30,7 +30,7 @@ namespace EcomCourse.Application.Services
                             new DomainError(
                                 "Compensation.CustomerDeleteFailed",
                                 "Failed to delete customer",
-                                ErrorType.Conflict));
+                                ErrorType.Failure));
                     }
                 }
             }
