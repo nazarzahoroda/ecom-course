@@ -1,29 +1,48 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
-using System.Text;
+using System.Text.Encodings.Web;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
 
 namespace EcomCourse.IntegrationTests.Categories;
 
 public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Program>>  
 {
+    private const string _testAuthenticationScheme = "TestScheme";
+
     private readonly HttpClient _client;
 
     public CategoriesIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        var authenticatedFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services
+                    .AddAuthentication(options =>
+                    {
+                        options.DefaultAuthenticateScheme = _testAuthenticationScheme;
+                        options.DefaultChallengeScheme = _testAuthenticationScheme;
+                    })
+                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                        _testAuthenticationScheme,
+                        options => { });
+            });
+        });
+
+        _client = authenticatedFactory.CreateClient();
     }
 
     [Fact]
     public async Task Category_CRUD_HappyPath_ShouldWork()
     {
-        AuthorizeAsAdmin();
         // Arrange
         var categoryName = $"Electronics-{Guid.NewGuid()}";
         var createCommand = new CreateCategoryCommand(categoryName);
@@ -93,7 +112,6 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     [Fact]
     public async Task UpdateCategory_WhenCategoryDoesNotExist_ShouldReturnNotFound()
     {
-        AuthorizeAsAdmin();
         var categoryId = Guid.NewGuid();
 
         var response = await _client.PutAsJsonAsync(
@@ -106,7 +124,6 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     [Fact]
     public async Task DeleteCategory_WhenCategoryDoesNotExist_ShouldReturnNotFound()
     {
-        AuthorizeAsAdmin();
         var categoryId = Guid.NewGuid();
 
         var response = await _client.DeleteAsync(
@@ -131,17 +148,13 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    public async Task CreateCategory_WithDuplicateNameDifferentCase_ShouldReturnBadRequest()
+    public async Task CreateCategory_WithDuplicateName_ShouldReturnBadRequest()
     {
-        AuthorizeAsAdmin();
-
-        var uniquePart = Guid.NewGuid().ToString();
-        var firstName = $"Duplicate-{uniquePart}";
-        var duplicateName = $"duplicate-{uniquePart}";
+        var categoryName = $"Duplicate-{Guid.NewGuid()}";
 
         var firstResponse = await _client.PostAsJsonAsync(
             "/api/categories",
-            new CreateCategoryCommand(firstName));
+            new CreateCategoryCommand(categoryName));
 
         Assert.Equal(
             HttpStatusCode.Created,
@@ -149,7 +162,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
         var secondResponse = await _client.PostAsJsonAsync(
             "/api/categories",
-            new CreateCategoryCommand(duplicateName));
+            new CreateCategoryCommand(categoryName));
 
         Assert.Equal(
             HttpStatusCode.BadRequest,
@@ -159,8 +172,6 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     [Fact]
     public async Task UpdateCategory_WithDuplicateName_ShouldReturnBadRequest()
     {
-        AuthorizeAsAdmin();
-
         var firstName = $"Category-{Guid.NewGuid()}";
         var secondName = $"Category-{Guid.NewGuid()}";
 
@@ -192,44 +203,41 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
             updateResponse.StatusCode);
     }
 
-    private void AuthorizeAsAdmin()
+    private sealed class TestAuthenticationHandler
+        : AuthenticationHandler<AuthenticationSchemeOptions>
     {
-        _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue(
-                "Bearer",
-                GenerateAdminToken());
-    }
-
-    private static string GenerateAdminToken()
-    {
-        var key = Encoding.UTF8.GetBytes(
-            "Very_Super_Puper_Secret_Key123!321");
-
-        var descriptor = new SecurityTokenDescriptor
+        public TestAuthenticationHandler(
+            IOptionsMonitor<AuthenticationSchemeOptions> options,
+            ILoggerFactory logger,
+            UrlEncoder encoder)
+            : base(options, logger, encoder)
         {
-            Subject = new ClaimsIdentity(
-                new[]
-                {
-                new Claim(
-                    ClaimTypes.NameIdentifier,
-                    Guid.NewGuid().ToString()),
-                new Claim(
-                    ClaimTypes.Role,
-                    "Admin"),
-                }
-            ),
-            Issuer = "EcomCourse",
-            Audience = "EcomCourseClient",
-            Expires = DateTime.UtcNow.AddMinutes(30),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            ),
+        }
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            var claims = new[]
+            {
+            new Claim(
+                ClaimTypes.NameIdentifier,
+                Guid.NewGuid().ToString()),
+            new Claim(
+                ClaimTypes.Role,
+                "Admin"),
         };
 
-        var handler = new JwtSecurityTokenHandler();
+            var identity = new ClaimsIdentity(
+                claims,
+                _testAuthenticationScheme);
 
-        return handler.WriteToken(
-            handler.CreateToken(descriptor));
+            var principal = new ClaimsPrincipal(identity);
+
+            var ticket = new AuthenticationTicket(
+                principal,
+                _testAuthenticationScheme);
+
+            return Task.FromResult(
+                AuthenticateResult.Success(ticket));
+        }
     }
 }
