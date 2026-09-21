@@ -105,6 +105,9 @@ namespace EcomCourse.Api.Controllers
 
             if (result.IsFailure)
             {
+                Response.Cookies.Delete("access_token");
+                Response.Cookies.Delete("refresh_token");
+
                 return BadRequest(
                     new ProblemDetails
                     {
