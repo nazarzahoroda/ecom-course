@@ -20,7 +20,7 @@ public class CancelOrderCommandHandlerTests
         var result = Order.Create(
             Guid.NewGuid(),
             new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m) },
-            DateTimeOffset.UtcNow);
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
         return result.Value!;
     }
