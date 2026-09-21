@@ -6,9 +6,11 @@ public static class PriceErrors
 {
     public static readonly DomainError AmountInvalid = new(
         "Price.AmountInvalid",
-        "Price cannot be negative.");
+        "Price cannot be negative.",
+        ErrorType.Validation);
 
     public static readonly DomainError CurrencyInvalid = new(
-    "Price.CurrencyInvalid",
-    "Currency is invalid.");
+        "Price.CurrencyInvalid",
+        "Currency is invalid.",
+        ErrorType.Validation);
 }

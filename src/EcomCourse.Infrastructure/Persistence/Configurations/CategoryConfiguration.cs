@@ -16,5 +16,7 @@ public sealed class CategoryConfiguration
         builder.Property(category => category.Name)
             .IsRequired()
             .HasMaxLength(100);
+        builder.HasIndex(category => category.Name)
+            .IsUnique();
     }
 }

@@ -4,9 +4,9 @@ using EcomCourse.Domain.Customers;
 
 namespace EcomCourse.Application.Customers.GetCustomerById;
 
-public sealed class GetCustomerByIdQueryHandler : IQueryHandler<GetCustomerByIdQuery, CustomerResponse>
+public sealed class GetCustomerByIdQueryHandler
+    : IQueryHandler<GetCustomerByIdQuery, CustomerResponse>
 {
-
     private readonly ICustomerStore _customerStore;
 
     public GetCustomerByIdQueryHandler(ICustomerStore customerStore)
@@ -14,11 +14,12 @@ public sealed class GetCustomerByIdQueryHandler : IQueryHandler<GetCustomerByIdQ
         _customerStore = customerStore;
     }
 
-    public async Task<Result<CustomerResponse>> Handle(GetCustomerByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<CustomerResponse>> Handle(
+        GetCustomerByIdQuery request,
+        CancellationToken cancellationToken
+    )
     {
-
         var customer = await _customerStore.GetByIdAsync(request.CustomerId, cancellationToken);
-
 
         if (customer is null)
         {
@@ -26,19 +27,17 @@ public sealed class GetCustomerByIdQueryHandler : IQueryHandler<GetCustomerByIdQ
         }
 
         var response = new CustomerResponse(
-    customer.Id,
-    customer.UserId,
-    customer.Name,
-    customer.Email.Value,
-    new AddressResponse(
-        customer.Address.Street,
-        customer.Address.City,
-        customer.Address.PostalCode,
-        customer.Address.Country));
+            customer.Id,
+            customer.Name,
+            customer.Email.Value,
+            new AddressResponse(
+                customer.Address.Street,
+                customer.Address.City,
+                customer.Address.PostalCode,
+                customer.Address.Country
+            )
+        );
 
         return Result.Success(response);
-
     }
-
-
 }

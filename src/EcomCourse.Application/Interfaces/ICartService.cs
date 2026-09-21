@@ -18,5 +18,6 @@ namespace EcomCourse.Application.Interfaces
             CancellationToken cancellationToken
         );
         public Task<Result<Guid>> CheckoutCart(CancellationToken cancellationToken);
+        Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(CancellationToken cancellationToken);
     }
 }
