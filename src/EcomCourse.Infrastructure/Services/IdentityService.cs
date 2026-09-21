@@ -66,7 +66,10 @@ namespace EcomCourse.Infrastructure.Services
 
             if (existingUser is null)
                 return Result.Failure<ApplicationUserDto>(
-                    new DomainError("Identity.UserNotFound", "User not found")
+                    new DomainError(
+                        "Identity.UserNotFound",
+                        "User not found",
+                        ErrorType.NotFound)
                 );
             var result = new ApplicationUserDto
             {
@@ -88,7 +91,10 @@ namespace EcomCourse.Infrastructure.Services
             if (!createUserResult.Succeeded)
             {
                 return Result.Failure(
-                    new DomainError("Identity.CreateUserFailed", "Failed to create user.")
+                    new DomainError(
+                        "Identity.CreateUserFailed",
+                        "Failed to create user.",
+                        ErrorType.Validation)
                 );
             }
             return Result.Success(user);
@@ -108,7 +114,10 @@ namespace EcomCourse.Infrastructure.Services
                 var errors = string.Join("; ", createUserResult.Errors.Select(x => x.Description));
 
                 return Result.Failure<ApplicationUserDto>(
-                    new DomainError("Identity.CreateUserFailed", errors)
+                    new DomainError(
+                        "Identity.CreateUserFailed",
+                        errors,
+                        ErrorType.Validation)
                 );
             }
             var roleResult = await _manager.AddToRoleAsync(user, "Customer");
@@ -118,7 +127,10 @@ namespace EcomCourse.Infrastructure.Services
                 var deleteResult = await DeleteUserAsync(user.Id, cancellationToken);
 
                 return Result.Failure<ApplicationUserDto>(
-                    new DomainError("Identity.AddRoleFailed", "Failed to add Customer role")
+                    new DomainError(
+                        "Identity.AddRoleFailed",
+                        "Failed to add Customer role",
+                        ErrorType.Failure)
                 );
             }
             var result = new ApplicationUserDto { Id = user.Id, Email = user.Email! };
@@ -136,7 +148,11 @@ namespace EcomCourse.Infrastructure.Services
 
             if (user is null)
             {
-                return Result.Failure(new DomainError("Identity.UserNotFound", "User not found"));
+                return Result.Failure(
+                    new DomainError(
+                        "Identity.UserNotFound",
+                        "User not found",
+                        ErrorType.NotFound));
             }
 
             user.CustomerId = customerId;
@@ -146,8 +162,10 @@ namespace EcomCourse.Infrastructure.Services
             if (!result.Succeeded)
             {
                 return Result.Failure(
-                    new DomainError("Identity.UpdateUserFailed", "Failed to update user")
-                );
+                    new DomainError(
+                        "Identity.UpdateUserFailed",
+                        "Failed to update user",
+                        ErrorType.Failure));
             }
 
             return Result.Success();
@@ -158,14 +176,19 @@ namespace EcomCourse.Infrastructure.Services
             var user = await _manager.FindByIdAsync(userId.ToString());
             if (user is null)
             {
-                return Result.Failure(new DomainError("Identity.UserNotFound", "User not found"));
+                return Result.Failure(new DomainError(
+                                          "Identity.UserNotFound",
+                                          "User not found",
+                                          ErrorType.NotFound));
             }
             var result = await _manager.DeleteAsync(user);
             if (!result.Succeeded)
             {
                 return Result.Failure(
-                    new DomainError("Identity.DeleteUserFailed", "Failed to delete user")
-                );
+                    new DomainError(
+                        "Identity.DeleteUserFailed",
+                        "Failed to delete user",
+                        ErrorType.Failure));
             }
             return Result.Success();
         }
@@ -179,7 +202,10 @@ namespace EcomCourse.Infrastructure.Services
 
             if (user is null)
             {
-                return Result.Failure(new DomainError("Identity.UserNotFound", "User not found"));
+                return Result.Failure(new DomainError(
+                                          "Identity.InvalidCredentials",
+                                          "Invalid credentials",
+                                          ErrorType.Unauthorized));
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(
@@ -191,8 +217,10 @@ namespace EcomCourse.Infrastructure.Services
             if (!result.Succeeded)
             {
                 return Result.Failure(
-                    new DomainError("Identity.InvalidCredentials", "Invalid credentials")
-                );
+                    new DomainError(
+                        "Identity.InvalidCredentials",
+                        "Invalid credentials",
+                        ErrorType.Unauthorized));
             }
 
             return Result.Success();
@@ -242,8 +270,10 @@ namespace EcomCourse.Infrastructure.Services
             catch (DbUpdateException)
             {
                 return Result.Failure(
-                    new DomainError("Identity.RefreshToken", "Failed to save refresh token")
-                );
+                    new DomainError(
+                        "Identity.RefreshToken",
+                        "Failed to save refresh token",
+                        ErrorType.Failure));
             }
             return Result.Success();
         }
@@ -270,9 +300,13 @@ namespace EcomCourse.Infrastructure.Services
             var token = await GetRefreshTokenAsync(refreshToken, cancellationToken);
 
             if (token is null)
+            {
                 return Result.Failure<AuthResponse>(
-                    new DomainError("Identity.RefreshToken", "Refresh token not found in data base")
-                );
+                    new DomainError(
+                        "Identity.RefreshToken",
+                        "Refresh token not found in data base",
+                        ErrorType.NotFound));
+            }
 
             if (token.IsRevoked && !string.IsNullOrEmpty(token.ReplacedByTokenHash))
             {
@@ -299,16 +333,19 @@ namespace EcomCourse.Infrastructure.Services
             {
                 return Result.Failure<AuthResponse>(
                     new DomainError(
-                        "Identity.RefreshTokenRevoked",
-                        "The refresh token has been revoked"
-                    )
-                );
+                        "Identity.RefreshToken",
+                        "Refresh token is revoked",
+                        ErrorType.Unauthorized));
             }
 
             if (token.ExpiresAt <= DateTime.UtcNow)
+            {
                 return Result.Failure<AuthResponse>(
-                    new DomainError("Identity.RefreshToken", "Refresh token expired")
-                );
+                    new DomainError(
+                        "Identity.RefreshToken",
+                        "Refresh token expired",
+                        ErrorType.Unauthorized));
+            }
 
             token.RevokedAt = DateTime.UtcNow;
 
@@ -355,14 +392,17 @@ namespace EcomCourse.Infrastructure.Services
 
         public async Task<Result> RevokeRefreshToken(
             string refreshToken,
-            CancellationToken cancellationToken
-        )
+            CancellationToken cancellationToken)
         {
             var token = await GetRefreshTokenAsync(refreshToken, cancellationToken);
             if (token is null)
+            {
                 return Result.Failure(
-                    new DomainError("Identity.RefreshToken", "Refresh token not found")
-                );
+                    new DomainError(
+                        "Identity.RefreshToken",
+                        "Refresh token not found",
+                        ErrorType.NotFound));
+            }
 
             if (token.IsRevoked)
                 return Result.Success();
@@ -376,8 +416,10 @@ namespace EcomCourse.Infrastructure.Services
             catch (DbUpdateException)
             {
                 return Result.Failure(
-                    new DomainError("Identity.RefreshToken", "Failed to revoke refresh token")
-                );
+                    new DomainError(
+                        "Identity.RefreshToken",
+                        "Failed to revoke refresh token",
+                        ErrorType.Failure));
             }
             return Result.Success();
         }
