@@ -2,17 +2,19 @@ using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace EcomCourse.IntegrationTests.Categories;
 
-public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Program>>  
+public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
 
     public CategoriesIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
     }
 
     [Fact]

@@ -1,17 +1,13 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace EcomCourse.IntegrationTests.Carts;
@@ -24,7 +20,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
     public CartIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
-        _httpClient = factory.CreateClient();
+        _httpClient = factory.WithTestAuthentication().CreateClient();
     }
 
     [Fact]
@@ -77,11 +73,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
             await db.SaveChangesAsync();
         }
 
-        var token = GenerateToken(customerId);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            token
-        );
+        _httpClient.AuthenticateAs(customerId);
 
         var addRes1 = await _httpClient.PostAsJsonAsync(
             "/api/Cart/items",
@@ -152,11 +144,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
             await db.SaveChangesAsync();
         }
 
-        var token = GenerateToken(customerId);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            token
-        );
+        _httpClient.AuthenticateAs(customerId);
 
         var addRes = await _httpClient.PostAsJsonAsync(
             "/api/Cart/items",
@@ -182,11 +170,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
     public async Task GetActiveCart_WhenNoActiveCartExists_Returns200WithEmptyCartDetails()
     {
         var customerId = Guid.NewGuid();
-        var token = GenerateToken(customerId);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            token
-        );
+        _httpClient.AuthenticateAs(customerId);
 
         var getRes = await _httpClient.GetAsync("/api/Cart");
 
@@ -197,30 +181,5 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(Guid.Empty, details.CartId);
         Assert.Empty(details.Items);
         Assert.Equal(0m, details.TotalAmount);
-    }
-
-    private static string GenerateToken(Guid customerId)
-    {
-        var key = Encoding.UTF8.GetBytes("Very_Super_Puper_Secret_Key123!321");
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(
-                new[]
-                {
-                    new Claim("CustomerId", customerId.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-                }
-            ),
-            Issuer = "EcomCourse",
-            Audience = "EcomCourseClient",
-            Expires = DateTime.UtcNow.AddMinutes(30),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            ),
-        };
-
-        var handler = new JwtSecurityTokenHandler();
-        return handler.WriteToken(handler.CreateToken(descriptor));
     }
 }
