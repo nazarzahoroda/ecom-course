@@ -23,7 +23,11 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
             var exists = await _identityService.IsUserExist(request.dto.Email, cancellationToken);
             if (exists)
             {
-                return Result.Failure(new DomainError("Identity.Register", "User already exists"));
+                return Result.Failure(
+                    new DomainError(
+                        "Identity.Register",
+                        "User already exists",
+                        ErrorType.Conflict));
             }
             var createResult = await _identityService.CreateUserAsyncWithResult(request.dto, cancellationToken);
 
@@ -62,7 +66,11 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                 if (compensateResult.IsFailure)
                     return compensateResult;
 
-                return Result.Failure(new DomainError("Customer.CreateFailed", "Failed to create customer"));
+                return Result.Failure(
+                    new DomainError(
+                        "Customer.CreateFailed",
+                        "Failed to create customer",
+                        ErrorType.Failure));
 
             }
             var updateUserResult = await _identityService.SetCustomerIdAsync(user!.Id, customer!.Id, cancellationToken);

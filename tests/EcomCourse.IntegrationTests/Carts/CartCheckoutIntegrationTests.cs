@@ -1,10 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
-using System.Security.Claims;
-using System.Text;
 using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Carts;
@@ -12,10 +8,10 @@ using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace EcomCourse.IntegrationTests.Carts;
@@ -28,17 +24,15 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
     public CartCheckoutIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.WithTestAuthentication().CreateClient();
     }
 
     [Fact]
-    public async Task Checkout_WhenCartIsEmpty_ReturnsBadRequestDomainError()
+    public async Task Checkout_WhenCartIsEmpty_ReturnsConflictDomainError()
     {
         var customerId = Guid.NewGuid();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            GenerateToken(customerId)
-        );
+
+        _client.AuthenticateAs(customerId);
 
         using (var scope = _factory.Services.CreateScope())
         {
@@ -51,11 +45,11 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
 
         var response = await _client.PostAsync("/api/Cart/checkout", null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
-    public async Task Checkout_FullFlow_Success_UpdatesCartAndSetsJwtCustomerId()
+    public async Task Checkout_FullFlow_Success_UpdatesCartAndSetsCustomerId()
     {
         var customerId = Guid.NewGuid();
 
@@ -89,10 +83,7 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             await db.SaveChangesAsync();
         }
 
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            GenerateToken(customerId)
-        );
+        _client.AuthenticateAs(customerId);
 
         var addRes = await _client.PostAsJsonAsync(
             "/api/Cart/items",
@@ -162,10 +153,7 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             await db.SaveChangesAsync();
         }
 
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            GenerateToken(customerId)
-        );
+        _client.AuthenticateAs(customerId);
 
         await _client.PostAsJsonAsync(
             "/api/Cart/items",
@@ -217,31 +205,5 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             .SetValue(customer, customerId);
 
         db.Customers.Add(customer);
-    }
-
-    private static string GenerateToken(Guid customerId)
-    {
-        var key = Encoding.UTF8.GetBytes("Very_Super_Puper_Secret_Key123!321");
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(
-                new[]
-                {
-                    new Claim("CustomerId", customerId.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-                    new Claim(ClaimTypes.Role, "Customer"),
-                }
-            ),
-            Issuer = "EcomCourse",
-            Audience = "EcomCourseClient",
-            Expires = DateTime.UtcNow.AddMinutes(30),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            ),
-        };
-
-        var handler = new JwtSecurityTokenHandler();
-        return handler.WriteToken(handler.CreateToken(descriptor));
     }
 }

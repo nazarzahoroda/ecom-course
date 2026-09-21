@@ -21,7 +21,10 @@ namespace EcomCourse.UnitTests.CartTest
         {
             var itemId = Guid.NewGuid();
             var command = new RemoveItemFromCartCommand(itemId);
-            var error = new DomainError("CartItem.NotFound", "Cart item not found.");
+            var error = new DomainError(
+                            "CartItem.NotFound",
+                            "Cart item not found.",
+                            ErrorType.NotFound);
 
             _cartServiceMock
                 .Setup(x => x.RemoveItemFromCartAsync(itemId, It.IsAny<CancellationToken>()))

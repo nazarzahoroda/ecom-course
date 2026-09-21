@@ -21,7 +21,10 @@ namespace EcomCourse.UnitTests.Domain
         [Fact]
         public void FailureShouldCreateFailureResultWithError()
         {
-            var customError = new DomainError("Test.Error", "Опис тестової помилки.");
+            var customError = new DomainError(
+                                  "Test.Error",
+                                  "Опис тестової помилки.",
+                                  ErrorType.Validation);
 
             var result = Result.Failure(customError);
 

@@ -4,6 +4,7 @@ using EcomCourse.Api.Categories;
 using EcomCourse.Api.Products;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Products;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace EcomCourse.IntegrationTests.Products;
@@ -14,14 +15,15 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
     public ProductsIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
     }
 
     [Fact]
     public async Task CreateProduct_WithValidData_ShouldReturnCreated()
     {
         var createCategoryRequest =
-            new CreateCategoryRequest("Product Test Category");
+            new CreateCategoryRequest($"Product Test Category-{Guid.NewGuid()}");
 
         var categoryResponse = await _client.PostAsJsonAsync(
             "/api/categories",
@@ -137,7 +139,7 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     public async Task CreateProduct_WhenSKUAlreadyExists_ShouldReturnBadRequest()
     {
         var createCategoryRequest =
-            new CreateCategoryRequest("Duplicate SKU Test Category");
+            new CreateCategoryRequest($"Duplicate SKU Test Category-{Guid.NewGuid()}");
 
         var categoryResponse = await _client.PostAsJsonAsync(
             "/api/categories",
@@ -193,7 +195,7 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     public async Task UpdateProduct_WhenCategoryDoesNotExist_ShouldReturnBadRequest()
     {
         var createCategoryRequest =
-            new CreateCategoryRequest("Update Missing Category Test");
+            new CreateCategoryRequest($"Update Missing Category Test-{Guid.NewGuid()}");
 
         var categoryResponse = await _client.PostAsJsonAsync(
             "/api/categories",
@@ -264,7 +266,7 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     public async Task UpdateProduct_WhenSKUAlreadyExists_ShouldReturnBadRequest()
     {
         var createCategoryRequest =
-            new CreateCategoryRequest("Update Duplicate SKU Test Category");
+            new CreateCategoryRequest($"Update Duplicate SKU Test Category-{Guid.NewGuid()}");
 
         var categoryResponse = await _client.PostAsJsonAsync(
             "/api/categories",

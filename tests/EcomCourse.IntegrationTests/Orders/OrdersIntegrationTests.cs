@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Customers;
+using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Orders;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +19,6 @@ namespace EcomCourse.IntegrationTests.Orders;
 
 public class OrdersIntegrationTests
 {
-    private const string _testAuthenticationScheme = "TestScheme";
     private readonly HttpClient _client;
     private readonly Guid _customerId = Guid.NewGuid();
 
@@ -31,16 +31,17 @@ public class OrdersIntegrationTests
             {
                 builder.ConfigureServices(services =>
                 {
-                    services.AddSingleton(new TestCustomer(_customerId));
-
                     services
                         .AddAuthentication(options =>
                         {
-                            options.DefaultAuthenticateScheme = _testAuthenticationScheme;
-                            options.DefaultChallengeScheme = _testAuthenticationScheme;
+                            options.DefaultAuthenticateScheme =
+                                TestAuthenticationHandler.AuthenticationScheme;
+
+                            options.DefaultChallengeScheme =
+                                TestAuthenticationHandler.AuthenticationScheme;
                         })
                         .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                            _testAuthenticationScheme,
+                            TestAuthenticationHandler.AuthenticationScheme,
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
@@ -50,6 +51,10 @@ public class OrdersIntegrationTests
             });
 
         _client = factory.CreateClient();
+
+        _client.DefaultRequestHeaders.Add(
+            "X-Test-CustomerId",
+            _customerId.ToString());
     }
 
     private static Customer CreateCustomer(Guid customerId)
@@ -116,43 +121,138 @@ public class OrdersIntegrationTests
         Assert.Equal(200m, firstLine.LineTotal);
     }
 
-    private sealed record TestCustomer(Guid CustomerId);
-
-    private sealed class TestAuthenticationHandler
-        : AuthenticationHandler<AuthenticationSchemeOptions>
+    [Fact]
+    public async Task GetOrderById_ShouldReturn401_ForAnonymous_RegardlessOfOrderExistence()
     {
-        private readonly TestCustomer _testCustomer;
+        // Arrange
+        var existingOrderId = await CreateOrderAsync();
+        var nonExistentOrderId = Guid.NewGuid();
 
-        public TestAuthenticationHandler(
-            IOptionsMonitor<AuthenticationSchemeOptions> options,
-            ILoggerFactory logger,
-            UrlEncoder encoder,
-            TestCustomer testCustomer)
-            : base(options, logger, encoder)
+        // Act
+        var existingResponse = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{existingOrderId}", anonymous: true));
+        var missingResponse = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{nonExistentOrderId}", anonymous: true));
+
+        // Assert — anonymous callers can't tell existing and non-existent orders apart.
+        Assert.Equal(HttpStatusCode.Unauthorized, existingResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, missingResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetOrderById_ShouldReturn403_WhenCalledByDifferentCustomer()
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Get, $"/api/orders/{orderId}", asCustomerId: Guid.NewGuid()));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldReturn401_WhenAnonymous(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}", anonymous: true));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldReturn403_WhenCalledByDifferentCustomer(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}", asCustomerId: Guid.NewGuid()));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldSucceed_WhenCalledByOwningCustomer(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("pay")]
+    [InlineData("cancel")]
+    public async Task OrderAction_ShouldSucceed_WhenCalledByAdmin(string action)
+    {
+        // Arrange
+        var orderId = await CreateOrderAsync();
+
+        // Act
+        var response = await _client.SendAsync(
+            BuildRequest(HttpMethod.Post, $"/api/orders/{orderId}/{action}", asCustomerId: Guid.NewGuid(), role: "Admin"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    private async Task<Guid> CreateOrderAsync()
+    {
+        var command = new CreateOrderCommand(
+            _customerId,
+            new List<OrderLineItemRequest> { new(Guid.NewGuid(), 1, 10m) });
+
+        var response = await _client.PostAsJsonAsync("/api/orders", command);
+
+        return await response.Content.ReadFromJsonAsync<Guid>();
+    }
+
+    private static HttpRequestMessage BuildRequest(
+        HttpMethod method,
+        string url,
+        bool anonymous = false,
+        Guid? asCustomerId = null,
+        string? role = null)
+    {
+        var request = new HttpRequestMessage(method, url);
+
+        if (anonymous)
         {
-            _testCustomer = testCustomer;
+            request.Headers.Add("X-Test-Anonymous", "true");
         }
 
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        if (asCustomerId.HasValue)
         {
-            var claims = new[]
-            {
-                new Claim("CustomerId", _testCustomer.CustomerId.ToString())
-            };
-
-            var identity = new ClaimsIdentity(
-                claims,
-                _testAuthenticationScheme);
-
-            var principal = new ClaimsPrincipal(identity);
-
-            var ticket = new AuthenticationTicket(
-                principal,
-                _testAuthenticationScheme);
-
-            return Task.FromResult(
-                AuthenticateResult.Success(ticket));
+            request.Headers.Add("X-Test-CustomerId", asCustomerId.Value.ToString());
         }
+
+        if (role is not null)
+        {
+            request.Headers.Add("X-Test-Role", role);
+        }
+
+        return request;
     }
 
     private sealed class InMemoryOrderRepository : IOrderRepository
@@ -179,10 +279,10 @@ public class OrdersIntegrationTests
         }
 
         public Task<(IReadOnlyList<Order> Orders, int TotalCount)> GetByCustomerIdAsync(
-    Guid customerId,
-    int page,
-    int pageSize,
-    CancellationToken cancellationToken = default)
+            Guid customerId,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
         {
             var filtered = _orders
                 .Where(order => order.CustomerId == customerId)
