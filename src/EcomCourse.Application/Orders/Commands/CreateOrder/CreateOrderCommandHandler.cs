@@ -7,10 +7,12 @@ namespace EcomCourse.Application.Orders.Commands.CreateOrder;
 public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderCommand, Guid>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly TimeProvider _timeProvider;
 
-    public CreateOrderCommandHandler(IOrderRepository orderRepository)
+    public CreateOrderCommandHandler(IOrderRepository orderRepository, TimeProvider timeProvider)
     {
         _orderRepository = orderRepository;
+        _timeProvider = timeProvider;
     }
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -19,7 +21,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
             .Select(i => (i.ProductId, i.Quantity, i.UnitPrice))
             .ToList();
 
-        var orderResult = Order.Create(request.customerId, items);
+        var orderResult = Order.Create(request.customerId, items, _timeProvider.GetUtcNow());
 
         if (orderResult.IsFailure)
         {
