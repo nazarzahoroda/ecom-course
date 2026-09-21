@@ -52,9 +52,10 @@ public class RefreshCommandHandlerTests
         var refreshToken = "invalid-or-expired-token";
         var command = new RefreshCommand(refreshToken);
         var error = new DomainError(
-                        "Identity.InvalidRefreshToken",
-                        "Refresh token is invalid or expired.",
-                        ErrorType.Unauthorized);
+            "Identity.InvalidRefreshToken",
+            "Refresh token is invalid or expired.",
+            ErrorType.Unauthorized
+        );
 
         _identityServiceMock
             .Setup(x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()))
@@ -68,6 +69,53 @@ public class RefreshCommandHandlerTests
 
         _identityServiceMock.Verify(
             x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_WhenTokenIsCompromised_ReturnsCompromisedFailure()
+    {
+        var refreshToken = "compromised-token";
+        var command = new RefreshCommand(refreshToken);
+        var error = new DomainError(
+            "Identity.RefreshTokenCompromised",
+            "A token reuse attempt was detected. All sessions have been terminated.",
+            ErrorType.Unauthorized
+        );
+
+        _identityServiceMock
+            .Setup(x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<AuthResponse>(error));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Identity.RefreshTokenCompromised", result.Error.Code);
+        Assert.Equal(error.Description, result.Error.Description);
+
+        _identityServiceMock.Verify(
+            x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPassCancellationTokenToService()
+    {
+        using var cts = new CancellationTokenSource();
+        var cancellationToken = cts.Token;
+        var refreshToken = "token";
+        var command = new RefreshCommand(refreshToken);
+
+        _identityServiceMock
+            .Setup(x => x.CheckRefreshToken(refreshToken, cancellationToken))
+            .ReturnsAsync(Result.Success(new AuthResponse()));
+
+        await _handler.Handle(command, cancellationToken);
+
+        _identityServiceMock.Verify(
+            x => x.CheckRefreshToken(refreshToken, cancellationToken),
             Times.Once
         );
     }
