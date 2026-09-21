@@ -4,10 +4,8 @@ using EcomCourse.Api.Categories;
 using EcomCourse.Api.Products;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Products;
-using EcomCourse.IntegrationTests.Common;
-using Microsoft.AspNetCore.Authentication;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.IntegrationTests.Products;
 
@@ -17,27 +15,8 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
     public ProductsIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        var authenticatedFactory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services
-                    .AddAuthentication(options =>
-                    {
-                        options.DefaultAuthenticateScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-
-                        options.DefaultChallengeScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-                    })
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                        TestAuthenticationHandler.AuthenticationScheme,
-                        options => { });
-            });
-        });
-
-        _client = authenticatedFactory.CreateClient();
-        _client.DefaultRequestHeaders.Add("X-Test-Role", "Admin");
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
     }
 
     [Fact]

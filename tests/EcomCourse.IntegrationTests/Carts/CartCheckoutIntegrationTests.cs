@@ -5,8 +5,7 @@ using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
-using EcomCourse.IntegrationTests.Common;
-using Microsoft.AspNetCore.Authentication;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,36 +20,16 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
 
     public CartCheckoutIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services
-                    .AddAuthentication(options =>
-                    {
-                        options.DefaultAuthenticateScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-
-                        options.DefaultChallengeScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-                    })
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                        TestAuthenticationHandler.AuthenticationScheme,
-                        options => { });
-            });
-        });
-
-        _client = _factory.CreateClient();
+        _factory = factory;
+        _client = factory.WithTestAuthentication().CreateClient();
     }
 
     [Fact]
     public async Task Checkout_WhenCartIsEmpty_ReturnsConflictDomainError()
     {
         var customerId = Guid.NewGuid();
-        _client.DefaultRequestHeaders.Remove("X-Test-CustomerId");
-        _client.DefaultRequestHeaders.Add(
-            "X-Test-CustomerId",
-            customerId.ToString());
+
+        _client.AuthenticateAs(customerId);
 
         using (var scope = _factory.Services.CreateScope())
         {
@@ -100,10 +79,7 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             await db.SaveChangesAsync();
         }
 
-        _client.DefaultRequestHeaders.Remove("X-Test-CustomerId");
-        _client.DefaultRequestHeaders.Add(
-            "X-Test-CustomerId",
-            customerId.ToString());
+        _client.AuthenticateAs(customerId);
 
         var addRes = await _client.PostAsJsonAsync(
             "/api/Cart/items",

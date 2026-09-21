@@ -5,7 +5,7 @@ using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Authentication;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,26 +20,8 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
 
     public CartIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services
-                    .AddAuthentication(options =>
-                    {
-                        options.DefaultAuthenticateScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-
-                        options.DefaultChallengeScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-                    })
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                        TestAuthenticationHandler.AuthenticationScheme,
-                        options => { });
-            });
-        });
-
-        _httpClient = _factory.CreateClient();
+        _factory = factory;
+        _httpClient = factory.WithTestAuthentication().CreateClient();
     }
 
     [Fact]
@@ -92,10 +74,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
             await db.SaveChangesAsync();
         }
 
-        _httpClient.DefaultRequestHeaders.Remove("X-Test-CustomerId");
-        _httpClient.DefaultRequestHeaders.Add(
-            "X-Test-CustomerId",
-            customerId.ToString());
+        _httpClient.AuthenticateAs(customerId);
 
         var addRes1 = await _httpClient.PostAsJsonAsync(
             "/api/Cart/items",
@@ -166,10 +145,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
             await db.SaveChangesAsync();
         }
 
-        _httpClient.DefaultRequestHeaders.Remove("X-Test-CustomerId");
-        _httpClient.DefaultRequestHeaders.Add(
-            "X-Test-CustomerId",
-            customerId.ToString());
+        _httpClient.AuthenticateAs(customerId);
 
         var addRes = await _httpClient.PostAsJsonAsync(
             "/api/Cart/items",
@@ -195,10 +171,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
     public async Task GetActiveCart_WhenNoActiveCartExists_Returns200WithEmptyCartDetails()
     {
         var customerId = Guid.NewGuid();
-        _httpClient.DefaultRequestHeaders.Remove("X-Test-CustomerId");
-        _httpClient.DefaultRequestHeaders.Add(
-            "X-Test-CustomerId",
-            customerId.ToString());
+        _httpClient.AuthenticateAs(customerId);
 
         var getRes = await _httpClient.GetAsync("/api/Cart");
 

@@ -2,10 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
-using EcomCourse.IntegrationTests.Common;
-using Microsoft.AspNetCore.Authentication;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.IntegrationTests.Categories;
 
@@ -15,27 +13,8 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
     public CategoriesIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        var authenticatedFactory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services
-                    .AddAuthentication(options =>
-                    {
-                        options.DefaultAuthenticateScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-
-                        options.DefaultChallengeScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-                    })
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                        TestAuthenticationHandler.AuthenticationScheme,
-                        options => { });
-            });
-        });
-
-        _client = authenticatedFactory.CreateClient();
-        _client.DefaultRequestHeaders.Add("X-Test-Role", "Admin");
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
     }
 
     [Fact]
