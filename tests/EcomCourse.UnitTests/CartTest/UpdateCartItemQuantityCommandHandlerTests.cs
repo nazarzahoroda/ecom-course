@@ -22,7 +22,10 @@ namespace EcomCourse.UnitTests.CartTest
         {
             var dto = new UpdateCartItemQuantityDto { ProductId = Guid.NewGuid(), Quantity = 2 };
             var command = new UpdateCartItemQuantityCommand(dto);
-            var error = new DomainError("CartItem.NotFound", "Item not found.");
+            var error = new DomainError(
+                            "CartItem.NotFound",
+                            "Item not found.",
+                            ErrorType.NotFound);
 
             _cartServiceMock
                 .Setup(x => x.UpdateCartItemQuantityAsync(dto, It.IsAny<CancellationToken>()))
