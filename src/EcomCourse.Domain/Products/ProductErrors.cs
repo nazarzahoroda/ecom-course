@@ -43,9 +43,33 @@ public static class ProductErrors
         );
 
     public static DomainError NotFound(Guid id) =>
+        new("Product.NotFound", $"Product {id} was not found.", ErrorType.NotFound);
+
+    public static DomainError ImageNotFound(Guid id) =>
+        new("Product.ImageNotFound", $"Image {id} was not found.", ErrorType.NotFound);
+
+    public static DomainError ProductImagesNotFound(Guid id) =>
         new(
-            "Product.NotFound",
-            $"Product {id} was not found.",
+            "Product.ProductImagesNotFound",
+            $"Product images for product {id} were not found.",
             ErrorType.NotFound
         );
+
+    public static readonly DomainError ImageBlobNameEmpty = new(
+        "Product.ImageBlobNameEmpty",
+        "Blob file name cannot be empty",
+        ErrorType.Validation
+    );
+
+    public static readonly DomainError ImageContentTypeEmpty = new(
+        "Product.ImageContentTypeEmpty",
+        "Image content type cannot be empty",
+        ErrorType.Validation
+    );
+
+    public static readonly DomainError MaxImagesLimitReached = new(
+        "Product.MaxImagesLimitReached",
+        "Maximum limit of product images has been reached",
+        ErrorType.Failure
+    );
 }

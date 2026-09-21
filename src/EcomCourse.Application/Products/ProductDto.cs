@@ -8,4 +8,6 @@ public sealed record ProductDto(
     decimal Amount,
     Currency Currency,
     string SKU,
-    Guid CategoryId);
+    Guid CategoryId,
+    List<ProductImageDto> Images
+);

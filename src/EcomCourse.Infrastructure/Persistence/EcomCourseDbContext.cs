@@ -1,5 +1,5 @@
-using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Carts;
+using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
@@ -24,6 +24,7 @@ public class EcomCourseDbContext : DbContext
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -4,6 +4,7 @@ using EcomCourse.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EcomCourse.Infrastructure.Migrations
 {
     [DbContext(typeof(EcomCourseDbContext))]
-    partial class EcomCourseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260921085312_ProductImage")]
+    partial class ProductImage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -73,9 +76,6 @@ namespace EcomCourse.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
 
                     b.ToTable("Categories", (string)null);
                 });
@@ -337,7 +337,7 @@ namespace EcomCourse.Infrastructure.Migrations
             modelBuilder.Entity("EcomCourse.Domain.Products.ProductImage", b =>
                 {
                     b.HasOne("EcomCourse.Domain.Products.Product", null)
-                        .WithMany("Images")
+                        .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -351,11 +351,6 @@ namespace EcomCourse.Infrastructure.Migrations
             modelBuilder.Entity("EcomCourse.Domain.Orders.Order", b =>
                 {
                     b.Navigation("Lines");
-                });
-
-            modelBuilder.Entity("EcomCourse.Domain.Products.Product", b =>
-                {
-                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }

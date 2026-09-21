@@ -1,7 +1,7 @@
 using EcomCourse.Application.Authentication.Interfaces;
 using EcomCourse.Application.Categories.Services;
-using EcomCourse.Application.Products.Services;
 using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
@@ -63,6 +63,8 @@ public static class DependencyInjection
         services.AddScoped<IUserContext, UserContext>();
 
         services.AddScoped<ICartService, CartService>();
+
+        services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
 
         return services;
     }
