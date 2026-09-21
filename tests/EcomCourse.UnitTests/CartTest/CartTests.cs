@@ -1,4 +1,6 @@
+using System;
 using EcomCourse.Domain.Carts;
+using Xunit;
 
 namespace EcomCourse.UnitTests.CartTest
 {
@@ -7,7 +9,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void ItemCannotBeAddedToCartWhenNotActive()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             cart.Abandon();
 
@@ -20,7 +22,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void ItemCannotBeAddedToCartWhenNotActiveCheckout()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             cart.Checkout();
 
@@ -33,7 +35,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void CreateItemQuantityWithZeroQuantityHaveToFail()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             var productId = Guid.NewGuid();
 
@@ -46,7 +48,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void UpdateItemQuantityWithZeroQuantityHaveToFail()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             var productId = Guid.NewGuid();
 
