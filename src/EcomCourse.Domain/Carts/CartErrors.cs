@@ -5,9 +5,9 @@ namespace EcomCourse.Domain.Carts
     public static class CartErrors
     {
         public static readonly DomainError InvalidQuantity = new(
-            "CartItem.InvalidQuantity",
-            "Quantity must be greater than zero",
-            ErrorType.Validation
+        "CartItem.InvalidQuantity",
+        "Quantity must be greater than zero",
+        ErrorType.Validation
         );
 
         public static readonly DomainError CartNotFound = new(
@@ -28,12 +28,6 @@ namespace EcomCourse.Domain.Carts
             ErrorType.NotFound
         );
 
-        public static readonly DomainError ItemExists = new(
-            "CartItem.ItemExists",
-            "Item already in the cart",
-            ErrorType.Conflict
-        );
-
         public static readonly DomainError CartNotActive = new(
             "Cart.NotActive",
             "Cart is not active",
@@ -46,4 +40,5 @@ namespace EcomCourse.Domain.Carts
             ErrorType.Conflict
         );
     }
+
 }
