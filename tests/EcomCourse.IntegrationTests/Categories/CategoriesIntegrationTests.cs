@@ -21,7 +21,8 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     public async Task Category_CRUD_HappyPath_ShouldWork()
     {
         // Arrange
-        var createCommand = new CreateCategoryCommand("Electronics");
+        var categoryName = $"Electronics-{Guid.NewGuid()}";
+        var createCommand = new CreateCategoryCommand(categoryName);
 
         // CREATE
         var createResponse = await _client.PostAsJsonAsync("/api/categories", createCommand);
@@ -41,12 +42,15 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
         Assert.NotNull(category);
 
-        Assert.Equal("Electronics", category.Name);
+        Assert.Equal(categoryName, category.Name);
 
         // UPDATE
+
+        var updatedCategoryName = $"Smartphones-{Guid.NewGuid()}";
+
         var updateResponse = await _client.PutAsJsonAsync(
             $"/api/categories/{categoryId}",
-            new { name = "Smartphones" });
+            new { name = updatedCategoryName });
 
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
@@ -59,7 +63,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
         Assert.NotNull(updatedCategory);
 
-        Assert.Equal("Smartphones", updatedCategory.Name);
+        Assert.Equal(updatedCategoryName, updatedCategory.Name);
 
         // DELETE
         var deleteResponse = await _client.DeleteAsync($"/api/categories/{categoryId}");
@@ -119,5 +123,61 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
 
         Assert.NotNull(categories);
         Assert.True(categories.Count <= 4);
+    }
+
+    [Fact]
+    public async Task CreateCategory_WithDuplicateName_ShouldReturnConflict()
+    {
+        var categoryName = $"Duplicate-{Guid.NewGuid()}";
+
+        var firstResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            new CreateCategoryCommand(categoryName));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            firstResponse.StatusCode);
+
+        var secondResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            new CreateCategoryCommand(categoryName));
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            secondResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_WithDuplicateName_ShouldReturnConflict()
+    {
+        var firstName = $"Category-{Guid.NewGuid()}";
+        var secondName = $"Category-{Guid.NewGuid()}";
+
+        var firstCreateResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            new CreateCategoryCommand(firstName));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            firstCreateResponse.StatusCode);
+
+        var secondCreateResponse = await _client.PostAsJsonAsync(
+            "/api/categories",
+            new CreateCategoryCommand(secondName));
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            secondCreateResponse.StatusCode);
+
+        var secondCategoryId = await secondCreateResponse.Content
+            .ReadFromJsonAsync<Guid>();
+
+        var updateResponse = await _client.PutAsJsonAsync(
+            $"/api/categories/{secondCategoryId}",
+            new { name = firstName });
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            updateResponse.StatusCode);
     }
 }
