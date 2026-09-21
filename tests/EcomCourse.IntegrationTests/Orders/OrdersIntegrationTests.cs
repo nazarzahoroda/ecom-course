@@ -200,7 +200,7 @@ public class OrdersIntegrationTests
     {
         var command = new CreateOrderCommand(
             _customerId,
-            new List<OrderLineItemRequest> { new(Guid.NewGuid(), 1, 10m) });
+            new List<OrderLineItemRequest> { new(Guid.NewGuid(), 1, 10m, Currency.USD) });
 
         var response = await _client.PostAsJsonAsync("/api/orders", command);
 
