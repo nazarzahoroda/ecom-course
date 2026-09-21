@@ -57,5 +57,23 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.True(result.IsFailure);
             Assert.Equal(CartErrors.InvalidQuantity, result.Error);
         }
+
+        [Fact]
+        public void AddItem_WhenProductAlreadyInCart_SumsQuantity()
+        {
+            // Arrange
+            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var productId = Guid.NewGuid();
+
+            // Act
+            cart.AddItem(productId, 2);
+            var result = cart.AddItem(productId, 3);
+
+            // Assert
+            Assert.True(result.IsSuccess);
+            Assert.Single(cart.Items);
+            Assert.Equal(5, cart.Items.First().Quantity);
+        }
     }
+
 }
