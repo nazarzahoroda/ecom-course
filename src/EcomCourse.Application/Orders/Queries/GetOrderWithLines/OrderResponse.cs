@@ -12,4 +12,5 @@ public record OrderResponse(
     Guid CustomerId,
     string Status,
     decimal Total,
+    DateTimeOffset CreatedAt,
     List<OrderLineResponse> Lines);

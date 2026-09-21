@@ -4,6 +4,7 @@ using EcomCourse.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EcomCourse.Infrastructure.Migrations
 {
     [DbContext(typeof(EcomCourseDbContext))]
-    partial class EcomCourseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917153333_AddOrderCreatedAt")]
+    partial class AddOrderCreatedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -73,9 +76,6 @@ namespace EcomCourse.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
 
                     b.ToTable("Categories", (string)null);
                 });
@@ -163,35 +163,6 @@ namespace EcomCourse.Infrastructure.Migrations
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Products", (string)null);
-                });
-
-            modelBuilder.Entity("EcomCourse.Domain.Products.ProductImage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BlobName")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsMain")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("ProductImages", (string)null);
                 });
 
             modelBuilder.Entity("EcomCourse.Domain.Carts.CartItem", b =>
@@ -337,15 +308,6 @@ namespace EcomCourse.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("EcomCourse.Domain.Products.ProductImage", b =>
-                {
-                    b.HasOne("EcomCourse.Domain.Products.Product", null)
-                        .WithMany("Images")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("EcomCourse.Domain.Carts.Cart", b =>
                 {
                     b.Navigation("Items");
@@ -354,11 +316,6 @@ namespace EcomCourse.Infrastructure.Migrations
             modelBuilder.Entity("EcomCourse.Domain.Orders.Order", b =>
                 {
                     b.Navigation("Lines");
-                });
-
-            modelBuilder.Entity("EcomCourse.Domain.Products.Product", b =>
-                {
-                    b.Navigation("Images");
                 });
 #pragma warning restore 612, 618
         }
