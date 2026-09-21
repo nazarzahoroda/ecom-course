@@ -28,6 +28,7 @@ public sealed class GetOrdersQueryHandler : IQueryHandler<GetOrdersQuery, GetOrd
                 order.CustomerId,
                 order.Status.ToString(),
                 order.Total,
+                order.CreatedAt,
                 order.Lines
                     .Select(line => new OrderLineResponse(
                         line.Id,

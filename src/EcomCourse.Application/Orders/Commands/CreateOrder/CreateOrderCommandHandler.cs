@@ -9,11 +9,16 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IProductService _productService;
+    private readonly TimeProvider _timeProvider;
 
-    public CreateOrderCommandHandler(IOrderRepository orderRepository, IProductService productService)
+    public CreateOrderCommandHandler(
+        IOrderRepository orderRepository,
+        IProductService productService,
+        TimeProvider timeProvider)
     {
         _orderRepository = orderRepository;
         _productService = productService;
+        _timeProvider = timeProvider;
     }
 
     public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -33,7 +38,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
             .Select(item => (item.ProductId, item.Quantity, UnitPrice: priceByProductId[item.ProductId]))
             .ToList();
 
-        var orderResult = Order.Create(request.customerId, items);
+        var orderResult = Order.Create(request.customerId, items, _timeProvider.GetUtcNow());
 
         if (orderResult.IsFailure)
         {

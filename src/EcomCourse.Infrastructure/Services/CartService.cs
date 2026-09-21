@@ -15,11 +15,13 @@ namespace EcomCourse.Infrastructure.Services
     {
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
+        private readonly TimeProvider _timeProvider;
 
-        public CartService(EcomCourseDbContext context, IUserContext currentUserService)
+        public CartService(EcomCourseDbContext context, IUserContext currentUserService, TimeProvider timeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _timeProvider = timeProvider;
         }
 
         public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
@@ -218,7 +220,7 @@ namespace EcomCourse.Infrastructure.Services
                 )
                 .ToList();
 
-            var orderResult = Order.Create(customerId, items);
+            var orderResult = Order.Create(customerId, items, _timeProvider.GetUtcNow());
             if (orderResult.IsFailure)
                 return Result.Failure<Guid>(orderResult.Error);
 
