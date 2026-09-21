@@ -29,21 +29,28 @@ namespace EcomCourse.Domain.Carts
 
             if (isActive.IsFailure)
                 return Result.Failure(isActive.Error);
+
+            if (quantity <= 0)
+                return Result.Failure(CartErrors.InvalidQuantity);
+
             var item = _items.FirstOrDefault(x => x.ProductId == productId);
+
             if (item is not null)
-                return Result.Failure(CartErrors.ItemExists);
-
-            var newItem = CartItem.Create(productId, quantity);
-
-            if (newItem.IsFailure)
             {
-                return newItem;
+                return UpdateItemQuantity(productId, item.Quantity + quantity);
             }
 
-            _items.Add(newItem.Value!);
+            var itemResult = CartItem.Create(productId, quantity);
+
+            if (itemResult.IsFailure)
+                return Result.Failure(itemResult.Error);
+
+            _items.Add(itemResult.Value!);
 
             return Result.Success();
+
         }
+
 
         public Result UpdateItemQuantity(Guid productId, int quantity)
         {
@@ -109,4 +116,5 @@ namespace EcomCourse.Domain.Carts
             return Result.Success();
         }
     }
+
 }
