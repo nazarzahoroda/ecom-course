@@ -22,19 +22,19 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     {
         // Arrange
         var createCommand = new CreateCategoryCommand("Electronics");
-            
+
         // CREATE
         var createResponse = await _client.PostAsJsonAsync("/api/categories", createCommand);
-            
+
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var categoryId = await createResponse.Content.ReadFromJsonAsync<Guid>();
-            
+
         Assert.NotEqual(Guid.Empty, categoryId);
 
         // READ BY ID
         var getResponse = await _client.GetAsync($"/api/categories/{categoryId}");
-            
+
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
         var category = await getResponse.Content.ReadFromJsonAsync<CategoryDto>();
@@ -44,7 +44,9 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("Electronics", category.Name);
 
         // UPDATE
-        var updateResponse = await _client.PutAsJsonAsync($"/api/categories/{categoryId}", new {name = "Smartphones"});
+        var updateResponse = await _client.PutAsJsonAsync(
+            $"/api/categories/{categoryId}",
+            new { name = "Smartphones" });
 
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
@@ -52,8 +54,8 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         var updatedResponse = await _client.GetAsync($"/api/categories/{categoryId}");
 
         Assert.Equal(HttpStatusCode.OK, updatedResponse.StatusCode);
-            
-        var updatedCategory = await updatedResponse.Content.ReadFromJsonAsync<CategoryDto>();   
+
+        var updatedCategory = await updatedResponse.Content.ReadFromJsonAsync<CategoryDto>();
 
         Assert.NotNull(updatedCategory);
 
@@ -67,7 +69,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         // VERIFY DELETE
         var deletedResponse = await _client.GetAsync($"/api/categories/{categoryId}");
 
-        Assert.Equal(HttpStatusCode.NotFound, deletedResponse.StatusCode);   
+        Assert.Equal(HttpStatusCode.NotFound, deletedResponse.StatusCode);
     }
 
     [Fact]

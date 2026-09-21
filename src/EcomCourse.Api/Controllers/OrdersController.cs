@@ -1,10 +1,10 @@
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Orders.Commands.CancelOrder;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
 using EcomCourse.Application.Orders.Queries.GetOrders;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
-using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -81,14 +81,7 @@ public class OrdersController : ControllerBase
 
         if (result.IsFailure)
         {
-            return BadRequest(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return CreatedAtAction(nameof(GetOrderById), new { id = result.Value }, result.Value);
@@ -114,22 +107,7 @@ public class OrdersController : ControllerBase
 
         if (result.IsFailure)
         {
-            if (result.Error == OrderErrors.NotFound)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-
-            return BadRequest(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status400BadRequest
-            });
+            return result.ToProblemDetails();
         }
 
         return NoContent();
@@ -155,22 +133,7 @@ public class OrdersController : ControllerBase
 
         if (result.IsFailure)
         {
-            if (result.Error == OrderErrors.NotFound)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-
-            return BadRequest(new ProblemDetails
-            {
-                Title = result.Error.Code,
-                Detail = result.Error.Description,
-                Status = StatusCodes.Status400BadRequest
-            });
+            return result.ToProblemDetails();
         }
 
         return NoContent();
@@ -185,14 +148,7 @@ public class OrdersController : ControllerBase
 
         if (result.IsFailure)
         {
-            return (null, NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            ));
+            return (null, result.ToProblemDetails());
         }
 
         var resource = new CustomerResource(result.Value!.CustomerId);

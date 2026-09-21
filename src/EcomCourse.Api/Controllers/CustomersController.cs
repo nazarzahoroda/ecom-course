@@ -1,3 +1,4 @@
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Customers.GetCustomerById;
 using EcomCourse.Infrastructure.Authorization;
 using MediatR;
@@ -31,14 +32,7 @@ public class CustomersController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            );
+            return result.ToProblemDetails();
         }
         var resource = new CustomerResource(result.Value!.Id);
 
