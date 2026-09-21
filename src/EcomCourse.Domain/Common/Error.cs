@@ -1,12 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace EcomCourse.Domain.Common
 {
-    public record DomainError(string Code, string Description)
+    public record DomainError(
+        string Code,
+        string Description,
+        ErrorType Type)
     {
-        public static readonly DomainError None = new("", "");
-        public static readonly DomainError NullValue = new("Error.NullValue", "Value cannot be null");
+        public static readonly DomainError None = new(
+            "",
+            "",
+            ErrorType.None);
+
+        public static readonly DomainError NullValue = new(
+            "Error.NullValue",
+            "Value cannot be null",
+            ErrorType.Validation);
     }
 }

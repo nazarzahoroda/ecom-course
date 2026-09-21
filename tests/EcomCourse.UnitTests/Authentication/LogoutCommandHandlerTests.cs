@@ -41,7 +41,10 @@ public class LogoutCommandHandlerTests
     {
         var token = "invalid-token";
         var command = new LogoutCommand(token);
-        var error = new DomainError("Auth.InvalidToken", "Token is invalid");
+        var error = new DomainError(
+                        "Auth.InvalidToken",
+                        "Token is invalid",
+                        ErrorType.Unauthorized);
 
         _identityServiceMock
             .Setup(x => x.RevokeRefreshToken(token, It.IsAny<CancellationToken>()))
