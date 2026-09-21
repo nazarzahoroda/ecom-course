@@ -274,7 +274,7 @@ namespace EcomCourse.Infrastructure.Services
                     new DomainError("Identity.RefreshToken", "Refresh token not found in data base")
                 );
 
-            if (token.IsRevoked)
+            if (token.IsRevoked && !string.IsNullOrEmpty(token.ReplacedByTokenHash))
             {
                 var userTokens = await _context
                     .RefreshTokens.Where(t => t.UserId == token.UserId && t.RevokedAt == null)
@@ -290,7 +290,17 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure<AuthResponse>(
                     new DomainError(
                         "Identity.RefreshTokenCompromised",
-                        "A token reuse attempt was detected. All sessions have been terminated."
+                        "A token reuse attempt was detected. All sessions have been terminated"
+                    )
+                );
+            }
+
+            if (token.IsRevoked)
+            {
+                return Result.Failure<AuthResponse>(
+                    new DomainError(
+                        "Identity.RefreshTokenRevoked",
+                        "The refresh token has been revoked"
                     )
                 );
             }
