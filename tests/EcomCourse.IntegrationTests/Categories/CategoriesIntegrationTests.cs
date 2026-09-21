@@ -126,7 +126,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    public async Task CreateCategory_WithDuplicateName_ShouldReturnBadRequest()
+    public async Task CreateCategory_WithDuplicateName_ShouldReturnConflict()
     {
         var categoryName = $"Duplicate-{Guid.NewGuid()}";
 
@@ -143,12 +143,12 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
             new CreateCategoryCommand(categoryName));
 
         Assert.Equal(
-            HttpStatusCode.BadRequest,
+            HttpStatusCode.Conflict,
             secondResponse.StatusCode);
     }
 
     [Fact]
-    public async Task UpdateCategory_WithDuplicateName_ShouldReturnBadRequest()
+    public async Task UpdateCategory_WithDuplicateName_ShouldReturnConflict()
     {
         var firstName = $"Category-{Guid.NewGuid()}";
         var secondName = $"Category-{Guid.NewGuid()}";
@@ -177,7 +177,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
             new { name = firstName });
 
         Assert.Equal(
-            HttpStatusCode.BadRequest,
+            HttpStatusCode.Conflict,
             updateResponse.StatusCode);
     }
 }
