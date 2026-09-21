@@ -1,4 +1,5 @@
 using EcomCourse.Api.Categories;
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
 using EcomCourse.Application.Categories.Commands.Delete;
@@ -40,14 +41,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return BadRequest(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return CreatedAtAction(nameof(GetCategoryById), new { id = result.Value }, result.Value);
@@ -64,14 +58,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return Ok(result.Value);
@@ -117,26 +104,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            if (result.Error.Code == CategoryErrors.NotFound(id).Code)
-            {
-                return NotFound(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status404NotFound,
-                    }
-                );
-            }
-
-            return BadRequest(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return NoContent();
@@ -154,14 +122,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return NoContent();

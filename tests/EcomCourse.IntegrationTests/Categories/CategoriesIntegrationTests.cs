@@ -30,12 +30,12 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var categoryId = await createResponse.Content.ReadFromJsonAsync<Guid>();
-            
+
         Assert.NotEqual(Guid.Empty, categoryId);
 
         // READ BY ID
         var getResponse = await _client.GetAsync($"/api/categories/{categoryId}");
-            
+
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
         var category = await getResponse.Content.ReadFromJsonAsync<CategoryDto>();
@@ -45,6 +45,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal(categoryName, category.Name);
 
         // UPDATE
+
         var updatedCategoryName = $"Smartphones-{Guid.NewGuid()}";
 
         var updateResponse = await _client.PutAsJsonAsync(
@@ -57,8 +58,8 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         var updatedResponse = await _client.GetAsync($"/api/categories/{categoryId}");
 
         Assert.Equal(HttpStatusCode.OK, updatedResponse.StatusCode);
-            
-        var updatedCategory = await updatedResponse.Content.ReadFromJsonAsync<CategoryDto>();   
+
+        var updatedCategory = await updatedResponse.Content.ReadFromJsonAsync<CategoryDto>();
 
         Assert.NotNull(updatedCategory);
 
@@ -72,7 +73,7 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         // VERIFY DELETE
         var deletedResponse = await _client.GetAsync($"/api/categories/{categoryId}");
 
-        Assert.Equal(HttpStatusCode.NotFound, deletedResponse.StatusCode);   
+        Assert.Equal(HttpStatusCode.NotFound, deletedResponse.StatusCode);
     }
 
     [Fact]

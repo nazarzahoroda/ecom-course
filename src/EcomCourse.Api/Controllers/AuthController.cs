@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Authentication.Commands.LoginCommand;
 using EcomCourse.Application.Authentication.Commands.LogoutCommand;
 using EcomCourse.Application.Authentication.Commands.RefreshCommand;
@@ -38,14 +39,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
             return StatusCode(StatusCodes.Status201Created);
         }
@@ -57,14 +51,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
             var cookieOptions = new CookieOptions
             {
@@ -105,14 +92,7 @@ namespace EcomCourse.Api.Controllers
 
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
 
             Response.Cookies.Append(
@@ -144,14 +124,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
 
             Response.Cookies.Delete("access_token");

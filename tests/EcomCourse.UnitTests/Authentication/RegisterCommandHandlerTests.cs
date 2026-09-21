@@ -75,7 +75,10 @@ public class RegisterCommandHandlerTests
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
-        var error = new DomainError("Identity.CreationFailed", "Could not create user");
+        var error = new DomainError(
+                        "Identity.CreationFailed",
+                        "Could not create user",
+                        ErrorType.Conflict);
 
         _identityServiceMock
             .Setup(x => x.IsUserExist(dto.Email, It.IsAny<CancellationToken>()))

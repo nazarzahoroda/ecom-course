@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Carts.DTOs;
+using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;

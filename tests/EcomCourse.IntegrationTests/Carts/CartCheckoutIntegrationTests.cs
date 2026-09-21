@@ -25,9 +25,10 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
-    public async Task Checkout_WhenCartIsEmpty_ReturnsBadRequestDomainError()
+    public async Task Checkout_WhenCartIsEmpty_ReturnsConflictDomainError()
     {
         var customerId = Guid.NewGuid();
+
         _client.AuthenticateAs(customerId);
 
         using (var scope = _factory.Services.CreateScope())
@@ -41,11 +42,11 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
 
         var response = await _client.PostAsync("/api/Cart/checkout", null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
-    public async Task Checkout_FullFlow_Success_UpdatesCartAndSetsJwtCustomerId()
+    public async Task Checkout_FullFlow_Success_UpdatesCartAndSetsCustomerId()
     {
         var customerId = Guid.NewGuid();
 
