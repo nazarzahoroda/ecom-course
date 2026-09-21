@@ -4,6 +4,7 @@ using EcomCourse.Api.Categories;
 using EcomCourse.Api.Products;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Products;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace EcomCourse.IntegrationTests.Products;
@@ -14,7 +15,8 @@ public class ProductsIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
     public ProductsIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
     }
 
     [Fact]

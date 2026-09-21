@@ -1,43 +1,20 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Encodings.Web;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
-using Microsoft.AspNetCore.Authentication;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-
 
 namespace EcomCourse.IntegrationTests.Categories;
 
-public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Program>>  
+public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private const string _testAuthenticationScheme = "TestScheme";
-
     private readonly HttpClient _client;
 
     public CategoriesIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        var authenticatedFactory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services
-                    .AddAuthentication(options =>
-                    {
-                        options.DefaultAuthenticateScheme = _testAuthenticationScheme;
-                        options.DefaultChallengeScheme = _testAuthenticationScheme;
-                    })
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                        _testAuthenticationScheme,
-                        options => { });
-            });
-        });
-
-        _client = authenticatedFactory.CreateClient();
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
     }
 
     [Fact]
@@ -201,43 +178,5 @@ public class CategoriesIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal(
             HttpStatusCode.BadRequest,
             updateResponse.StatusCode);
-    }
-
-    private sealed class TestAuthenticationHandler
-        : AuthenticationHandler<AuthenticationSchemeOptions>
-    {
-        public TestAuthenticationHandler(
-            IOptionsMonitor<AuthenticationSchemeOptions> options,
-            ILoggerFactory logger,
-            UrlEncoder encoder)
-            : base(options, logger, encoder)
-        {
-        }
-
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-        {
-            var claims = new[]
-            {
-            new Claim(
-                ClaimTypes.NameIdentifier,
-                Guid.NewGuid().ToString()),
-            new Claim(
-                ClaimTypes.Role,
-                "Admin"),
-        };
-
-            var identity = new ClaimsIdentity(
-                claims,
-                _testAuthenticationScheme);
-
-            var principal = new ClaimsPrincipal(identity);
-
-            var ticket = new AuthenticationTicket(
-                principal,
-                _testAuthenticationScheme);
-
-            return Task.FromResult(
-                AuthenticateResult.Success(ticket));
-        }
     }
 }
