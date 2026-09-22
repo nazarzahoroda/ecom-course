@@ -1,4 +1,5 @@
 using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using NSubstitute;
@@ -18,8 +19,11 @@ public class MarkOrderAsPaidCommandHandlerTests
 
     private static Order CreatePendingOrder()
     {
+        var address = Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
+
         var result = Order.Create(
             Guid.NewGuid(),
+            address,
             new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) },
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 

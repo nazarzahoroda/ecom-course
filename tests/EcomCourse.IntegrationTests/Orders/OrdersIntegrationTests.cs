@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -10,6 +11,7 @@ using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
 using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
@@ -27,6 +29,8 @@ public class OrdersIntegrationTests
 
     public OrdersIntegrationTests()
     {
+        var customer = CreateCustomer(_customerId);
+
         var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
@@ -46,6 +50,8 @@ public class OrdersIntegrationTests
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+                    services.RemoveAll<ICustomerStore>();
+                    services.AddSingleton<ICustomerStore>(new InMemoryCustomerStore(customer));
                     services.RemoveAll<IProductService>();
                     services.AddSingleton<IProductService>(_productService);
                 });
@@ -56,6 +62,24 @@ public class OrdersIntegrationTests
         _client.DefaultRequestHeaders.Add(
             "X-Test-CustomerId",
             _customerId.ToString());
+    }
+
+    private static Customer CreateCustomer(Guid customerId)
+    {
+        var customer = Customer.Create(
+            Guid.NewGuid(),
+            "Test Customer",
+            $"{customerId}@example.com",
+            "Khreshchatyk St 1",
+            "Kyiv",
+            "01001",
+            "Ukraine").Value!;
+
+        typeof(Customer).BaseType!
+            .GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(customer, customerId);
+
+        return customer;
     }
 
     [Fact]
@@ -105,6 +129,8 @@ public class OrdersIntegrationTests
 
         Assert.Equal(250m, orderDetails.Total);
         Assert.Equal(Currency.USD, orderDetails.Currency);
+        Assert.Equal("Khreshchatyk St 1", orderDetails.ShippingAddress.Street);
+        Assert.Equal("Kyiv", orderDetails.ShippingAddress.City);
 
         // Сheck lines
         Assert.Equal(2, orderDetails.Lines.Count);
@@ -294,6 +320,38 @@ public class OrdersIntegrationTests
                 .ToList();
 
             return Task.FromResult<(IReadOnlyList<Order>, int)>((pagedOrders, totalCount));
+        }
+    }
+
+    private sealed class InMemoryCustomerStore : ICustomerStore
+    {
+        private readonly List<Customer> _customers;
+
+        public InMemoryCustomerStore(params Customer[] customers)
+        {
+            _customers = customers.ToList();
+        }
+
+        public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_customers.Any(customer => customer.Email.Equals(email)));
+        }
+
+        public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
+        {
+            _customers.Add(customer);
+            return Task.FromResult(true);
+        }
+
+        public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_customers.FirstOrDefault(customer => customer.Id == id));
+        }
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var removed = _customers.RemoveAll(customer => customer.Id == id) > 0;
+            return Task.FromResult(removed);
         }
     }
 

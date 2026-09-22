@@ -1,4 +1,5 @@
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Primitives;
 using EcomCourse.Domain.Products;
 
@@ -9,6 +10,7 @@ public class Order : Entity<Guid>
     private readonly List<OrderLine> _lines = [];
 
     public Guid CustomerId { get; private set; }
+    public Address ShippingAddress { get; private set; }
     public OrderStatus Status { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
@@ -19,12 +21,16 @@ public class Order : Entity<Guid>
 
     public Currency Currency => _lines.Count > 0 ? _lines[0].Currency : default;
 
-    private Order() : base(Guid.Empty) { }
+    private Order() : base(Guid.Empty)
+    {
+        ShippingAddress = null!;
+    }
 
-    private Order(Guid id, Guid customerId, List<OrderLine> lines, DateTimeOffset createdAt)
+    private Order(Guid id, Guid customerId, Address shippingAddress, List<OrderLine> lines, DateTimeOffset createdAt)
         : base(id)
     {
         CustomerId = customerId;
+        ShippingAddress = shippingAddress;
         Status = OrderStatus.Pending;
         _lines = lines;
         CreatedAt = createdAt;
@@ -32,6 +38,7 @@ public class Order : Entity<Guid>
 
     public static Result<Order> Create(
         Guid customerId,
+        Address shippingAddress,
         IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)> items,
         DateTimeOffset createdAt)
     {
@@ -58,7 +65,7 @@ public class Order : Entity<Guid>
             return Result.Failure<Order>(OrderErrors.MixedCurrencies);
         }
 
-        var order = new Order(Guid.NewGuid(), customerId, lines, createdAt);
+        var order = new Order(Guid.NewGuid(), customerId, shippingAddress, lines, createdAt);
 
         return Result.Success(order);
     }

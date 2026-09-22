@@ -10,6 +10,12 @@ public record OrderLineResponse(
     Currency Currency,
     decimal LineTotal);
 
+public record OrderShippingAddressResponse(
+    string Street,
+    string City,
+    string PostalCode,
+    string Country);
+
 public record OrderResponse(
     Guid Id,
     Guid CustomerId,
@@ -17,4 +23,5 @@ public record OrderResponse(
     decimal Total,
     DateTimeOffset CreatedAt,
     Currency Currency,
+    OrderShippingAddressResponse ShippingAddress,
     List<OrderLineResponse> Lines);

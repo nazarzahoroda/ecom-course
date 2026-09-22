@@ -39,6 +39,11 @@ public sealed class GetOrderWithLinesQueryHandler : IQueryHandler<GetOrderWithLi
             order.Total,
             order.CreatedAt,
             order.Currency,
+            new OrderShippingAddressResponse(
+                order.ShippingAddress.Street,
+                order.ShippingAddress.City,
+                order.ShippingAddress.PostalCode,
+                order.ShippingAddress.Country),
             linesResponse);
 
         return Result.Success(response);
