@@ -1,5 +1,6 @@
 using EcomCourse.Application.Orders.Queries.GetOrders;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 
 namespace EcomCourse.UnitTests.Application.Orders.GetOrders;
 
@@ -51,9 +52,9 @@ public class GetOrdersQueryHandlerTests
 
     private static Order CreateTestOrder(Guid customerId)
     {
-        var items = new List<(Guid ProductId, int Quantity, decimal UnitPrice)>
+        var items = new List<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)>
         {
-            (Guid.NewGuid(), 1, 100m)
+            (Guid.NewGuid(), 1, 100m, Currency.USD)
         };
 
         return Order.Create(customerId, items, DateTimeOffset.UtcNow).Value!;

@@ -23,6 +23,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .IsRequired();
 
         builder.Ignore(o => o.Total);
+        builder.Ignore(o => o.Currency);
 
         builder.HasMany(o => o.Lines)
             .WithOne()

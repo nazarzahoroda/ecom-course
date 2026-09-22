@@ -203,8 +203,8 @@ namespace EcomCourse.Infrastructure.Services
             var productsDict = await _context
                 .Products.AsNoTracking()
                 .Where(p => productIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.Price.Amount })
-                .ToDictionaryAsync(p => p.Id, p => p.Amount, cancellationToken);
+                .Select(p => new { p.Id, p.Price.Amount, p.Price.Currency })
+                .ToDictionaryAsync(p => p.Id, p => (p.Amount, p.Currency), cancellationToken);
 
             var missing = productIds.Except(productsDict.Keys).ToList();
             if (missing.Count > 0)
@@ -215,7 +215,8 @@ namespace EcomCourse.Infrastructure.Services
                     (
                         ProductId: i.ProductId,
                         Quantity: i.Quantity,
-                        UnitPrice: productsDict[i.ProductId]
+                        UnitPrice: productsDict[i.ProductId].Amount,
+                        Currency: productsDict[i.ProductId].Currency
                     )
                 )
                 .ToList();

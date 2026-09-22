@@ -29,12 +29,14 @@ public sealed class GetOrdersQueryHandler : IQueryHandler<GetOrdersQuery, GetOrd
                 order.Status.ToString(),
                 order.Total,
                 order.CreatedAt,
+                order.Currency,
                 order.Lines
                     .Select(line => new OrderLineResponse(
                         line.Id,
                         line.ProductId,
                         line.Quantity,
                         line.UnitPrice,
+                        line.Currency,
                         line.Quantity * line.UnitPrice))
                     .ToList()))
             .ToList();

@@ -1,5 +1,6 @@
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Primitives;
+using EcomCourse.Domain.Products;
 
 namespace EcomCourse.Domain.Orders;
 
@@ -16,6 +17,8 @@ public class Order : Entity<Guid>
 
     public decimal Total => _lines.Sum(line => line.Quantity * line.UnitPrice);
 
+    public Currency Currency => _lines.Count > 0 ? _lines[0].Currency : default;
+
     private Order() : base(Guid.Empty) { }
 
     private Order(Guid id, Guid customerId, List<OrderLine> lines, DateTimeOffset createdAt)
@@ -29,7 +32,7 @@ public class Order : Entity<Guid>
 
     public static Result<Order> Create(
         Guid customerId,
-        IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice)> items,
+        IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)> items,
         DateTimeOffset createdAt)
     {
         if (items is null || items.Count == 0)
@@ -41,13 +44,18 @@ public class Order : Entity<Guid>
 
         foreach (var item in items)
         {
-            var lineResult = OrderLine.Create(item.ProductId, item.Quantity, item.UnitPrice);
+            var lineResult = OrderLine.Create(item.ProductId, item.Quantity, item.UnitPrice, item.Currency);
             if (lineResult.IsFailure)
             {
                 return Result.Failure<Order>(lineResult.Error);
             }
 
             lines.Add(lineResult.Value!);
+        }
+
+        if (lines.Select(line => line.Currency).Distinct().Count() > 1)
+        {
+            return Result.Failure<Order>(OrderErrors.MixedCurrencies);
         }
 
         var order = new Order(Guid.NewGuid(), customerId, lines, createdAt);

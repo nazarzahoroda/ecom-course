@@ -28,6 +28,7 @@ public sealed class GetOrderWithLinesQueryHandler : IQueryHandler<GetOrderWithLi
                 line.ProductId,
                 line.Quantity,
                 line.UnitPrice,
+                line.Currency,
                 line.Quantity * line.UnitPrice))
             .ToList();
 
@@ -37,6 +38,7 @@ public sealed class GetOrderWithLinesQueryHandler : IQueryHandler<GetOrderWithLi
             order.Status.ToString(),
             order.Total,
             order.CreatedAt,
+            order.Currency,
             linesResponse);
 
         return Result.Success(response);

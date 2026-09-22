@@ -79,7 +79,8 @@ public class RefreshCommandHandlerTests
         var command = new RefreshCommand(refreshToken);
         var error = new DomainError(
             "Identity.RefreshTokenCompromised",
-            "A token reuse attempt was detected. All sessions have been terminated."
+            "A token reuse attempt was detected. All sessions have been terminated.",
+            ErrorType.Unauthorized
         );
 
         _identityServiceMock

@@ -114,6 +114,56 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             Assert.Equal(product.Id, order.Lines.First().ProductId);
             Assert.Equal(2, order.Lines.First().Quantity);
             Assert.Equal(100.00m, order.Lines.First().UnitPrice);
+            Assert.Equal(Currency.USD, order.Lines.First().Currency);
+            Assert.Equal(Currency.USD, order.Currency);
         }
+    }
+
+    [Fact]
+    public async Task Checkout_ReturnsBadRequest_WhenCartHasMixedCurrencyItems()
+    {
+        var customerId = Guid.NewGuid();
+
+        var categoryResult = Category.Create("Test Category");
+        var category = categoryResult.Value!;
+
+        var usdProduct = Product.Create(
+            "USD Product",
+            100.00m,
+            Currency.USD,
+            $"PRD-{Random.Shared.Next(1000, 9999)}",
+            category.Id
+        ).Value!;
+
+        var uahProduct = Product.Create(
+            "UAH Product",
+            100.00m,
+            Currency.UAH,
+            $"PRD-{Random.Shared.Next(1000, 9999)}",
+            category.Id
+        ).Value!;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            db.Categories.Add(category);
+            db.Products.AddRange(usdProduct, uahProduct);
+            await db.SaveChangesAsync();
+        }
+
+        _client.AuthenticateAs(customerId);
+
+        await _client.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = usdProduct.Id, Quantity = 1 }
+        );
+        await _client.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = uahProduct.Id, Quantity = 1 }
+        );
+
+        var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, checkoutRes.StatusCode);
     }
 }
