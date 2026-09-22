@@ -24,7 +24,12 @@ namespace EcomCourse.Api.Middleware
         {
             var traceId = httpContext.TraceIdentifier;
 
-            LogUnhandledException(_logger, traceId, exception);
+            LogUnhandledException(
+                _logger,
+                exception,
+                httpContext.Request.Method,
+                httpContext.Request.Path
+            );
 
             var problemDetails = new ProblemDetails
             {
@@ -32,7 +37,7 @@ namespace EcomCourse.Api.Middleware
                 Status = StatusCodes.Status500InternalServerError,
                 Detail = _env.IsDevelopment()
                     ? exception.ToString()
-                    : "An unexpected error occurred",
+                    : "An unexpected error occurred.",
             };
 
             problemDetails.Extensions["traceId"] = traceId;
@@ -46,10 +51,13 @@ namespace EcomCourse.Api.Middleware
         [LoggerMessage(
             EventId = 1,
             Level = LogLevel.Error,
-            Message = "An unhandled exception occurred. TraceId: {TraceId}")]
+            Message = "Unhandled exception while processing {Method} {Path}"
+        )]
         private static partial void LogUnhandledException(
             ILogger logger,
-            string traceId,
-            Exception exception);
+            Exception exception,
+            string method,
+            string path
+        );
     }
 }
