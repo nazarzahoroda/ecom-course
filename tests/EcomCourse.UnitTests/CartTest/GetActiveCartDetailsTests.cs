@@ -30,7 +30,7 @@ namespace EcomCourse.UnitTests.CartTest
             _currentUserServiceMock.Setup(x => x.CustomerId).Returns(customerId);
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object);
+            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object, TimeProvider.System);
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
 
@@ -54,7 +54,7 @@ namespace EcomCourse.UnitTests.CartTest
             }
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object);
+            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object, TimeProvider.System);
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
 
@@ -89,7 +89,7 @@ namespace EcomCourse.UnitTests.CartTest
             }
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object);
+            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object, TimeProvider.System);
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
 
@@ -141,7 +141,7 @@ namespace EcomCourse.UnitTests.CartTest
             }
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object);
+            var service = new CartService(context, _currentUserServiceMock.Object, _customerStoreMock.Object, TimeProvider.System);
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
 

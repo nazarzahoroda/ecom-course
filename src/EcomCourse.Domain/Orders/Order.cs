@@ -1,6 +1,7 @@
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Primitives;
+using EcomCourse.Domain.Products;
 
 namespace EcomCourse.Domain.Orders;
 
@@ -12,28 +13,34 @@ public class Order : Entity<Guid>
     public Address ShippingAddress { get; private set; }
     public OrderStatus Status { get; private set; }
 
+    public DateTimeOffset CreatedAt { get; private set; }
+
     public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
 
     public decimal Total => _lines.Sum(line => line.Quantity * line.UnitPrice);
+
+    public Currency Currency => _lines.Count > 0 ? _lines[0].Currency : default;
 
     private Order() : base(Guid.Empty)
     {
         ShippingAddress = null!;
     }
 
-    private Order(Guid id, Guid customerId, Address shippingAddress, List<OrderLine> lines)
+    private Order(Guid id, Guid customerId, Address shippingAddress, List<OrderLine> lines, DateTimeOffset createdAt)
         : base(id)
     {
         CustomerId = customerId;
         ShippingAddress = shippingAddress;
         Status = OrderStatus.Pending;
         _lines = lines;
+        CreatedAt = createdAt;
     }
 
     public static Result<Order> Create(
         Guid customerId,
         Address shippingAddress,
-        IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice)> items)
+        IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)> items,
+        DateTimeOffset createdAt)
     {
         if (items is null || items.Count == 0)
         {
@@ -44,7 +51,7 @@ public class Order : Entity<Guid>
 
         foreach (var item in items)
         {
-            var lineResult = OrderLine.Create(item.ProductId, item.Quantity, item.UnitPrice);
+            var lineResult = OrderLine.Create(item.ProductId, item.Quantity, item.UnitPrice, item.Currency);
             if (lineResult.IsFailure)
             {
                 return Result.Failure<Order>(lineResult.Error);
@@ -53,7 +60,12 @@ public class Order : Entity<Guid>
             lines.Add(lineResult.Value!);
         }
 
-        var order = new Order(Guid.NewGuid(), customerId, shippingAddress, lines);
+        if (lines.Select(line => line.Currency).Distinct().Count() > 1)
+        {
+            return Result.Failure<Order>(OrderErrors.MixedCurrencies);
+        }
+
+        var order = new Order(Guid.NewGuid(), customerId, shippingAddress, lines, createdAt);
 
         return Result.Success(order);
     }

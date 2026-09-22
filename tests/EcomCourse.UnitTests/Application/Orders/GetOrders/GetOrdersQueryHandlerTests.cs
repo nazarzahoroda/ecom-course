@@ -1,6 +1,7 @@
 using EcomCourse.Application.Orders.Queries.GetOrders;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 
 namespace EcomCourse.UnitTests.Application.Orders.GetOrders;
 
@@ -52,14 +53,14 @@ public class GetOrdersQueryHandlerTests
 
     private static Order CreateTestOrder(Guid customerId)
     {
-        var items = new List<(Guid ProductId, int Quantity, decimal UnitPrice)>
+        var items = new List<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)>
         {
-            (Guid.NewGuid(), 1, 100m)
+            (Guid.NewGuid(), 1, 100m, Currency.USD)
         };
 
         var address = Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
 
-        return Order.Create(customerId, address, items).Value!;
+        return Order.Create(customerId, address, items, DateTimeOffset.UtcNow).Value!;
     }
 
     private sealed class FakeOrderRepository : IOrderRepository

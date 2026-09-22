@@ -28,6 +28,8 @@ public sealed class GetOrdersQueryHandler : IQueryHandler<GetOrdersQuery, GetOrd
                 order.CustomerId,
                 order.Status.ToString(),
                 order.Total,
+                order.CreatedAt,
+                order.Currency,
                 new OrderShippingAddressResponse(
                     order.ShippingAddress.Street,
                     order.ShippingAddress.City,
@@ -39,6 +41,7 @@ public sealed class GetOrdersQueryHandler : IQueryHandler<GetOrdersQuery, GetOrd
                         line.ProductId,
                         line.Quantity,
                         line.UnitPrice,
+                        line.Currency,
                         line.Quantity * line.UnitPrice))
                     .ToList()))
             .ToList();

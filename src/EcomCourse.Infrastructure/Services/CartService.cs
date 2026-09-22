@@ -17,12 +17,18 @@ namespace EcomCourse.Infrastructure.Services
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
         private readonly ICustomerStore _customerStore;
+        private readonly TimeProvider _timeProvider;
 
-        public CartService(EcomCourseDbContext context, IUserContext currentUserService, ICustomerStore customerStore)
+        public CartService(
+            EcomCourseDbContext context,
+            IUserContext currentUserService,
+            ICustomerStore customerStore,
+            TimeProvider timeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
             _customerStore = customerStore;
+            _timeProvider = timeProvider;
         }
 
         public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
@@ -204,8 +210,8 @@ namespace EcomCourse.Infrastructure.Services
             var productsDict = await _context
                 .Products.AsNoTracking()
                 .Where(p => productIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.Price.Amount })
-                .ToDictionaryAsync(p => p.Id, p => p.Amount, cancellationToken);
+                .Select(p => new { p.Id, p.Price.Amount, p.Price.Currency })
+                .ToDictionaryAsync(p => p.Id, p => (p.Amount, p.Currency), cancellationToken);
 
             var missing = productIds.Except(productsDict.Keys).ToList();
             if (missing.Count > 0)
@@ -216,7 +222,8 @@ namespace EcomCourse.Infrastructure.Services
                     (
                         ProductId: i.ProductId,
                         Quantity: i.Quantity,
-                        UnitPrice: productsDict[i.ProductId]
+                        UnitPrice: productsDict[i.ProductId].Amount,
+                        Currency: productsDict[i.ProductId].Currency
                     )
                 )
                 .ToList();
@@ -233,7 +240,11 @@ namespace EcomCourse.Infrastructure.Services
             if (shippingAddressResult.IsFailure)
                 return Result.Failure<Guid>(shippingAddressResult.Error);
 
-            var orderResult = Order.Create(customerId, shippingAddressResult.Value!, items);
+            var orderResult = Order.Create(
+                customerId,
+                shippingAddressResult.Value!,
+                items,
+                _timeProvider.GetUtcNow());
             if (orderResult.IsFailure)
                 return Result.Failure<Guid>(orderResult.Error);
 

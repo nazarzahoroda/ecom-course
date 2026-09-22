@@ -92,6 +92,36 @@ public sealed class ProductService : IProductService
         return Result.Success(dto);
     }
 
+    public async Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken = default)
+    {
+        var products = await _dbContext.Products
+            .AsNoTracking()
+            .Where(product => ids.Contains(product.Id))
+            .ToListAsync(cancellationToken);
+
+        var missingId = ids.FirstOrDefault(id => products.All(product => product.Id != id));
+
+        if (missingId != default)
+        {
+            return Result.Failure<IReadOnlyList<ProductDto>>(
+                ProductErrors.NotFound(missingId));
+        }
+
+        IReadOnlyList<ProductDto> dtos = products
+            .Select(product => new ProductDto(
+                product.Id,
+                product.Name,
+                product.Price.Amount,
+                product.Price.Currency,
+                product.SKU.Value,
+                product.CategoryId))
+            .ToList();
+
+        return Result.Success(dtos);
+    }
+
     public async Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {

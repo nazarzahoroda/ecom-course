@@ -1,3 +1,5 @@
+using EcomCourse.Domain.Products;
+
 namespace EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 
 public record OrderLineResponse(
@@ -5,6 +7,7 @@ public record OrderLineResponse(
     Guid ProductId,
     int Quantity,
     decimal UnitPrice,
+    Currency Currency,
     decimal LineTotal);
 
 public record OrderShippingAddressResponse(
@@ -18,5 +21,7 @@ public record OrderResponse(
     Guid CustomerId,
     string Status,
     decimal Total,
+    DateTimeOffset CreatedAt,
+    Currency Currency,
     OrderShippingAddressResponse ShippingAddress,
     List<OrderLineResponse> Lines);

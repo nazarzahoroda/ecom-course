@@ -21,5 +21,9 @@ public class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
         builder.Property(ol => ol.UnitPrice)
             .HasColumnType("decimal(18,2)")
             .IsRequired();
+
+        builder.Property(ol => ol.Currency)
+            .HasConversion<int>()
+            .IsRequired();
     }
 }
