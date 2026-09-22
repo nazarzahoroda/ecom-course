@@ -61,6 +61,7 @@ public class OrdersIntegrationTests
         _client.DefaultRequestHeaders.Add(
             "X-Test-CustomerId",
             _customerId.ToString());
+        _client.DefaultRequestHeaders.Add("X-Test-Role", "Customer");
     }
 
     private static Customer CreateCustomer(Guid customerId)
@@ -168,6 +169,40 @@ public class OrdersIntegrationTests
         Assert.NotNull(orderDetails);
         Assert.Equal(_customerId, orderDetails.CustomerId);
         Assert.NotEqual(spoofedCustomerId, orderDetails.CustomerId);
+    }
+
+    [Fact]
+    public async Task CreateOrder_ShouldReturn403_WhenCallerHasNoCustomerRole()
+    {
+        // Arrange — an authenticated caller without the Customer role (e.g. an
+        // Admin-only account with no customer profile of its own).
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/orders")
+        {
+            Content = JsonContent.Create(new { items = Array.Empty<object>() })
+        };
+        request.Headers.Remove("X-Test-Role");
+        request.Headers.Add("X-Test-Role", "Admin");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetOrders_ShouldReturn403_WhenCallerHasNoCustomerRole()
+    {
+        // Arrange
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/orders");
+        request.Headers.Remove("X-Test-Role");
+        request.Headers.Add("X-Test-Role", "Admin");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -416,11 +451,11 @@ public class OrdersIntegrationTests
             IReadOnlyCollection<Guid> ids,
             CancellationToken cancellationToken = default)
         {
-            var missingId = ids.FirstOrDefault(id => !_products.ContainsKey(id));
+            var missingIds = ids.Where(id => !_products.ContainsKey(id)).ToList();
 
-            if (missingId != default)
+            if (missingIds.Count > 0)
             {
-                return Task.FromResult(Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingId)));
+                return Task.FromResult(Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingIds[0])));
             }
 
             IReadOnlyList<ProductDto> dtos = ids

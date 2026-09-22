@@ -89,4 +89,47 @@ public class GlobalExceptionHandlerTests
         Assert.Contains("An unexpected error occurred", responseBody);
         Assert.DoesNotContain("GlobalExceptionHandlerTests", responseBody);
     }
+
+    [Fact]
+    public async Task TryHandleAsync_UnauthorizedAccessExceptionInDevelopment_Returns401WithMessage()
+    {
+        // Arrange
+        _envMock.EnvironmentName.Returns(Environments.Development);
+
+        var exception = new UnauthorizedAccessException("Customer id is unavailable");
+
+        // Act
+        var result = await _handler.TryHandleAsync(_context, exception, CancellationToken.None);
+
+        // Assert
+        Assert.True(result);
+        Assert.Equal(StatusCodes.Status401Unauthorized, _context.Response.StatusCode);
+
+        _context.Response.Body.Seek(0, SeekOrigin.Begin);
+        var responseBody = await new StreamReader(_context.Response.Body).ReadToEndAsync();
+
+        Assert.Contains("Customer id is unavailable", responseBody);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_UnauthorizedAccessExceptionInProduction_Returns401WithoutMessage()
+    {
+        // Arrange
+        _envMock.EnvironmentName.Returns(Environments.Production);
+
+        var exception = new UnauthorizedAccessException("Customer id is unavailable");
+
+        // Act
+        var result = await _handler.TryHandleAsync(_context, exception, CancellationToken.None);
+
+        // Assert
+        Assert.True(result);
+        Assert.Equal(StatusCodes.Status401Unauthorized, _context.Response.StatusCode);
+
+        _context.Response.Body.Seek(0, SeekOrigin.Begin);
+        var responseBody = await new StreamReader(_context.Response.Body).ReadToEndAsync();
+
+        Assert.Contains("Authentication is required", responseBody);
+        Assert.DoesNotContain("Customer id is unavailable", responseBody);
+    }
 }

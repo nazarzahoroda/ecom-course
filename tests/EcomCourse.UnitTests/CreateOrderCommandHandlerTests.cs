@@ -36,11 +36,11 @@ public class CreateOrderCommandHandlerTests
             .Returns(call =>
             {
                 var ids = call.Arg<IReadOnlyCollection<Guid>>();
-                var missingId = ids.FirstOrDefault(id => !_products.ContainsKey(id));
+                var missingIds = ids.Where(id => !_products.ContainsKey(id)).ToList();
 
-                if (missingId != default)
+                if (missingIds.Count > 0)
                 {
-                    return Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingId));
+                    return Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingIds[0]));
                 }
 
                 IReadOnlyList<ProductDto> dtos = ids

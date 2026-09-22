@@ -31,10 +31,11 @@ public class OrdersController : ControllerBase
     }
 
 
-    [Authorize]
+    [Authorize(Roles = "Customer")]
     [HttpGet]
     [ProducesResponseType(typeof(GetOrdersResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetOrders(
     [FromQuery] int page = 1,
     [FromQuery] int pageSize = 10,
@@ -68,11 +69,12 @@ public class OrdersController : ControllerBase
         return Ok(order);
     }
 
-    [Authorize]
+    [Authorize(Roles = "Customer")]
     [HttpPost]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateOrder(
         [FromBody] CreateOrderRequest request,
         CancellationToken cancellationToken)

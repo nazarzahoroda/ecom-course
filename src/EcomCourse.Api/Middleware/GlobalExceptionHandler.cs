@@ -37,11 +37,9 @@ namespace EcomCourse.Api.Middleware
             {
                 Title = isUnauthorized ? "Unauthorized" : "Server Error",
                 Status = statusCode,
-                Detail = isUnauthorized
-                    ? exception.Message
-                    : _env.IsDevelopment()
-                        ? exception.ToString()
-                        : "An unexpected error occurred.",
+                Detail = _env.IsDevelopment()
+                    ? isUnauthorized ? exception.Message : exception.ToString()
+                    : isUnauthorized ? "Authentication is required." : "An unexpected error occurred.",
             };
 
             httpContext.Response.StatusCode = statusCode;

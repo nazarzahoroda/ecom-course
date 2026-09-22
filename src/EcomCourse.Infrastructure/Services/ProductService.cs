@@ -101,12 +101,13 @@ public sealed class ProductService : IProductService
             .Where(product => ids.Contains(product.Id))
             .ToListAsync(cancellationToken);
 
-        var missingId = ids.FirstOrDefault(id => products.All(product => product.Id != id));
+        var foundIds = products.Select(product => product.Id).ToHashSet();
+        var missingIds = ids.Where(id => !foundIds.Contains(id)).ToList();
 
-        if (missingId != default)
+        if (missingIds.Count > 0)
         {
             return Result.Failure<IReadOnlyList<ProductDto>>(
-                ProductErrors.NotFound(missingId));
+                ProductErrors.NotFound(missingIds[0]));
         }
 
         IReadOnlyList<ProductDto> dtos = products
