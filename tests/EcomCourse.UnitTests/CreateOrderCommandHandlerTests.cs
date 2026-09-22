@@ -1,3 +1,4 @@
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Domain.Orders;
 using NSubstitute;
@@ -7,12 +8,14 @@ namespace EcomCourse.UnitTests.Application.Orders;
 public class CreateOrderCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepositoryMock;
+    private readonly IUnitOfWork _unitOfWorkMock;
     private readonly CreateOrderCommandHandler _handler;
 
     public CreateOrderCommandHandlerTests()
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
-        _handler = new CreateOrderCommandHandler(_orderRepositoryMock);
+        _unitOfWorkMock = Substitute.For<IUnitOfWork>();
+        _handler = new CreateOrderCommandHandler(_orderRepositoryMock, _unitOfWorkMock);
     }
 
     [Fact]
@@ -30,6 +33,9 @@ public class CreateOrderCommandHandlerTests
 
         await _orderRepositoryMock.DidNotReceive()
             .AddAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.DidNotReceive()
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -58,5 +64,8 @@ public class CreateOrderCommandHandlerTests
                     o.CustomerId == command.customerId &&
                     o.Total == 250m),
                 Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.Received(1)
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

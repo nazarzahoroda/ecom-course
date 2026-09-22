@@ -16,6 +16,7 @@ namespace EcomCourse.Infrastructure.Persistence.Repositories
         public async Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.Orders
+                .Include(o => o.Lines)
                 .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
         }
 
@@ -36,7 +37,9 @@ namespace EcomCourse.Infrastructure.Persistence.Repositories
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            var query = _context.Orders.Where(o => o.CustomerId == customerId);
+            var query = _context.Orders
+                .Include(o => o.Lines)
+                .Where(o => o.CustomerId == customerId);
 
             var totalCount = await query.CountAsync(cancellationToken);
 

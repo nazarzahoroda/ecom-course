@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtService, JwtService>();
 
         services.AddScoped<IOrderRepository, EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository>();
+
         services.AddScoped<ICustomerStore, CustomerStore>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
@@ -67,7 +68,6 @@ public static class DependencyInjection
 
         services.AddScoped<ICartService, CartService>();
 
-        services.AddScoped<IOrderRepository, EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

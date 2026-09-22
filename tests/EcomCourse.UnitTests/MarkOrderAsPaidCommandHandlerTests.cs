@@ -1,3 +1,4 @@
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;
 using EcomCourse.Domain.Orders;
 using NSubstitute;
@@ -7,12 +8,14 @@ namespace EcomCourse.UnitTests.Application.Orders;
 public class MarkOrderAsPaidCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepositoryMock;
+    private readonly IUnitOfWork _unitOfWorkMock;
     private readonly MarkOrderAsPaidCommandHandler _handler;
 
     public MarkOrderAsPaidCommandHandlerTests()
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
-        _handler = new MarkOrderAsPaidCommandHandler(_orderRepositoryMock);
+        _unitOfWorkMock = Substitute.For<IUnitOfWork>();
+        _handler = new MarkOrderAsPaidCommandHandler(_orderRepositoryMock, _unitOfWorkMock);
     }
 
     private static Order CreatePendingOrder()
@@ -37,8 +40,12 @@ public class MarkOrderAsPaidCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(OrderStatus.Paid, order.Status);
+
         await _orderRepositoryMock.Received(1)
             .UpdateAsync(order, Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.Received(1)
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -53,8 +60,12 @@ public class MarkOrderAsPaidCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.NotFound, result.Error);
+
         await _orderRepositoryMock.DidNotReceive()
             .UpdateAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.DidNotReceive()
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -72,7 +83,11 @@ public class MarkOrderAsPaidCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+
         await _orderRepositoryMock.DidNotReceive()
             .UpdateAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.DidNotReceive()
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

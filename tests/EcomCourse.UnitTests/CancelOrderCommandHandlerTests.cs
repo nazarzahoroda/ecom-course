@@ -1,3 +1,4 @@
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Orders.Commands.CancelOrder;
 using EcomCourse.Domain.Orders;
 using NSubstitute;
@@ -7,12 +8,14 @@ namespace EcomCourse.UnitTests.Application.Orders;
 public class CancelOrderCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepositoryMock;
+    private readonly IUnitOfWork _unitOfWorkMock;
     private readonly CancelOrderCommandHandler _handler;
 
     public CancelOrderCommandHandlerTests()
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
-        _handler = new CancelOrderCommandHandler(_orderRepositoryMock);
+        _unitOfWorkMock = Substitute.For<IUnitOfWork>();
+        _handler = new CancelOrderCommandHandler(_orderRepositoryMock, _unitOfWorkMock);
     }
 
     private static Order CreatePendingOrder()
@@ -37,8 +40,12 @@ public class CancelOrderCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(OrderStatus.Cancelled, order.Status);
+
         await _orderRepositoryMock.Received(1)
             .UpdateAsync(order, Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.Received(1)
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -53,8 +60,12 @@ public class CancelOrderCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.NotFound, result.Error);
+
         await _orderRepositoryMock.DidNotReceive()
             .UpdateAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.DidNotReceive()
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -72,7 +83,11 @@ public class CancelOrderCommandHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+
         await _orderRepositoryMock.DidNotReceive()
             .UpdateAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+
+        await _unitOfWorkMock.DidNotReceive()
+            .SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }
