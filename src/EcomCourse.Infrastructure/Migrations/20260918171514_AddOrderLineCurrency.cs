@@ -16,6 +16,20 @@ namespace EcomCourse.Infrastructure.Migrations
                 type: "int",
                 nullable: false,
                 defaultValue: 0);
+
+            // Backfill existing OrderLines from their Product's actual currency
+            // instead of leaving them at the column default (USD).
+            migrationBuilder.Sql(@"
+                UPDATE ol
+                SET ol.Currency = CASE p.Currency
+                    WHEN 'USD' THEN 0
+                    WHEN 'EUR' THEN 1
+                    WHEN 'UAH' THEN 2
+                    ELSE ol.Currency
+                END
+                FROM OrderLines ol
+                INNER JOIN Products p ON p.Id = ol.ProductId;
+            ");
         }
 
         /// <inheritdoc />
