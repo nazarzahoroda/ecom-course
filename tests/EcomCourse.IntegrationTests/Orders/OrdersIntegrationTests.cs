@@ -1,3 +1,7 @@
+using Microsoft.Extensions.Logging;
+using System.Reflection;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using System.Net;
 using System.Net.Http.Json;
@@ -6,9 +10,10 @@ using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
+using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
-using EcomCourse.IntegrationTests.Common;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -23,6 +28,8 @@ public class OrdersIntegrationTests
 
     public OrdersIntegrationTests()
     {
+        var customer = CreateCustomer(_customerId);
+
         var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
@@ -42,6 +49,8 @@ public class OrdersIntegrationTests
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+                    services.RemoveAll<ICustomerStore>();
+                    services.AddSingleton<ICustomerStore>(new InMemoryCustomerStore(customer));
                     services.RemoveAll<IProductService>();
                     services.AddSingleton<IProductService>(_productService);
                 });
@@ -54,6 +63,24 @@ public class OrdersIntegrationTests
             _customerId.ToString());
     }
 
+    private static Customer CreateCustomer(Guid customerId)
+    {
+        var customer = Customer.Create(
+            Guid.NewGuid(),
+            "Test Customer",
+            $"{customerId}@example.com",
+            "Khreshchatyk St 1",
+            "Kyiv",
+            "01001",
+            "Ukraine").Value!;
+
+        typeof(Customer).BaseType!
+            .GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(customer, customerId);
+
+        return customer;
+    }
+
     [Fact]
     public async Task CreateOrder_And_GetOrderWithLines_ShouldReturnCorrectData()
     {
@@ -63,11 +90,11 @@ public class OrdersIntegrationTests
         var firstProductId = Guid.NewGuid();
         var secondProductId = Guid.NewGuid();
 
-        _productService.SetPrice(firstProductId, 100m);
-        _productService.SetPrice(secondProductId, 50m);
+        _productService.SetPrice(firstProductId, 100m, Currency.USD);
+        _productService.SetPrice(secondProductId, 50m, Currency.USD);
 
-        // UnitPrice isn't part of the wire contract at all — the server always
-        // charges the price from IProductService, never a client-supplied number.
+        // UnitPrice/Currency aren't part of the wire contract — the server always
+        // charges the price and currency from IProductService, never client input.
         var command = new CreateOrderCommand(
             customerId,
             new List<OrderLineItemRequest>
@@ -98,12 +125,16 @@ public class OrdersIntegrationTests
         Assert.Equal(customerId, orderDetails.CustomerId);
 
         Assert.Equal(250m, orderDetails.Total);
+        Assert.Equal(Currency.USD, orderDetails.Currency);
+        Assert.Equal("Khreshchatyk St 1", orderDetails.ShippingAddress.Street);
+        Assert.Equal("Kyiv", orderDetails.ShippingAddress.City);
 
         // Сheck lines
         Assert.Equal(2, orderDetails.Lines.Count);
 
         var firstLine = orderDetails.Lines.First(l => l.Quantity == 2);
         Assert.Equal(100m, firstLine.UnitPrice);
+        Assert.Equal(Currency.USD, firstLine.Currency);
         Assert.Equal(200m, firstLine.LineTotal);
     }
 
@@ -114,7 +145,7 @@ public class OrdersIntegrationTests
         var spoofedCustomerId = Guid.NewGuid();
         var productId = Guid.NewGuid();
 
-        _productService.SetPrice(productId, 100m);
+        _productService.SetPrice(productId, 100m, Currency.USD);
 
         // The request body carries a customerId belonging to a different customer;
         // the API must ignore it and use the authenticated user's id instead.
@@ -238,7 +269,7 @@ public class OrdersIntegrationTests
     private async Task<Guid> CreateOrderAsync()
     {
         var productId = Guid.NewGuid();
-        _productService.SetPrice(productId, 10m);
+        _productService.SetPrice(productId, 10m, Currency.USD);
 
         var command = new CreateOrderCommand(
             _customerId,
@@ -321,11 +352,44 @@ public class OrdersIntegrationTests
         }
     }
 
+    private sealed class InMemoryCustomerStore : ICustomerStore
+    {
+        private readonly List<Customer> _customers;
+
+        public InMemoryCustomerStore(params Customer[] customers)
+        {
+            _customers = customers.ToList();
+        }
+
+        public Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_customers.Any(customer => customer.Email.Equals(email)));
+        }
+
+        public Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken)
+        {
+            _customers.Add(customer);
+            return Task.FromResult(true);
+        }
+
+        public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_customers.FirstOrDefault(customer => customer.Id == id));
+        }
+
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+        {
+            var removed = _customers.RemoveAll(customer => customer.Id == id) > 0;
+            return Task.FromResult(removed);
+        }
+    }
+
     private sealed class FakeProductService : IProductService
     {
-        private readonly Dictionary<Guid, decimal> _prices = [];
+        private readonly Dictionary<Guid, (decimal Amount, Currency Currency)> _products = [];
 
-        public void SetPrice(Guid productId, decimal amount) => _prices[productId] = amount;
+        public void SetPrice(Guid productId, decimal amount, Currency currency) =>
+            _products[productId] = (amount, currency);
 
         public Task<Result<Guid>> CreateAsync(
             string name,
@@ -338,12 +402,12 @@ public class OrdersIntegrationTests
 
         public Task<Result<ProductDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            if (!_prices.TryGetValue(id, out var amount))
+            if (!_products.TryGetValue(id, out var product))
             {
                 return Task.FromResult(Result.Failure<ProductDto>(ProductErrors.NotFound(id)));
             }
 
-            var dto = new ProductDto(id, "Test product", amount, Currency.USD, "SKU-TEST", Guid.NewGuid());
+            var dto = new ProductDto(id, "Test product", product.Amount, product.Currency, "SKU-TEST", Guid.NewGuid());
 
             return Task.FromResult(Result.Success(dto));
         }
@@ -352,7 +416,7 @@ public class OrdersIntegrationTests
             IReadOnlyCollection<Guid> ids,
             CancellationToken cancellationToken = default)
         {
-            var missingId = ids.FirstOrDefault(id => !_prices.ContainsKey(id));
+            var missingId = ids.FirstOrDefault(id => !_products.ContainsKey(id));
 
             if (missingId != default)
             {
@@ -360,7 +424,7 @@ public class OrdersIntegrationTests
             }
 
             IReadOnlyList<ProductDto> dtos = ids
-                .Select(id => new ProductDto(id, "Test product", _prices[id], Currency.USD, "SKU-TEST", Guid.NewGuid()))
+                .Select(id => new ProductDto(id, "Test product", _products[id].Amount, _products[id].Currency, "SKU-TEST", Guid.NewGuid()))
                 .ToList();
 
             return Task.FromResult(Result.Success(dtos));

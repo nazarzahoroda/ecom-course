@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcomCourse.Api.Controllers;
 
 [ApiController]
-[Route("customers")]
+[Route("api/customers")]
 [Produces("application/json")]
 public class CustomersController : ControllerBase
 {
