@@ -59,5 +59,17 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.True(result.IsFailure);
             Assert.Equal(CartErrors.InvalidQuantity, result.Error);
         }
+
+        [Fact]
+        public void Create_ShouldReturnFailure_WhenCustomerIdIsEmpty()
+        {
+            // Act
+            var result = Cart.Create(Guid.Empty);
+
+            // Assert
+            Assert.True(result.IsFailure);
+            Assert.Equal(CartErrors.EmptyCustomerId, result.Error);
+        }
     }
 }
+
