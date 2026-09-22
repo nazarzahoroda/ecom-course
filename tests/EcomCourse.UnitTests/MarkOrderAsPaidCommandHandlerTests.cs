@@ -20,7 +20,8 @@ public class MarkOrderAsPaidCommandHandlerTests
     {
         var result = Order.Create(
             Guid.NewGuid(),
-            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) });
+            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) },
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
         return result.Value!;
     }

@@ -57,7 +57,7 @@ public class GetOrdersQueryHandlerTests
             (Guid.NewGuid(), 1, 100m, Currency.USD)
         };
 
-        return Order.Create(customerId, items).Value!;
+        return Order.Create(customerId, items, DateTimeOffset.UtcNow).Value!;
     }
 
     private sealed class FakeOrderRepository : IOrderRepository

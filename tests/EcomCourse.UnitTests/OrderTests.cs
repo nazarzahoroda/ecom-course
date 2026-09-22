@@ -5,6 +5,8 @@ namespace EcomCourse.UnitTests.Domain.Orders;
 
 public class OrderTests
 {
+    private static readonly DateTimeOffset FixedCreatedAt = new(2026, 5, 14, 12, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void Create_ShouldReturnFailure_WhenItemsListIsEmpty()
     {
@@ -12,7 +14,7 @@ public class OrderTests
         var emptyItems = Array.Empty<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)>();
 
         // Act
-        var result = Order.Create(customerId, emptyItems);
+        var result = Order.Create(customerId, emptyItems, FixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -30,7 +32,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, invalidItems);
+        var result = Order.Create(customerId, invalidItems, FixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -48,7 +50,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, invalidItems);
+        var result = Order.Create(customerId, invalidItems, FixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -66,7 +68,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, invalidItems);
+        var result = Order.Create(customerId, invalidItems, FixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -85,7 +87,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, items);
+        var result = Order.Create(customerId, items, FixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -106,7 +108,7 @@ public class OrderTests
         const decimal expectedTotal = 375.5m;
 
         // Act
-        var result = Order.Create(customerId, items);
+        var result = Order.Create(customerId, items, FixedCreatedAt);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -115,6 +117,7 @@ public class OrderTests
         Assert.Equal(3, result.Value.Lines.Count);
         Assert.Equal(OrderStatus.Pending, result.Value.Status);
         Assert.Equal(Currency.USD, result.Value.Currency);
+        Assert.Equal(FixedCreatedAt, result.Value.CreatedAt);
     }
 
     [Fact]
@@ -124,7 +127,7 @@ public class OrderTests
         var productId = Guid.NewGuid();
         var items = new[] { (ProductId: productId, Quantity: 2, UnitPrice: 150m, Currency: Currency.USD) };
 
-        var result = Order.Create(customerId, items);
+        var result = Order.Create(customerId, items, FixedCreatedAt);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
@@ -143,7 +146,8 @@ public class OrderTests
     {
         var result = Order.Create(
             Guid.NewGuid(),
-            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) });
+            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) },
+            FixedCreatedAt);
 
         return result.Value!;
     }

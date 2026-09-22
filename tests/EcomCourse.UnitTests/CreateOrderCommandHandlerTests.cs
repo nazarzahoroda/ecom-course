@@ -4,6 +4,7 @@ using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 
 namespace EcomCourse.UnitTests.Application.Orders;
@@ -12,6 +13,7 @@ public class CreateOrderCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepositoryMock;
     private readonly IProductService _productServiceMock;
+    private readonly FakeTimeProvider _timeProvider;
     private readonly CreateOrderCommandHandler _handler;
     private readonly Dictionary<Guid, (decimal Amount, Currency Currency)> _products = [];
 
@@ -19,7 +21,8 @@ public class CreateOrderCommandHandlerTests
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
         _productServiceMock = Substitute.For<IProductService>();
-        _handler = new CreateOrderCommandHandler(_orderRepositoryMock, _productServiceMock);
+        _timeProvider = new FakeTimeProvider(new DateTimeOffset(2026, 5, 14, 12, 0, 0, TimeSpan.Zero));
+        _handler = new CreateOrderCommandHandler(_orderRepositoryMock, _productServiceMock, _timeProvider);
 
         _productServiceMock
             .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -98,7 +101,8 @@ public class CreateOrderCommandHandlerTests
                     o.Id == result.Value &&
                     o.CustomerId == command.customerId &&
                     o.Total == 250m &&
-                    o.Currency == Currency.USD),
+                    o.Currency == Currency.USD &&
+                    o.CreatedAt == _timeProvider.GetUtcNow()),
                 Arg.Any<CancellationToken>());
     }
 

@@ -37,6 +37,7 @@ public sealed class GetOrderWithLinesQueryHandler : IQueryHandler<GetOrderWithLi
             order.CustomerId,
             order.Status.ToString(),
             order.Total,
+            order.CreatedAt,
             order.Currency,
             linesResponse);
 

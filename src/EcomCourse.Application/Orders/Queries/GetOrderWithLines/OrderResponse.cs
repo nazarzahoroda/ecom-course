@@ -15,5 +15,6 @@ public record OrderResponse(
     Guid CustomerId,
     string Status,
     decimal Total,
+    DateTimeOffset CreatedAt,
     Currency Currency,
     List<OrderLineResponse> Lines);

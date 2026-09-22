@@ -11,6 +11,8 @@ public class Order : Entity<Guid>
     public Guid CustomerId { get; private set; }
     public OrderStatus Status { get; private set; }
 
+    public DateTimeOffset CreatedAt { get; private set; }
+
     public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
 
     public decimal Total => _lines.Sum(line => line.Quantity * line.UnitPrice);
@@ -19,17 +21,19 @@ public class Order : Entity<Guid>
 
     private Order() : base(Guid.Empty) { }
 
-    private Order(Guid id, Guid customerId, List<OrderLine> lines)
+    private Order(Guid id, Guid customerId, List<OrderLine> lines, DateTimeOffset createdAt)
         : base(id)
     {
         CustomerId = customerId;
         Status = OrderStatus.Pending;
         _lines = lines;
+        CreatedAt = createdAt;
     }
 
     public static Result<Order> Create(
         Guid customerId,
-        IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)> items)
+        IReadOnlyCollection<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)> items,
+        DateTimeOffset createdAt)
     {
         if (items is null || items.Count == 0)
         {
@@ -54,7 +58,7 @@ public class Order : Entity<Guid>
             return Result.Failure<Order>(OrderErrors.MixedCurrencies);
         }
 
-        var order = new Order(Guid.NewGuid(), customerId, lines);
+        var order = new Order(Guid.NewGuid(), customerId, lines, createdAt);
 
         return Result.Success(order);
     }

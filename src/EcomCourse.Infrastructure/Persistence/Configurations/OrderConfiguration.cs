@@ -19,6 +19,9 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasConversion<int>()
             .IsRequired();
 
+        builder.Property(o => o.CreatedAt)
+            .IsRequired();
+
         builder.Ignore(o => o.Total);
         builder.Ignore(o => o.Currency);
 
