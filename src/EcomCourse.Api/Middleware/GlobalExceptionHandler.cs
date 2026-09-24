@@ -21,27 +21,59 @@ namespace EcomCourse.Api.Middleware
             CancellationToken cancellationToken
         )
         {
-            LogUnhandledException(
-                _logger,
-                exception,
-                httpContext.Request.Method,
-                httpContext.Request.Path
-            );
+            ProblemDetails problemDetails;
 
-            var problemDetails = new ProblemDetails
+            if (exception is UnauthorizedAccessException unauthorizedException)
             {
-                Title = "Server Error",
-                Status = StatusCodes.Status500InternalServerError,
-                Detail = _env.IsDevelopment()
-                    ? exception.ToString()
-                    : "An unexpected error occurred.",
-            };
+                LogUnauthorizedException(
+                    _logger,
+                    unauthorizedException,
+                    httpContext.Request.Method,
+                    httpContext.Request.Path
+                );
+
+                problemDetails = new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Status = StatusCodes.Status401Unauthorized,
+                    Detail = unauthorizedException.Message,
+                };
+            }
+            else
+            {
+                LogUnhandledException(
+                    _logger,
+                    exception,
+                    httpContext.Request.Method,
+                    httpContext.Request.Path
+                );
+
+                problemDetails = new ProblemDetails
+                {
+                    Title = "Server Error",
+                    Status = StatusCodes.Status500InternalServerError,
+                    Detail = _env.IsDevelopment()
+                        ? exception.ToString()
+                        : "An unexpected error occurred.",
+                };
+            }
 
             httpContext.Response.StatusCode = problemDetails.Status.Value;
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
         }
+
+        [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Unauthorized access attempt while processing {Method} {Path}"
+        )]
+        private static partial void LogUnauthorizedException(
+            ILogger logger,
+            Exception exception,
+            string method,
+            string path
+        );
 
         [LoggerMessage(
             Level = LogLevel.Error,
