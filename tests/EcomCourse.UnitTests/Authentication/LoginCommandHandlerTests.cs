@@ -1,3 +1,4 @@
+using System.Net;
 using EcomCourse.Application.Authentication.Commands.LoginCommand;
 using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Authentication.Interfaces;
@@ -26,10 +27,7 @@ public class LoginCommandHandlerTests
     {
         var dto = new LoginDto { Email = "user@example.com", Password = "Pass!12" };
         var command = new LoginCommand(dto);
-        var error = new DomainError(
-                        "Identity.UserNotFound",
-                        "User not found",
-                        ErrorType.NotFound);
+        var error = new DomainError("Identity.UserNotFound", "User not found", ErrorType.NotFound);
 
         _identityServiceMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
@@ -64,9 +62,10 @@ public class LoginCommandHandlerTests
         var userResult = Result.Success(user);
 
         var error = new DomainError(
-                        "Identity.InvalidCredentials",
-                        "Invalid credentials.",
-                        ErrorType.Unauthorized);
+            "Identity.InvalidCredentials",
+            "Invalid credentials.",
+            ErrorType.Unauthorized
+        );
 
         _identityServiceMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
@@ -111,9 +110,10 @@ public class LoginCommandHandlerTests
         var refreshToken = "refresh-token";
 
         var saveError = new DomainError(
-                            "Identity.RefreshTokenSaveFailed",
-                            "Failed to save refresh token.",
-                            ErrorType.Conflict);
+            "Identity.RefreshTokenSaveFailed",
+            "Failed to save refresh token.",
+            ErrorType.Conflict
+        );
 
         _identityServiceMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
@@ -217,5 +217,45 @@ public class LoginCommandHandlerTests
             x => x.SaveRefreshToken(refreshToken, user.Id, It.IsAny<CancellationToken>()),
             Times.Once
         );
+    }
+
+    [Fact]
+    public async Task Handle_WhenAccountIsLockedOut_ReturnsFailureAndDoesNotGenerateTokens()
+    {
+        var dto = new LoginDto { Email = "user@example.com", Password = "Pass!12" };
+        var user = new ApplicationUserDto { Id = Guid.NewGuid(), Email = dto.Email };
+        var command = new LoginCommand(dto);
+
+        var lockoutError = new DomainError(
+            "Identity.AccountLocked",
+            "User account is temporarily locked due to multiple failed login attempts",
+            ErrorType.Unauthorized
+        );
+
+        _identityServiceMock
+            .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success(user));
+
+        _identityServiceMock
+            .Setup(x => x.CheckPasswordSignInAsync(dto, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(lockoutError));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(lockoutError.Code, result.Error.Code);
+        Assert.Equal(lockoutError.Description, result.Error.Description);
+
+        _identityServiceMock.Verify(
+            x => x.GetRolesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+
+        _jwtServiceMock.Verify(
+            x => x.GenerateAccessToken(It.IsAny<UserTokenDetails>()),
+            Times.Never
+        );
+
+        _jwtServiceMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
     }
 }
