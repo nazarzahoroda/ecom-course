@@ -4,8 +4,7 @@ namespace EcomCourse.Application.Orders.Commands.CreateOrder;
 
 public record OrderLineItemRequest(
     Guid ProductId,
-    int Quantity,
-    decimal UnitPrice);
+    int Quantity);
 
 public record CreateOrderCommand(
     Guid customerId,

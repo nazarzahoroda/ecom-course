@@ -15,7 +15,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
-        "SameCustomerOrAdmin",
+        AuthorizationPolicies.SameCustomerOrAdmin,
         policy =>
         {
             policy.RequireAuthenticatedUser();
@@ -67,7 +67,11 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
-await app.SeedIdentityAsync();
+await app.SeedRolesAsync();
+if (app.Environment.IsDevelopment())
+{
+    await app.SeedAdminAsync();
+}
 app.UseCors(ClientCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();

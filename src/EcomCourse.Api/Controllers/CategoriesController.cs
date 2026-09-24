@@ -1,4 +1,5 @@
 using EcomCourse.Api.Categories;
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.Create;
 using EcomCourse.Application.Categories.Commands.Delete;
@@ -6,6 +7,7 @@ using EcomCourse.Application.Categories.Commands.Update;
 using EcomCourse.Application.Categories.Queries.GetAll;
 using EcomCourse.Application.Categories.Queries.GetById;
 using EcomCourse.Application.Categories.Queries.GetTop;
+using EcomCourse.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,14 +41,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return BadRequest(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status400BadRequest,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return CreatedAtAction(nameof(GetCategoryById), new { id = result.Value }, result.Value);
@@ -63,14 +58,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return Ok(result.Value);
@@ -103,6 +91,7 @@ public sealed class CategoriesController : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateCategory(
         Guid id,
         [FromBody] UpdateCategoryRequest request,
@@ -115,14 +104,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return NoContent();
@@ -140,14 +122,7 @@ public sealed class CategoriesController : ControllerBase
 
         if (result.IsFailure)
         {
-            return NotFound(
-                new ProblemDetails
-                {
-                    Title = result.Error.Code,
-                    Detail = result.Error.Description,
-                    Status = StatusCodes.Status404NotFound,
-                }
-            );
+            return result.ToProblemDetails();
         }
 
         return NoContent();

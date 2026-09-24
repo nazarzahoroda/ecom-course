@@ -4,7 +4,8 @@ namespace EcomCourse.Domain.Common
     {
         public static readonly DomainError ValidationError = new(
             "ValidationError",
-            "A validation problem occurred.");
+            "A validation problem occurred.",
+            ErrorType.Validation);
 
         DomainError[] Errors { get; }
     }

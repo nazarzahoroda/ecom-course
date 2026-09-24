@@ -22,7 +22,10 @@ namespace EcomCourse.UnitTests.CartTest
         {
             var dto = new AddItemToCartDto { ProductId = Guid.NewGuid(), Quantity = 2 };
             var command = new AddItemToCartCommand(dto);
-            var error = new DomainError("Product.NotFound", "Product not found.");
+            var error = new DomainError(
+                            "Product.NotFound",
+                            "Product not found.",
+                            ErrorType.NotFound);
 
             _cartServiceMock
                 .Setup(x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()))
@@ -45,9 +48,9 @@ namespace EcomCourse.UnitTests.CartTest
             var dto = new AddItemToCartDto { ProductId = Guid.NewGuid(), Quantity = 2 };
             var command = new AddItemToCartCommand(dto);
             var error = new DomainError(
-                "Cart.ActiveCartAlreadyExists",
-                "Active cart already exists."
-            );
+                            "Cart.ActiveCartAlreadyExists",
+                            "Active cart already exists.",
+                            ErrorType.Conflict);
 
             _cartServiceMock
                 .Setup(x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()))
