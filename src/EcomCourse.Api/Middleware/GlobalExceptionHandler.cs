@@ -48,17 +48,21 @@ namespace EcomCourse.Api.Middleware
                     httpContext.Request.Path
                 );
 
-                problemDetails = new ProblemDetails
-                {
-                    Title = "Server Error",
-                    Status = StatusCodes.Status500InternalServerError,
-                    Detail = _env.IsDevelopment()
-                        ? exception.ToString()
-                        : "An unexpected error occurred.",
-                };
-            }
+            var isUnauthorized = exception is UnauthorizedAccessException;
+            var statusCode = isUnauthorized
+                ? StatusCodes.Status401Unauthorized
+                : StatusCodes.Status500InternalServerError;
 
-            httpContext.Response.StatusCode = problemDetails.Status.Value;
+            var problemDetails = new ProblemDetails
+            {
+                Title = isUnauthorized ? "Unauthorized" : "Server Error",
+                Status = statusCode,
+                Detail = _env.IsDevelopment()
+                    ? isUnauthorized ? exception.Message : exception.ToString()
+                    : isUnauthorized ? "Authentication is required." : "An unexpected error occurred.",
+            };
+
+            httpContext.Response.StatusCode = statusCode;
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
