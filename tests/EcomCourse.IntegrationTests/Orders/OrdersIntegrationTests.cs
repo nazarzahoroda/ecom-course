@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
@@ -62,6 +61,7 @@ public class OrdersIntegrationTests
         _client.DefaultRequestHeaders.Add(
             "X-Test-CustomerId",
             _customerId.ToString());
+        _client.DefaultRequestHeaders.Add("X-Test-Role", "Customer");
     }
 
     private static Customer CreateCustomer(Guid customerId)
@@ -107,8 +107,6 @@ public class OrdersIntegrationTests
         // Act
         var createResponse = await _client.PostAsJsonAsync("/api/orders", command);
 
-        var responseBody = await createResponse.Content.ReadAsStringAsync();
-
         //Assert
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
@@ -139,6 +137,72 @@ public class OrdersIntegrationTests
         Assert.Equal(100m, firstLine.UnitPrice);
         Assert.Equal(Currency.USD, firstLine.Currency);
         Assert.Equal(200m, firstLine.LineTotal);
+    }
+
+    [Fact]
+    public async Task CreateOrder_ShouldIgnoreClientSuppliedCustomerId_AndUseAuthenticatedCustomer()
+    {
+        // Arrange
+        var spoofedCustomerId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+
+        _productService.SetPrice(productId, 100m, Currency.USD);
+
+        // The request body carries a customerId belonging to a different customer;
+        // the API must ignore it and use the authenticated user's id instead.
+        var payload = new
+        {
+            customerId = spoofedCustomerId,
+            items = new[] { new { productId, quantity = 1 } }
+        };
+
+        // Act
+        var createResponse = await _client.PostAsJsonAsync("/api/orders", payload);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+        var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
+        var orderDetails = await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
+
+        Assert.NotNull(orderDetails);
+        Assert.Equal(_customerId, orderDetails.CustomerId);
+        Assert.NotEqual(spoofedCustomerId, orderDetails.CustomerId);
+    }
+
+    [Fact]
+    public async Task CreateOrder_ShouldReturn403_WhenCallerHasNoCustomerRole()
+    {
+        // Arrange — an authenticated caller without the Customer role (e.g. an
+        // Admin-only account with no customer profile of its own).
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/orders")
+        {
+            Content = JsonContent.Create(new { items = Array.Empty<object>() })
+        };
+        request.Headers.Remove("X-Test-Role");
+        request.Headers.Add("X-Test-Role", "Admin");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetOrders_ShouldReturn403_WhenCallerHasNoCustomerRole()
+    {
+        // Arrange
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/orders");
+        request.Headers.Remove("X-Test-Role");
+        request.Headers.Add("X-Test-Role", "Admin");
+
+        // Act
+        var response = await _client.SendAsync(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -387,11 +451,11 @@ public class OrdersIntegrationTests
             IReadOnlyCollection<Guid> ids,
             CancellationToken cancellationToken = default)
         {
-            var missingId = ids.FirstOrDefault(id => !_products.ContainsKey(id));
+            var missingIds = ids.Where(id => !_products.ContainsKey(id)).ToList();
 
-            if (missingId != default)
+            if (missingIds.Count > 0)
             {
-                return Task.FromResult(Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingId)));
+                return Task.FromResult(Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingIds[0])));
             }
 
             IReadOnlyList<ProductDto> dtos = ids
