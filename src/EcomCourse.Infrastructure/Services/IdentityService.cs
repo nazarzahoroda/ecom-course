@@ -202,7 +202,7 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure(
                     new DomainError(
                         "Identity.InvalidCredentials",
-                        "Invalid credentials",
+                        "Invalid email or password",
                         ErrorType.Unauthorized
                     )
                 );
@@ -219,7 +219,7 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure(
                     new DomainError(
                         "Identity.InvalidCredentials",
-                        "Invalid credentials",
+                        "Invalid email or password",
                         ErrorType.Unauthorized
                     )
                 );
