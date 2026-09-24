@@ -28,5 +28,31 @@ namespace EcomCourse.UnitTests.Products
             Assert.True(resultPrice.IsFailure);
             Assert.Equal(PriceErrors.CurrencyInvalid, resultPrice.Error);
         }
+
+        [Fact]
+        public void Create_WithValidPrice_ShouldReturnSuccess()
+        {
+            var amount = 100m;
+            var currency = Currency.UAH;
+
+            var result = Price.Create(amount, currency);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(amount, result.Value!.Amount);
+            Assert.Equal(currency, result.Value.Currency);
+        }
+
+        [Fact]
+        public void Create_WithZeroAmount_ShouldReturnSuccess()
+        {
+            var amount = 0m;
+            var currency = Currency.UAH;
+
+            var result = Price.Create(amount, currency);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(amount, result.Value!.Amount);
+            Assert.Equal(currency, result.Value.Currency);
+        }
     }
 }
