@@ -2,6 +2,7 @@ using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -15,9 +16,19 @@ namespace EcomCourse.Infrastructure.Services
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
         public CartService(EcomCourseDbContext context, IUserContext currentUserService)
+        private readonly ICustomerStore _customerStore;
+        private readonly TimeProvider _timeProvider;
+
+        public CartService(
+            EcomCourseDbContext context,
+            IUserContext currentUserService,
+            ICustomerStore customerStore,
+            TimeProvider timeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _customerStore = customerStore;
+            _timeProvider = timeProvider;
         }
 
         public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
