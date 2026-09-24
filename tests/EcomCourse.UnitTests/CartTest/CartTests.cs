@@ -71,5 +71,6 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.Equal(CartErrors.EmptyCustomerId, result.Error);
         }
     }
+
 }
 

@@ -1,17 +1,14 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using EcomCourse.Application.Carts.DTOs;
+using EcomCourse.IntegrationTests.Common;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
 using Xunit;
 
 namespace EcomCourse.IntegrationTests.Carts;
@@ -24,7 +21,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
     public CartIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
-        _httpClient = factory.CreateClient();
+        _httpClient = factory.WithTestAuthentication().CreateClient();
     }
 
     [Fact]
@@ -77,11 +74,7 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
             await db.SaveChangesAsync();
         }
 
-        var token = GenerateToken(customerId);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            token
-        );
+        _httpClient.AuthenticateAs(customerId);
 
         var addRes1 = await _httpClient.PostAsJsonAsync(
             "/api/Cart/items",
@@ -133,28 +126,61 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
         }
     }
 
-    private static string GenerateToken(Guid customerId)
+    [Fact]
+    public async Task GetActiveCart_HappyPath_Returns200WithFullCartDetails()
     {
-        var key = Encoding.UTF8.GetBytes("Very_Super_Puper_Secret_Key123!321");
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(
-                new[]
-                {
-                    new Claim("CustomerId", customerId.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-                }
-            ),
-            Issuer = "EcomCourse",
-            Audience = "EcomCourseClient",
-            Expires = DateTime.UtcNow.AddMinutes(30),
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature
-            ),
-        };
+        var customerId = Guid.NewGuid();
+        var category = Category.Create("Books").Value!;
+        var price = Price.Create(25.00m, Currency.USD).Value!;
+        var sku = SKU.Create($"SKU-{Random.Shared.Next(1000, 9999)}").Value!;
+        var product = Product
+            .Create("Clean Code", price.Amount, price.Currency, sku.Value, category.Id)
+            .Value!;
 
-        var handler = new JwtSecurityTokenHandler();
-        return handler.WriteToken(handler.CreateToken(descriptor));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            db.Categories.Add(category);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+        }
+
+        _httpClient.AuthenticateAs(customerId);
+
+        var addRes = await _httpClient.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto { ProductId = product.Id, Quantity = 2 }
+        );
+        Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
+
+        var getRes = await _httpClient.GetAsync("/api/Cart");
+
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+        var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
+
+        Assert.NotNull(details);
+        Assert.NotEqual(Guid.Empty, details.CartId);
+        Assert.Single(details.Items);
+        Assert.Equal("Clean Code", details.Items[0].Name);
+        Assert.Equal(25.00m, details.Items[0].UnitPrice);
+        Assert.Equal(2, details.Items[0].Quantity);
+        Assert.Equal(50.00m, details.TotalAmount);
+    }
+
+    [Fact]
+    public async Task GetActiveCart_WhenNoActiveCartExists_Returns200WithEmptyCartDetails()
+    {
+        var customerId = Guid.NewGuid();
+        _httpClient.AuthenticateAs(customerId);
+
+        var getRes = await _httpClient.GetAsync("/api/Cart");
+
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+        var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
+
+        Assert.NotNull(details);
+        Assert.Equal(Guid.Empty, details.CartId);
+        Assert.Empty(details.Items);
+        Assert.Equal(0m, details.TotalAmount);
     }
 }
