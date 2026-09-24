@@ -16,7 +16,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
-        "SameCustomerOrAdmin",
+        AuthorizationPolicies.SameCustomerOrAdmin,
         policy =>
         {
             policy.RequireAuthenticatedUser();

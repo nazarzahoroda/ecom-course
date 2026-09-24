@@ -74,6 +74,9 @@ namespace EcomCourse.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("Categories", (string)null);
                 });
 
@@ -102,6 +105,9 @@ namespace EcomCourse.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
@@ -118,6 +124,9 @@ namespace EcomCourse.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Currency")
+                        .HasColumnType("int");
 
                     b.Property<Guid?>("OrderId")
                         .HasColumnType("uniqueidentifier");
@@ -231,6 +240,45 @@ namespace EcomCourse.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Email")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EcomCourse.Domain.Orders.Order", b =>
+                {
+                    b.OwnsOne("EcomCourse.Domain.Customers.Address", "ShippingAddress", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)");
+
+                            b1.Property<string>("PostalCode")
+                                .IsRequired()
+                                .HasMaxLength(30)
+                                .HasColumnType("nvarchar(30)");
+
+                            b1.Property<string>("Street")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("Orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
+                    b.Navigation("ShippingAddress")
                         .IsRequired();
                 });
 

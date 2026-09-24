@@ -1,5 +1,7 @@
 using EcomCourse.Application.Orders.Commands.CancelOrder;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 using NSubstitute;
 
 namespace EcomCourse.UnitTests.Application.Orders;
@@ -17,9 +19,13 @@ public class CancelOrderCommandHandlerTests
 
     private static Order CreatePendingOrder()
     {
+        var address = Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
+
         var result = Order.Create(
             Guid.NewGuid(),
-            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m) });
+            address,
+            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) },
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
         return result.Value!;
     }

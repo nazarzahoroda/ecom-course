@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Authentication.Commands.LoginCommand;
 using EcomCourse.Application.Authentication.Commands.LogoutCommand;
 using EcomCourse.Application.Authentication.Commands.RefreshCommand;
@@ -38,14 +39,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
             return StatusCode(StatusCodes.Status201Created);
         }
@@ -57,20 +51,13 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.None,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(60),
             };
 
@@ -83,7 +70,7 @@ namespace EcomCourse.Api.Controllers
                 {
                     HttpOnly = true,
                     Secure = true,
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.None,
                     Expires = DateTimeOffset.UtcNow.AddDays(7),
                 }
             );
@@ -91,43 +78,72 @@ namespace EcomCourse.Api.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh(
-            RefreshDto dto,
-            CancellationToken cancellationToken
-        )
+        public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
         {
-            var request = new RefreshCommand(dto.RefreshToken);
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return BadRequest();
+            }
+
+            var request = new RefreshCommand(refreshToken);
             var result = await _sender.Send(request, cancellationToken);
+
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+              
+                Response.Cookies.Delete("access_token");
+                Response.Cookies.Delete("refresh_token");
+  return result.ToProblemDetails();
+              
             }
-            return Ok(result.Value);
+
+            Response.Cookies.Append(
+                "access_token",
+                result.Value!.AccessToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTimeOffset.UtcNow.AddMinutes(60),
+                }
+            );
+            Response.Cookies.Append(
+                "refresh_token",
+                result.Value.RefreshToken,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.None,
+                    Expires = DateTimeOffset.UtcNow.AddDays(7),
+                }
+            );
+            return Ok();
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout(LogoutDto dto, CancellationToken cancellationToken)
+        public async Task<IActionResult> Logout(CancellationToken cancellationToken)
         {
-            var request = new LogoutCommand(dto.RefreshToken);
+            var refreshToken = Request.Cookies["refresh_token"];
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return BadRequest();
+            }
+
+            var request = new LogoutCommand(refreshToken);
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
+
+            Response.Cookies.Delete("access_token");
+            Response.Cookies.Delete("refresh_token");
+
             return Ok();
         }
 

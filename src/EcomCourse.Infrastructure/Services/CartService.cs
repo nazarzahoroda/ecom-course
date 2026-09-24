@@ -3,6 +3,7 @@ using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -15,11 +16,83 @@ namespace EcomCourse.Infrastructure.Services
     {
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
+        private readonly ICustomerStore _customerStore;
+        private readonly TimeProvider _timeProvider;
 
-        public CartService(EcomCourseDbContext context, IUserContext currentUserService)
+        public CartService(
+            EcomCourseDbContext context,
+            IUserContext currentUserService,
+            ICustomerStore customerStore,
+            TimeProvider timeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _customerStore = customerStore;
+            _timeProvider = timeProvider;
+        }
+
+        public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
+            CancellationToken cancellationToken
+        )
+        {
+            var customerId = _currentUserService.CustomerId;
+
+            var cart = await _context
+                .Carts.AsNoTracking()
+                .Include(c => c.Items)
+                .FirstOrDefaultAsync(
+                    c => c.CustomerId == customerId && c.Status == CartStatus.Active,
+                    cancellationToken
+                );
+
+            if (cart is null || cart.Items.Count == 0)
+            {
+                return Result.Success(
+                    new CartDetailsDto(Guid.Empty, new List<CartItemDetailsDto>(), 0m)
+                );
+            }
+
+            var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
+
+            var products = await _context
+                .Products.AsNoTracking()
+                .Where(p => productIds.Contains(p.Id))
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    UnitPrice = p.Price.Amount,
+                    Currency = p.Price.Currency.ToString(),
+                    Sku = p.SKU.Value,
+                })
+                .ToDictionaryAsync(p => p.Id, cancellationToken);
+
+            var missingProductIds = productIds.Except(products.Keys).ToList();
+
+            if (missingProductIds.Count > 0)
+                return Result.Failure<CartDetailsDto>(ProductErrors.Unavailable);
+
+            var itemsDto = cart
+                .Items.Where(item => products.ContainsKey(item.ProductId))
+                .Select(item =>
+                {
+                    var product = products[item.ProductId];
+                    return new CartItemDetailsDto
+                    {
+                        Id = item.Id,
+                        ProductId = item.ProductId,
+                        Name = product.Name,
+                        Sku = product.Sku,
+                        UnitPrice = product.UnitPrice,
+                        Currency = product.Currency,
+                        Quantity = item.Quantity,
+                    };
+                })
+                .ToList();
+
+            var totalAmount = itemsDto.Sum(i => i.UnitPrice * i.Quantity);
+
+            return Result.Success(new CartDetailsDto(cart.Id, itemsDto, totalAmount));
         }
 
         public async Task<Result> AddItemToCartAsync(
@@ -137,8 +210,8 @@ namespace EcomCourse.Infrastructure.Services
             var productsDict = await _context
                 .Products.AsNoTracking()
                 .Where(p => productIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.Price.Amount })
-                .ToDictionaryAsync(p => p.Id, p => p.Amount, cancellationToken);
+                .Select(p => new { p.Id, p.Price.Amount, p.Price.Currency })
+                .ToDictionaryAsync(p => p.Id, p => (p.Amount, p.Currency), cancellationToken);
 
             var missing = productIds.Except(productsDict.Keys).ToList();
             if (missing.Count > 0)
@@ -149,12 +222,29 @@ namespace EcomCourse.Infrastructure.Services
                     (
                         ProductId: i.ProductId,
                         Quantity: i.Quantity,
-                        UnitPrice: productsDict[i.ProductId]
+                        UnitPrice: productsDict[i.ProductId].Amount,
+                        Currency: productsDict[i.ProductId].Currency
                     )
                 )
                 .ToList();
 
-            var orderResult = Order.Create(customerId, items);
+            var customer = await _customerStore.GetByIdAsync(customerId, cancellationToken);
+            if (customer is null)
+                return Result.Failure<Guid>(CustomerErrors.NotFound);
+
+            var shippingAddressResult = Address.Create(
+                customer.Address.Street,
+                customer.Address.City,
+                customer.Address.PostalCode,
+                customer.Address.Country);
+            if (shippingAddressResult.IsFailure)
+                return Result.Failure<Guid>(shippingAddressResult.Error);
+
+            var orderResult = Order.Create(
+                customerId,
+                shippingAddressResult.Value!,
+                items,
+                _timeProvider.GetUtcNow());
             if (orderResult.IsFailure)
                 return Result.Failure<Guid>(orderResult.Error);
 

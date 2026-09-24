@@ -1,8 +1,10 @@
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Carts.Commands.AddItemToCartCommand;
 using EcomCourse.Application.Carts.Commands.CartCheckout;
 using EcomCourse.Application.Carts.Commands.RemoveItemFromCartCommand;
 using EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand;
 using EcomCourse.Application.Carts.DTOs;
+using EcomCourse.Application.Carts.Queries.GetCartItems;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +23,18 @@ namespace EcomCourse.Api.Controllers
             _sender = sender;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetCartItems(CancellationToken cancellationToken)
+        {
+            var request = new GetCartDetailsQuery();
+            var result = await _sender.Send(request, cancellationToken);
+            if (result.IsFailure)
+            {
+                return result.ToProblemDetails();
+            }
+            return Ok(result.Value);
+        }
+
         [HttpPost("items")]
         public async Task<IActionResult> AddItem(
             [FromBody] AddItemToCartDto dto,
@@ -32,14 +46,7 @@ namespace EcomCourse.Api.Controllers
 
             if (result.IsFailure)
             {
-                return BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                        Status = StatusCodes.Status400BadRequest,
-                    }
-                );
+                return result.ToProblemDetails();
             }
             return Ok();
         }
@@ -54,23 +61,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return result.Error.Code is "Cart.NotFound" or "CartItem.NotFound"
-                    ? NotFound(
-                        new ProblemDetails
-                        {
-                            Title = result.Error.Code,
-                            Detail = result.Error.Description,
-                            Status = StatusCodes.Status404NotFound,
-                        }
-                    )
-                    : BadRequest(
-                        new ProblemDetails
-                        {
-                            Title = result.Error.Code,
-                            Detail = result.Error.Description,
-                            Status = StatusCodes.Status400BadRequest,
-                        }
-                    );
+                return result.ToProblemDetails();
             }
             return Ok();
         }
@@ -83,23 +74,7 @@ namespace EcomCourse.Api.Controllers
 
             if (result.IsFailure)
             {
-                return result.Error.Code == "CartItem.NotFound"
-                    ? NotFound(
-                        new ProblemDetails
-                        {
-                            Title = result.Error.Code,
-                            Detail = result.Error.Description,
-                            Status = StatusCodes.Status404NotFound,
-                        }
-                    )
-                    : BadRequest(
-                        new ProblemDetails
-                        {
-                            Title = result.Error.Code,
-                            Detail = result.Error.Description,
-                            Status = StatusCodes.Status400BadRequest,
-                        }
-                    );
+                return result.ToProblemDetails();
             }
 
             return Ok(result.Value);
@@ -112,23 +87,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(request, cancellationToken);
             if (result.IsFailure)
             {
-                return result.Error.Code == "Cart.NotFound"
-                    ? NotFound(
-                        new ProblemDetails
-                        {
-                            Title = result.Error.Code,
-                            Detail = result.Error.Description,
-                            Status = StatusCodes.Status404NotFound,
-                        }
-                    )
-                    : BadRequest(
-                        new ProblemDetails
-                        {
-                            Title = result.Error.Code,
-                            Detail = result.Error.Description,
-                            Status = StatusCodes.Status400BadRequest,
-                        }
-                    );
+                return result.ToProblemDetails();
             }
             return Ok(result.Value);
         }
