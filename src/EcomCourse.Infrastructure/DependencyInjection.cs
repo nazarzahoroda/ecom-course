@@ -1,7 +1,5 @@
-using EcomCourse.Application.Authentication.Interfaces;
-using EcomCourse.Application.Categories.Services;
-using EcomCourse.Application.Products.Services;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Abstractions.Authentication;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
@@ -50,19 +48,19 @@ public static class DependencyInjection
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
-        services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<ITokenIssuer, JwtTokenIssuer>();
 
         services.AddScoped<IOrderRepository, OrderRepository>();
-        services.AddScoped<ICustomerStore, CustomerStore>();
-        services.AddScoped<ICategoryService, CategoryService>();
-        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ICategoryManager, CategoryManager>();
+        services.AddScoped<IProductManager, ProductManager>();
 
-        services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<IIdentityProvider, IdentityProvider>();
 
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
 
-        services.AddScoped<ICartService, CartService>();
+        services.AddScoped<ICartManager, CartManager>();
 
         return services;
     }

@@ -5,7 +5,7 @@ using EcomCourse.Application.Authentication.Commands.LogoutCommand;
 using EcomCourse.Application.Authentication.Commands.RefreshCommand;
 using EcomCourse.Application.Authentication.Commands.RegisterCommand;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Application.Abstractions.Authentication;
 using EcomCourse.Domain.Common;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;

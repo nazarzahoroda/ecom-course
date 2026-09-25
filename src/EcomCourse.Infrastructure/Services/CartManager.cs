@@ -1,6 +1,6 @@
 using Azure.Core;
 using EcomCourse.Application.Carts.DTOs;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
@@ -12,22 +12,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Infrastructure.Services
 {
-    public class CartService : ICartService
+    public class CartManager : ICartManager
     {
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
-        private readonly ICustomerStore _customerStore;
+        private readonly ICustomerRepository _customerRepository;
         private readonly TimeProvider _timeProvider;
 
-        public CartService(
+        public CartManager(
             EcomCourseDbContext context,
             IUserContext currentUserService,
-            ICustomerStore customerStore,
+            ICustomerRepository customerRepository,
             TimeProvider timeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
-            _customerStore = customerStore;
+            _customerRepository = customerRepository;
             _timeProvider = timeProvider;
         }
 
@@ -228,7 +228,7 @@ namespace EcomCourse.Infrastructure.Services
                 )
                 .ToList();
 
-            var customer = await _customerStore.GetByIdAsync(customerId, cancellationToken);
+            var customer = await _customerRepository.GetByIdAsync(customerId, cancellationToken);
             if (customer is null)
                 return Result.Failure<Guid>(CustomerErrors.NotFound);
 

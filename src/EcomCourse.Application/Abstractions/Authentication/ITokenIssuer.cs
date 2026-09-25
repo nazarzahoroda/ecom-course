@@ -1,8 +1,8 @@
 using EcomCourse.Application.Authentication.DTOs;
 
-namespace EcomCourse.Application.Authentication.Interfaces
+namespace EcomCourse.Application.Abstractions.Authentication
 {
-    public interface IJwtService
+    public interface ITokenIssuer
     {
         string GenerateAccessToken(UserTokenDetails details);
         string GenerateRefreshToken();

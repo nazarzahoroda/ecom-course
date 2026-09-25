@@ -1,5 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
 using Microsoft.EntityFrameworkCore;
@@ -8,11 +8,11 @@ namespace EcomCourse.Application.Carts.Commands.AddItemToCartCommand
 {
     public class AddItemToCartCommandHandler : ICommandHandler<AddItemToCartCommand>
     {
-        private readonly ICartService _cartService;
+        private readonly ICartManager _cartManager;
 
-        public AddItemToCartCommandHandler(ICartService cartService)
+        public AddItemToCartCommandHandler(ICartManager cartManager)
         {
-            _cartService = cartService;
+            _cartManager = cartManager;
         }
 
         public async Task<Result> Handle(
@@ -20,7 +20,7 @@ namespace EcomCourse.Application.Carts.Commands.AddItemToCartCommand
             CancellationToken cancellationToken
         )
         {
-            var result = await _cartService.AddItemToCartAsync(request.dto, cancellationToken);
+            var result = await _cartManager.AddItemToCartAsync(request.dto, cancellationToken);
             return result;
         }
     }

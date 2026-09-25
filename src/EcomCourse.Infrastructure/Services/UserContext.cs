@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Infrastructure.Authorization.Extensions;
 using Microsoft.AspNetCore.Http;
 

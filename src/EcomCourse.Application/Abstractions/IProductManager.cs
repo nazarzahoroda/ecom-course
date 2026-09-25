@@ -1,9 +1,10 @@
+using EcomCourse.Application.Products;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
 
-namespace EcomCourse.Application.Products.Services;
+namespace EcomCourse.Application.Abstractions;
 
-public interface IProductService
+public interface IProductManager
 {
     Task<Result<Guid>> CreateAsync(
         string name,

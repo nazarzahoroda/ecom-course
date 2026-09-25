@@ -8,7 +8,7 @@ using System.Net.Http.Json;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using EcomCourse.IntegrationTests.Common;
@@ -24,7 +24,7 @@ public class OrdersIntegrationTests
 {
     private readonly HttpClient _client;
     private readonly Guid _customerId = Guid.NewGuid();
-    private readonly FakeProductService _productService = new();
+    private readonly FakeProductManager _productManager = new();
 
     public OrdersIntegrationTests()
     {
@@ -49,10 +49,10 @@ public class OrdersIntegrationTests
                             options => { });
                     services.RemoveAll<IOrderRepository>();
                     services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
-                    services.RemoveAll<ICustomerStore>();
-                    services.AddSingleton<ICustomerStore>(new InMemoryCustomerStore(customer));
-                    services.RemoveAll<IProductService>();
-                    services.AddSingleton<IProductService>(_productService);
+                    services.RemoveAll<ICustomerRepository>();
+                    services.AddSingleton<ICustomerRepository>(new InMemoryCustomerRepository(customer));
+                    services.RemoveAll<IProductManager>();
+                    services.AddSingleton<IProductManager>(_productManager);
                 });
             });
 
@@ -91,11 +91,11 @@ public class OrdersIntegrationTests
         var firstProductId = Guid.NewGuid();
         var secondProductId = Guid.NewGuid();
 
-        _productService.SetPrice(firstProductId, 100m, Currency.USD);
-        _productService.SetPrice(secondProductId, 50m, Currency.USD);
+        _productManager.SetPrice(firstProductId, 100m, Currency.USD);
+        _productManager.SetPrice(secondProductId, 50m, Currency.USD);
 
         // UnitPrice/Currency aren't part of the wire contract — the server always
-        // charges the price and currency from IProductService, never client input.
+        // charges the price and currency from IProductManager, never client input.
         var command = new CreateOrderCommand(
             customerId,
             new List<OrderLineItemRequest>
@@ -146,7 +146,7 @@ public class OrdersIntegrationTests
         var spoofedCustomerId = Guid.NewGuid();
         var productId = Guid.NewGuid();
 
-        _productService.SetPrice(productId, 100m, Currency.USD);
+        _productManager.SetPrice(productId, 100m, Currency.USD);
 
         // The request body carries a customerId belonging to a different customer;
         // the API must ignore it and use the authenticated user's id instead.
@@ -304,7 +304,7 @@ public class OrdersIntegrationTests
     private async Task<Guid> CreateOrderAsync()
     {
         var productId = Guid.NewGuid();
-        _productService.SetPrice(productId, 10m, Currency.USD);
+        _productManager.SetPrice(productId, 10m, Currency.USD);
 
         var command = new CreateOrderCommand(
             _customerId,
@@ -387,11 +387,11 @@ public class OrdersIntegrationTests
         }
     }
 
-    private sealed class InMemoryCustomerStore : ICustomerStore
+    private sealed class InMemoryCustomerRepository : ICustomerRepository
     {
         private readonly List<Customer> _customers;
 
-        public InMemoryCustomerStore(params Customer[] customers)
+        public InMemoryCustomerRepository(params Customer[] customers)
         {
             _customers = customers.ToList();
         }
@@ -419,7 +419,7 @@ public class OrdersIntegrationTests
         }
     }
 
-    private sealed class FakeProductService : IProductService
+    private sealed class FakeProductManager : IProductManager
     {
         private readonly Dictionary<Guid, (decimal Amount, Currency Currency)> _products = [];
 

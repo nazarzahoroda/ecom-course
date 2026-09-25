@@ -1,6 +1,6 @@
 namespace EcomCourse.Domain.Customers;
 
-public interface ICustomerStore
+public interface ICustomerRepository
 {
     Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken);
 

@@ -1,5 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Categories.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Categories.Queries.GetById;
@@ -7,19 +7,19 @@ namespace EcomCourse.Application.Categories.Queries.GetById;
 public sealed class GetCategoryByIdQueryHandler
  : IQueryHandler<GetCategoryByIdQuery, CategoryDto>
 {
-    private readonly ICategoryService _categoryService;
+    private readonly ICategoryManager _categoryManager;
 
     public GetCategoryByIdQueryHandler(
-        ICategoryService categoryService)
+        ICategoryManager categoryManager)
     {
-        _categoryService = categoryService;
+        _categoryManager = categoryManager;
     }
 
     public async Task<Result<CategoryDto>> Handle(
         GetCategoryByIdQuery request,
         CancellationToken cancellationToken)
     {
-        return await _categoryService.GetByIdAsync(
+        return await _categoryManager.GetByIdAsync(
             request.Id,
             cancellationToken);
     }

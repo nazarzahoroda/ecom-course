@@ -1,5 +1,5 @@
 using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -7,11 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Infrastructure.Services;
 
-public sealed class ProductService : IProductService
+public sealed class ProductManager : IProductManager
 {
     private readonly EcomCourseDbContext _dbContext;
 
-    public ProductService(EcomCourseDbContext dbContext)
+    public ProductManager(EcomCourseDbContext dbContext)
     {
         _dbContext = dbContext;
     }
