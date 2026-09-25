@@ -12,6 +12,7 @@ const string ClientCorsPolicy = "Client";
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
@@ -19,7 +20,6 @@ builder.Services.AddAuthorization(options =>
         policy =>
         {
             policy.RequireAuthenticatedUser();
-
             policy.AddRequirements(new SameCustomerOrAdminRequirement());
         }
     );
@@ -29,16 +29,24 @@ builder.Services.AddScoped<IAuthorizationHandler, SameCustomerOrAdminHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
         ClientCorsPolicy,
         policy =>
+        {
+            if (allowedOrigins.Length > 0)
+            {
+                policy.WithOrigins(allowedOrigins);
+            }
+
             policy
-                .WithOrigins("http://localhost:4200")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials()
+                .AllowCredentials();
+        }
     );
 });
 
@@ -63,18 +71,14 @@ builder.Services.AddSwaggerGen(options =>
         [new OpenApiSecuritySchemeReference("Bearer", document)] = [],
     });
 });
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
-await app.SeedRolesAsync();
-if (app.Environment.IsDevelopment())
-{
-    await app.SeedAdminAsync();
-}
-app.UseCors(ClientCorsPolicy);
-app.UseAuthentication();
-app.UseAuthorization();
+
+await app.SeedIdentityAsync();
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -82,8 +86,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
+
+app.UseCors(ClientCorsPolicy);
+
+// 3. Авторизація та аутентифікація
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet(
         "/",
