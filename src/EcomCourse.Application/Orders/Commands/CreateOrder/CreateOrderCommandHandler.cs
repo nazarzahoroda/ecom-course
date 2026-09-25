@@ -1,6 +1,6 @@
 using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
@@ -10,19 +10,19 @@ namespace EcomCourse.Application.Orders.Commands.CreateOrder;
 public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderCommand, Guid>
 {
     private readonly IOrderRepository _orderRepository;
-    private readonly ICustomerStore _customerStore;
-    private readonly IProductService _productService;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IProductManager _productManager;
     private readonly TimeProvider _timeProvider;
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
-        ICustomerStore customerStore,
-        IProductService productService,
+        ICustomerRepository customerRepository,
+        IProductManager productManager,
         TimeProvider timeProvider)
     {
         _orderRepository = orderRepository;
-        _customerStore = customerStore;
-        _productService = productService;
+        _customerRepository = customerRepository;
+        _productManager = productManager;
         _timeProvider = timeProvider;
     }
 
@@ -30,7 +30,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
     {
         var productIds = request.items.Select(item => item.ProductId).Distinct().ToList();
 
-        var productsResult = await _productService.GetByIdsAsync(productIds, cancellationToken);
+        var productsResult = await _productManager.GetByIdsAsync(productIds, cancellationToken);
 
         if (productsResult.IsFailure)
         {
@@ -54,7 +54,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
             return Result.Failure<Guid>(OrderErrors.EmptyLines);
         }
 
-        var customer = await _customerStore.GetByIdAsync(request.customerId, cancellationToken);
+        var customer = await _customerRepository.GetByIdAsync(request.customerId, cancellationToken);
         if (customer is null)
         {
             return Result.Failure<Guid>(CustomerErrors.NotFound);

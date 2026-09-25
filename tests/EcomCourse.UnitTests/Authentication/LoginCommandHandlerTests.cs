@@ -1,7 +1,7 @@
 using EcomCourse.Application.Authentication.Commands.LoginCommand;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions.Authentication;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using Moq;
 
@@ -9,16 +9,16 @@ namespace EcomCourse.Application.Tests.Authentication;
 
 public class LoginCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
-    private readonly Mock<IJwtService> _jwtServiceMock;
+    private readonly Mock<IIdentityProvider> _identityProviderMock;
+    private readonly Mock<ITokenIssuer> _tokenIssuerMock;
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _jwtServiceMock = new Mock<IJwtService>();
+        _identityProviderMock = new Mock<IIdentityProvider>();
+        _tokenIssuerMock = new Mock<ITokenIssuer>();
 
-        _handler = new LoginCommandHandler(_identityServiceMock.Object, _jwtServiceMock.Object);
+        _handler = new LoginCommandHandler(_identityProviderMock.Object, _tokenIssuerMock.Object);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class LoginCommandHandlerTests
                         "User not found",
                         ErrorType.NotFound);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<ApplicationUserDto>(error));
 
@@ -41,17 +41,17 @@ public class LoginCommandHandlerTests
         Assert.Equal(error.Code, result.Error.Code);
         Assert.Equal(error.Description, result.Error.Description);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.CheckPasswordSignInAsync(It.IsAny<LoginDto>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
 
-        _jwtServiceMock.Verify(
+        _tokenIssuerMock.Verify(
             x => x.GenerateAccessToken(It.IsAny<UserTokenDetails>()),
             Times.Never
         );
 
-        _jwtServiceMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
+        _tokenIssuerMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
     }
 
     [Fact]
@@ -68,11 +68,11 @@ public class LoginCommandHandlerTests
                         "Invalid credentials.",
                         ErrorType.Unauthorized);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(userResult);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckPasswordSignInAsync(dto, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(error));
 
@@ -84,17 +84,17 @@ public class LoginCommandHandlerTests
         Assert.Equal(error.Code, result.Error.Code);
         Assert.Equal(error.Description, result.Error.Description);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.GetRolesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
 
-        _jwtServiceMock.Verify(
+        _tokenIssuerMock.Verify(
             x => x.GenerateAccessToken(It.IsAny<UserTokenDetails>()),
             Times.Never
         );
 
-        _jwtServiceMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
+        _tokenIssuerMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
     }
 
     [Fact]
@@ -115,25 +115,25 @@ public class LoginCommandHandlerTests
                             "Failed to save refresh token.",
                             ErrorType.Conflict);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(user));
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckPasswordSignInAsync(dto, It.IsAny<CancellationToken>()))
             .ReturnsAsync(checkResult);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetRolesAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(roles);
 
-        _jwtServiceMock
+        _tokenIssuerMock
             .Setup(x => x.GenerateAccessToken(It.IsAny<UserTokenDetails>()))
             .Returns("access-token");
 
-        _jwtServiceMock.Setup(x => x.GenerateRefreshToken()).Returns(refreshToken);
+        _tokenIssuerMock.Setup(x => x.GenerateRefreshToken()).Returns(refreshToken);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.SaveRefreshToken(refreshToken, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(saveError));
 
@@ -165,25 +165,25 @@ public class LoginCommandHandlerTests
         var accessToken = "access-token";
         var refreshToken = "refresh-token";
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(user));
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckPasswordSignInAsync(dto, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetRolesAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(roles);
 
-        _jwtServiceMock
+        _tokenIssuerMock
             .Setup(x => x.GenerateAccessToken(It.IsAny<UserTokenDetails>()))
             .Returns(accessToken);
 
-        _jwtServiceMock.Setup(x => x.GenerateRefreshToken()).Returns(refreshToken);
+        _tokenIssuerMock.Setup(x => x.GenerateRefreshToken()).Returns(refreshToken);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.SaveRefreshToken(refreshToken, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
@@ -198,7 +198,7 @@ public class LoginCommandHandlerTests
 
         Assert.Equal(refreshToken, result.Value.RefreshToken);
 
-        _jwtServiceMock.Verify(
+        _tokenIssuerMock.Verify(
             x =>
                 x.GenerateAccessToken(
                     It.Is<UserTokenDetails>(details =>
@@ -211,9 +211,9 @@ public class LoginCommandHandlerTests
             Times.Once
         );
 
-        _jwtServiceMock.Verify(x => x.GenerateRefreshToken(), Times.Once);
+        _tokenIssuerMock.Verify(x => x.GenerateRefreshToken(), Times.Once);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.SaveRefreshToken(refreshToken, user.Id, It.IsAny<CancellationToken>()),
             Times.Once
         );

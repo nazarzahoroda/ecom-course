@@ -1,20 +1,20 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Authentication.Commands.LogoutCommand
 {
     public class LogoutCommandHandler : ICommandHandler<LogoutCommand>
     {
-        private readonly IIdentityService _identityService;
-        public LogoutCommandHandler(IIdentityService identityService)
+        private readonly IIdentityProvider _identityProvider;
+        public LogoutCommandHandler(IIdentityProvider identityProvider)
         {
-            _identityService = identityService;
+            _identityProvider = identityProvider;
         }
 
         public async Task<Result> Handle(LogoutCommand request, CancellationToken cancellationToken)
         {
-            var revokeResult = await _identityService.RevokeRefreshToken(request.refreshToken, cancellationToken);
+            var revokeResult = await _identityProvider.RevokeRefreshToken(request.refreshToken, cancellationToken);
             return revokeResult;
         }
     }

@@ -1,9 +1,9 @@
 using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Domain.Common;
 
-namespace EcomCourse.Application.Interfaces
+namespace EcomCourse.Application.Abstractions
 {
-    public interface ICartService
+    public interface ICartManager
     {
         public Task<Result> AddItemToCartAsync(
             AddItemToCartDto dto,

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.UnitTests.Categories;
 
-public class CategoryServiceTests
+public class CategoryManagerTests
 {
     [Fact]
     public async Task CreateAsync_WhenNameAlreadyExists_ReturnsNameAlreadyExistsError()
@@ -19,7 +19,7 @@ public class CategoryServiceTests
         dbContext.Categories.Add(existingCategory);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryService(dbContext);
+        var service = new CategoryManager(dbContext);
 
         // Act
         var result = await service.CreateAsync("Electronics");
@@ -41,7 +41,7 @@ public class CategoryServiceTests
         dbContext.Categories.AddRange(electronics, books);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryService(dbContext);
+        var service = new CategoryManager(dbContext);
 
         // Act
         var result = await service.UpdateAsync(
@@ -64,7 +64,7 @@ public class CategoryServiceTests
         dbContext.Categories.Add(category);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryService(dbContext);
+        var service = new CategoryManager(dbContext);
 
         // Act
         var result = await service.UpdateAsync(
@@ -87,7 +87,7 @@ public class CategoryServiceTests
         dbContext.Categories.AddRange(electronics, books);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryService(dbContext);
+        var service = new CategoryManager(dbContext);
 
         // Act
         var result = await service.UpdateAsync(

@@ -1,9 +1,9 @@
 using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Domain.Common;
 
-namespace EcomCourse.Application.Interfaces
+namespace EcomCourse.Application.Abstractions
 {
-    public interface IIdentityService
+    public interface IIdentityProvider
     {
         #region sign in
         Task<Result<ApplicationUserDto>> GetUserAsync(string email, CancellationToken cancellationToken);

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Application.Abstractions.Authentication;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using EcomCourse.Infrastructure.Services;
 using Microsoft.AspNetCore.Http;
@@ -14,14 +14,14 @@ using Moq;
 
 namespace EcomCourse.UnitTests
 {
-    public class IdentityServiceTests : IDisposable
+    public class IdentityProviderTests : IDisposable
     {
         private readonly IdentityDbContext _context;
         private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
         private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
-        private readonly Mock<IJwtService> _jwtServiceMock = new();
+        private readonly Mock<ITokenIssuer> _tokenIssuerMock = new();
         private readonly Mock<IConfiguration> _configurationMock = new();
-        private readonly IdentityService _sut;
+        private readonly IdentityProvider _sut;
 
         private static string HashToken(string token)
         {
@@ -29,7 +29,7 @@ namespace EcomCourse.UnitTests
             return Convert.ToHexString(bytes);
         }
 
-        public IdentityServiceTests()
+        public IdentityProviderTests()
         {
             var options = new DbContextOptionsBuilder<IdentityDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -69,11 +69,11 @@ namespace EcomCourse.UnitTests
                 .Returns(configSectionMock.Object);
             _configurationMock.Setup(c => c["Jwt:RefreshTokenDays"]).Returns("7");
 
-            _sut = new IdentityService(
+            _sut = new IdentityProvider(
                 _userManagerMock.Object,
                 _context,
                 _signInManagerMock.Object,
-                _jwtServiceMock.Object,
+                _tokenIssuerMock.Object,
                 _configurationMock.Object
             );
         }
@@ -100,8 +100,8 @@ namespace EcomCourse.UnitTests
             await _context.SaveChangesAsync();
 
             var newRawToken = "new-fresh-token";
-            _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(newRawToken);
-            _jwtServiceMock
+            _tokenIssuerMock.Setup(j => j.GenerateRefreshToken()).Returns(newRawToken);
+            _tokenIssuerMock
                 .Setup(j => j.GenerateAccessToken(It.IsAny<UserTokenDetails>()))
                 .Returns("new-access-token");
             _userManagerMock.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string>());
@@ -262,8 +262,8 @@ namespace EcomCourse.UnitTests
             await _context.SaveChangesAsync();
 
             var newRawToken = "another-plain-secret-token";
-            _jwtServiceMock.Setup(j => j.GenerateRefreshToken()).Returns(newRawToken);
-            _jwtServiceMock
+            _tokenIssuerMock.Setup(j => j.GenerateRefreshToken()).Returns(newRawToken);
+            _tokenIssuerMock
                 .Setup(j => j.GenerateAccessToken(It.IsAny<UserTokenDetails>()))
                 .Returns("access-token");
             _userManagerMock.Setup(m => m.GetRolesAsync(user)).ReturnsAsync(new List<string>());

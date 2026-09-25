@@ -42,6 +42,8 @@ a blocking issue.
    `Kind = Unspecified` or `Kind = Local`; comparing dates of different
    `Kind` without an explicit conversion.
 
+10. **Infrastructure Port Interfaces** — Persistence ports (repositories) must be named `I*Repository` and placed in `Domain//` with no framework/DTO dependencies. Other infrastructure capabilities (clock, token issuance, etc.) must be named for their capability (e.g. `ITokenIssuer`, not `IJwtService`) and placed in `Application/Abstractions/`. No `I*Service` port names are allowed.
+
 ## Suggestion (comment, non-blocking)
 
 10. Naming that doesn't match the Command/Query/Handler/Result convention

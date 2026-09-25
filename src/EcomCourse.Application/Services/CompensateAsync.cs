@@ -1,4 +1,4 @@
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 
@@ -6,24 +6,24 @@ namespace EcomCourse.Application.Services
 {
     public class CompensateAsync
     {
-        private readonly ICustomerStore _customerStore;
-        private readonly IIdentityService _identityService;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IIdentityProvider _identityProvider;
 
-        public CompensateAsync(ICustomerStore customerStore, IIdentityService identityService)
+        public CompensateAsync(ICustomerRepository customerRepository, IIdentityProvider identityProvider)
         {
-            _customerStore = customerStore;
-            _identityService = identityService;
+            _customerRepository = customerRepository;
+            _identityProvider = identityProvider;
         }
 
         public async Task<Result> CompensateAsyncTask(Guid userId, Guid customerId, CancellationToken cancellationToken)
         {
             if (customerId != Guid.Empty)
             {
-                var customer = await _customerStore.GetByIdAsync(customerId, cancellationToken);
+                var customer = await _customerRepository.GetByIdAsync(customerId, cancellationToken);
 
                 if (customer is not null)
                 {
-                    var deleteCustomerResult = await _customerStore.DeleteAsync(customer.Id, cancellationToken);
+                    var deleteCustomerResult = await _customerRepository.DeleteAsync(customer.Id, cancellationToken);
                     if (!deleteCustomerResult)
                     {
                         return Result.Failure(
@@ -34,7 +34,7 @@ namespace EcomCourse.Application.Services
                     }
                 }
             }
-            var deleteUserResult = await _identityService.DeleteUserAsync(userId, cancellationToken);
+            var deleteUserResult = await _identityProvider.DeleteUserAsync(userId, cancellationToken);
             if (deleteUserResult.IsFailure)
                 return deleteUserResult;
 

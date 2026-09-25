@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions.Authentication;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -12,26 +12,26 @@ using Microsoft.Extensions.Configuration;
 
 namespace EcomCourse.Infrastructure.Services
 {
-    public class IdentityService : IIdentityService
+    public class IdentityProvider : IIdentityProvider
     {
         private readonly UserManager<ApplicationUser> _manager;
         private readonly IdentityDbContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IJwtService _jwtService;
+        private readonly ITokenIssuer _tokenIssuer;
         private readonly IConfiguration _configuration;
 
-        public IdentityService(
+        public IdentityProvider(
             UserManager<ApplicationUser> manager,
             IdentityDbContext context,
             SignInManager<ApplicationUser> signInManager,
-            IJwtService jwtService,
+            ITokenIssuer tokenIssuer,
             IConfiguration configuration
         )
         {
             _manager = manager;
             _context = context;
             _signInManager = signInManager;
-            _jwtService = jwtService;
+            _tokenIssuer = tokenIssuer;
             _configuration = configuration;
         }
 
@@ -370,9 +370,9 @@ namespace EcomCourse.Infrastructure.Services
                 Roles = roles,
             };
 
-            var accessToken = _jwtService.GenerateAccessToken(details);
+            var accessToken = _tokenIssuer.GenerateAccessToken(details);
 
-            var newRawRefreshToken = _jwtService.GenerateRefreshToken();
+            var newRawRefreshToken = _tokenIssuer.GenerateRefreshToken();
 
             var newRefreshTokenHash = HashToken(newRawRefreshToken);
 

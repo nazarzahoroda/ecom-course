@@ -1,6 +1,6 @@
 using EcomCourse.Application.Authentication.Commands.RefreshCommand;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using Moq;
 
@@ -8,13 +8,13 @@ namespace EcomCourse.Application.Tests.Authentication;
 
 public class RefreshCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
+    private readonly Mock<IIdentityProvider> _identityProviderMock;
     private readonly RefreshCommandHandler _handler;
 
     public RefreshCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _handler = new RefreshCommandHandler(_identityServiceMock.Object);
+        _identityProviderMock = new Mock<IIdentityProvider>();
+        _handler = new RefreshCommandHandler(_identityProviderMock.Object);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class RefreshCommandHandlerTests
             RefreshToken = "new-refresh-token",
         };
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(authResponse));
 
@@ -40,7 +40,7 @@ public class RefreshCommandHandlerTests
         Assert.Equal("new-access-token", result.Value.AccessToken);
         Assert.Equal("new-refresh-token", result.Value.RefreshToken);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()),
             Times.Once
         );
@@ -56,7 +56,7 @@ public class RefreshCommandHandlerTests
                         "Refresh token is invalid or expired.",
                         ErrorType.Unauthorized);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<AuthResponse>(error));
 
@@ -66,7 +66,7 @@ public class RefreshCommandHandlerTests
         Assert.Equal(error.Code, result.Error.Code);
         Assert.Equal(error.Description, result.Error.Description);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()),
             Times.Once
         );
@@ -83,7 +83,7 @@ public class RefreshCommandHandlerTests
             ErrorType.Unauthorized
         );
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<AuthResponse>(error));
 
@@ -93,7 +93,7 @@ public class RefreshCommandHandlerTests
         Assert.Equal("Identity.RefreshTokenCompromised", result.Error.Code);
         Assert.Equal(error.Description, result.Error.Description);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()),
             Times.Once
         );
@@ -107,13 +107,13 @@ public class RefreshCommandHandlerTests
         var refreshToken = "token";
         var command = new RefreshCommand(refreshToken);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckRefreshToken(refreshToken, cancellationToken))
             .ReturnsAsync(Result.Success(new AuthResponse()));
 
         await _handler.Handle(command, cancellationToken);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.CheckRefreshToken(refreshToken, cancellationToken),
             Times.Once
         );

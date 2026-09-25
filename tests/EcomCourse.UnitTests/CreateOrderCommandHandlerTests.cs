@@ -1,6 +1,6 @@
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
@@ -13,8 +13,8 @@ namespace EcomCourse.UnitTests.Application.Orders;
 public class CreateOrderCommandHandlerTests
 {
     private readonly IOrderRepository _orderRepositoryMock;
-    private readonly ICustomerStore _customerStoreMock;
-    private readonly IProductService _productServiceMock;
+    private readonly ICustomerRepository _customerRepositoryMock;
+    private readonly IProductManager _productManagerMock;
     private readonly FakeTimeProvider _timeProvider;
     private readonly CreateOrderCommandHandler _handler;
     private readonly Dictionary<Guid, (decimal Amount, Currency Currency)> _products = [];
@@ -22,16 +22,16 @@ public class CreateOrderCommandHandlerTests
     public CreateOrderCommandHandlerTests()
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
-        _customerStoreMock = Substitute.For<ICustomerStore>();
-        _productServiceMock = Substitute.For<IProductService>();
+        _customerRepositoryMock = Substitute.For<ICustomerRepository>();
+        _productManagerMock = Substitute.For<IProductManager>();
         _timeProvider = new FakeTimeProvider(new DateTimeOffset(2026, 5, 14, 12, 0, 0, TimeSpan.Zero));
         _handler = new CreateOrderCommandHandler(
             _orderRepositoryMock,
-            _customerStoreMock,
-            _productServiceMock,
+            _customerRepositoryMock,
+            _productManagerMock,
             _timeProvider);
 
-        _productServiceMock
+        _productManagerMock
             .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -100,7 +100,7 @@ public class CreateOrderCommandHandlerTests
             Guid.NewGuid(),
             new List<OrderLineItemRequest> { new(productId, 1) });
 
-        _customerStoreMock.GetByIdAsync(command.customerId, Arg.Any<CancellationToken>())
+        _customerRepositoryMock.GetByIdAsync(command.customerId, Arg.Any<CancellationToken>())
             .Returns((Customer?)null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -131,7 +131,7 @@ public class CreateOrderCommandHandlerTests
                 new(secondProductId, 1)
             });
 
-        _customerStoreMock.GetByIdAsync(command.customerId, Arg.Any<CancellationToken>())
+        _customerRepositoryMock.GetByIdAsync(command.customerId, Arg.Any<CancellationToken>())
             .Returns(customer);
 
         // Act
@@ -196,7 +196,7 @@ public class CreateOrderCommandHandlerTests
                 new(secondProductId, 1)
             });
 
-        _customerStoreMock.GetByIdAsync(command.customerId, Arg.Any<CancellationToken>())
+        _customerRepositoryMock.GetByIdAsync(command.customerId, Arg.Any<CancellationToken>())
             .Returns(customer);
 
         // Act

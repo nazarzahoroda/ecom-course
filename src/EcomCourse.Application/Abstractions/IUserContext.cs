@@ -1,4 +1,4 @@
-namespace EcomCourse.Application.Interfaces
+namespace EcomCourse.Application.Abstractions
 {
     public interface IUserContext
     {

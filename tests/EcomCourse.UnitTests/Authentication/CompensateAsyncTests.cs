@@ -1,4 +1,4 @@
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
@@ -8,18 +8,18 @@ namespace EcomCourse.Application.Tests.Services;
 
 public class CompensateAsyncTests
 {
-    private readonly Mock<ICustomerStore> _customerStoreMock;
-    private readonly Mock<IIdentityService> _identityServiceMock;
+    private readonly Mock<ICustomerRepository> _customerRepositoryMock;
+    private readonly Mock<IIdentityProvider> _identityProviderMock;
     private readonly CompensateAsync _compensateService;
 
     public CompensateAsyncTests()
     {
-        _customerStoreMock = new Mock<ICustomerStore>();
-        _identityServiceMock = new Mock<IIdentityService>();
+        _customerRepositoryMock = new Mock<ICustomerRepository>();
+        _identityProviderMock = new Mock<IIdentityProvider>();
 
         _compensateService = new CompensateAsync(
-            _customerStoreMock.Object,
-            _identityServiceMock.Object
+            _customerRepositoryMock.Object,
+            _identityProviderMock.Object
         );
     }
 
@@ -39,15 +39,15 @@ public class CompensateAsyncTests
             "Ukraine"
         );
         var customer = customerResult.Value;
-        _customerStoreMock
+        _customerRepositoryMock
             .Setup(x => x.GetByIdAsync(customerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(customer);
 
-        _customerStoreMock
+        _customerRepositoryMock
             .Setup(x => x.DeleteAsync(customer!.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
@@ -59,11 +59,11 @@ public class CompensateAsyncTests
 
         Assert.True(result.IsSuccess);
 
-        _customerStoreMock.Verify(
+        _customerRepositoryMock.Verify(
             x => x.DeleteAsync(customer!.Id, It.IsAny<CancellationToken>()),
             Times.Once
         );
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.DeleteUserAsync(userId, It.IsAny<CancellationToken>()),
             Times.Once
         );
@@ -75,7 +75,7 @@ public class CompensateAsyncTests
         var userId = Guid.NewGuid();
         var customerId = Guid.Empty;
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
@@ -87,11 +87,11 @@ public class CompensateAsyncTests
 
         Assert.True(result.IsSuccess);
 
-        _customerStoreMock.Verify(
+        _customerRepositoryMock.Verify(
             x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.DeleteUserAsync(userId, It.IsAny<CancellationToken>()),
             Times.Once
         );
@@ -115,11 +115,11 @@ public class CompensateAsyncTests
 
         var customer = customerResult.Value;
 
-        _customerStoreMock
+        _customerRepositoryMock
             .Setup(x => x.GetByIdAsync(customerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(customer);
 
-        _customerStoreMock
+        _customerRepositoryMock
             .Setup(x => x.DeleteAsync(customer!.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -132,7 +132,7 @@ public class CompensateAsyncTests
         Assert.True(result.IsFailure);
         Assert.Equal("Compensation.CustomerDeleteFailed", result.Error.Code);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.DeleteUserAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
@@ -148,7 +148,7 @@ public class CompensateAsyncTests
                         "Failed to delete user",
                         ErrorType.Conflict);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.DeleteUserAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(error));
 

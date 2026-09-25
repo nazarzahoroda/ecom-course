@@ -8,7 +8,7 @@ public class GetCustomerByIdQueryHandlerTests
     [Fact]
     public async Task HandleReturnsFailureWhenCustomerDoesNotExist()
     {
-        var store = new FakeCustomerStore();
+        var store = new FakeCustomerRepository();
         var handler = new GetCustomerByIdQueryHandler(store);
 
         var query = new GetCustomerByIdQuery(Guid.NewGuid());
@@ -22,7 +22,7 @@ public class GetCustomerByIdQueryHandlerTests
     [Fact]
     public async Task HandleReturnsCustomerWhenCustomerExists()
     {
-        var store = new FakeCustomerStore();
+        var store = new FakeCustomerRepository();
         var userId = Guid.NewGuid();
 
         var customerResult = Customer.Create(
@@ -53,7 +53,7 @@ public class GetCustomerByIdQueryHandlerTests
         Assert.Equal("Ukraine", result.Value.Address.Country);
     }
 
-    private sealed class FakeCustomerStore : ICustomerStore
+    private sealed class FakeCustomerRepository : ICustomerRepository
     {
         private readonly List<Customer> _customers = [];
 

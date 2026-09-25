@@ -1,5 +1,5 @@
 using EcomCourse.Application.Categories;
-using EcomCourse.Application.Categories.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Common;
@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Infrastructure.Services
 {
-    public sealed class CategoryService : ICategoryService
+    public sealed class CategoryManager : ICategoryManager
     {
         private readonly EcomCourseDbContext _dbContext;
 
-        public CategoryService(EcomCourseDbContext dbContext)
+        public CategoryManager(EcomCourseDbContext dbContext)
         {
             _dbContext = dbContext;
         }

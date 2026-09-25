@@ -4,17 +4,17 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Application.Abstractions.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace EcomCourse.Infrastructure.Persistence.Identity
 {
-    public class JwtService : IJwtService
+    public class JwtTokenIssuer : ITokenIssuer
     {
         private readonly IConfiguration _configuration;
 
-        public JwtService(IConfiguration configuration)
+        public JwtTokenIssuer(IConfiguration configuration)
         {
             _configuration = configuration;
         }

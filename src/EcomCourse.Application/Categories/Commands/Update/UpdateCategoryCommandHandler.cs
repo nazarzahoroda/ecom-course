@@ -1,5 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Categories.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Categories.Commands.Update
@@ -7,19 +7,19 @@ namespace EcomCourse.Application.Categories.Commands.Update
     public sealed class UpdateCategoryCommandHandler
     : ICommandHandler<UpdateCategoryCommand>
     {
-        private readonly ICategoryService _categoryService;
+        private readonly ICategoryManager _categoryManager;
 
         public UpdateCategoryCommandHandler(
-            ICategoryService categoryService)
+            ICategoryManager categoryManager)
         {
-            _categoryService = categoryService;
+            _categoryManager = categoryManager;
         }
 
         public async Task<Result> Handle(
             UpdateCategoryCommand request,
             CancellationToken cancellationToken)
         {
-            return await _categoryService.UpdateAsync(
+            return await _categoryManager.UpdateAsync(
                 request.Id,
                 request.Name,
                 cancellationToken);
