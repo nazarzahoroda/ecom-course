@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EcomCourse.Api.Middleware
 {
@@ -18,9 +20,10 @@ namespace EcomCourse.Api.Middleware
         public async ValueTask<bool> TryHandleAsync(
             HttpContext httpContext,
             Exception exception,
-            CancellationToken cancellationToken
-        )
+            CancellationToken cancellationToken)
         {
+            var traceId = httpContext.TraceIdentifier;
+
             LogUnhandledException(
                 _logger,
                 exception,
@@ -28,27 +31,25 @@ namespace EcomCourse.Api.Middleware
                 httpContext.Request.Path
             );
 
-            var isUnauthorized = exception is UnauthorizedAccessException;
-            var statusCode = isUnauthorized
-                ? StatusCodes.Status401Unauthorized
-                : StatusCodes.Status500InternalServerError;
-
             var problemDetails = new ProblemDetails
             {
-                Title = isUnauthorized ? "Unauthorized" : "Server Error",
-                Status = statusCode,
+                Title = "Server Error",
+                Status = StatusCodes.Status500InternalServerError,
                 Detail = _env.IsDevelopment()
-                    ? isUnauthorized ? exception.Message : exception.ToString()
-                    : isUnauthorized ? "Authentication is required." : "An unexpected error occurred.",
+                    ? exception.ToString()
+                    : "An unexpected error occurred.",
             };
 
-            httpContext.Response.StatusCode = statusCode;
+            problemDetails.Extensions["traceId"] = traceId;
+
+            httpContext.Response.StatusCode = problemDetails.Status.Value;
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
         }
 
         [LoggerMessage(
+            EventId = 1,
             Level = LogLevel.Error,
             Message = "Unhandled exception while processing {Method} {Path}"
         )]
