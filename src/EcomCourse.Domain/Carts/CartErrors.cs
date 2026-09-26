@@ -5,9 +5,9 @@ namespace EcomCourse.Domain.Carts
     public static class CartErrors
     {
         public static readonly DomainError InvalidQuantity = new(
-        "CartItem.InvalidQuantity",
-        "Quantity must be greater than zero",
-        ErrorType.Validation
+            "CartItem.InvalidQuantity",
+            "Quantity must be greater than zero",
+            ErrorType.Validation
         );
 
         public static readonly DomainError CartNotFound = new(
@@ -42,8 +42,8 @@ namespace EcomCourse.Domain.Carts
 
         public static readonly DomainError EmptyCustomerId = new(
             "Cart.EmptyCustomerId",
-            "Customer ID cannot be empty."
+            "Customer ID cannot be empty.",
+            ErrorType.Unauthorized
         );
     }
-
 }

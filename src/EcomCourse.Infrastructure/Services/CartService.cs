@@ -15,7 +15,6 @@ namespace EcomCourse.Infrastructure.Services
     {
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
-        public CartService(EcomCourseDbContext context, IUserContext currentUserService)
         private readonly ICustomerStore _customerStore;
         private readonly TimeProvider _timeProvider;
 
@@ -23,7 +22,8 @@ namespace EcomCourse.Infrastructure.Services
             EcomCourseDbContext context,
             IUserContext currentUserService,
             ICustomerStore customerStore,
-            TimeProvider timeProvider)
+            TimeProvider timeProvider
+        )
         {
             _context = context;
             _currentUserService = currentUserService;
@@ -199,6 +199,5 @@ namespace EcomCourse.Infrastructure.Services
 
             return Result.Success(item.Id);
         }
-
     }
 }

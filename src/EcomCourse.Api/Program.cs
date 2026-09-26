@@ -42,10 +42,7 @@ builder.Services.AddCors(options =>
                 policy.WithOrigins(allowedOrigins);
             }
 
-            policy
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+            policy.AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         }
     );
 });
@@ -77,8 +74,11 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
-await app.SeedIdentityAsync();
-
+await app.SeedRolesAsync();
+if (app.Environment.IsDevelopment())
+{
+    await app.SeedAdminAsync();
+}
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

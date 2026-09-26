@@ -12,13 +12,6 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
-
-    public CreateOrderCommandHandler(
-        IOrderRepository orderRepository,
-        IUnitOfWork unitOfWork)
-    {
-        _orderRepository = orderRepository;
-        _unitOfWork = unitOfWork;
     private readonly ICustomerStore _customerStore;
     private readonly IProductService _productService;
     private readonly TimeProvider _timeProvider;
@@ -27,15 +20,21 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
         IOrderRepository orderRepository,
         ICustomerStore customerStore,
         IProductService productService,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IUnitOfWork unitOfWork
+    )
     {
         _orderRepository = orderRepository;
         _customerStore = customerStore;
         _productService = productService;
         _timeProvider = timeProvider;
+        _unitOfWork = unitOfWork;
     }
 
-    public async Task<Result<Guid>> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Guid>> Handle(
+        CreateOrderCommand request,
+        CancellationToken cancellationToken
+    )
     {
         var productIds = request.items.Select(item => item.ProductId).Distinct().ToList();
 
@@ -50,12 +49,15 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
 
         // Server derives UnitPrice and Currency from the product's own price —
         // never trust these financial fields from the client (see docs/review-rules.md).
-        var items = request.items
-            .Select(i => (
-                i.ProductId,
-                i.Quantity,
-                UnitPrice: productsById[i.ProductId].Amount,
-                Currency: productsById[i.ProductId].Currency))
+        var items = request
+            .items.Select(i =>
+                (
+                    i.ProductId,
+                    i.Quantity,
+                    UnitPrice: productsById[i.ProductId].Amount,
+                    Currency: productsById[i.ProductId].Currency
+                )
+            )
             .ToList();
 
         if (items.Count == 0)
@@ -73,7 +75,8 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
             customer.Address.Street,
             customer.Address.City,
             customer.Address.PostalCode,
-            customer.Address.Country);
+            customer.Address.Country
+        );
         if (shippingAddressResult.IsFailure)
         {
             return Result.Failure<Guid>(shippingAddressResult.Error);
@@ -83,7 +86,8 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
             request.customerId,
             shippingAddressResult.Value!,
             items,
-            _timeProvider.GetUtcNow());
+            _timeProvider.GetUtcNow()
+        );
 
         if (orderResult.IsFailure)
         {

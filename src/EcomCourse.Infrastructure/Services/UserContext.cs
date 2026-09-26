@@ -22,8 +22,6 @@ namespace EcomCourse.Infrastructure.Services
             _httpContextAccessor.HttpContext?.User.GetCustomerId()
             ?? throw new UnauthorizedAccessException("User context is unavailable");
         public bool IsAuthenticated =>
-            _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated
-            ?? throw new UnauthorizedAccessException("User context is unavailable");
-
+            _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
     }
 }
