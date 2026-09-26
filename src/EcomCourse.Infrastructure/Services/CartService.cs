@@ -1,4 +1,3 @@
-using Azure.Core;
 using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Carts;

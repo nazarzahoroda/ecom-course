@@ -78,26 +78,6 @@ namespace EcomCourse.Infrastructure.Services
             return Result.Success(result);
         }
 
-        public async Task<Result> CreateUserAsync(
-            RegisterDto dto,
-            CancellationToken cancellationToken
-        )
-        {
-            var user = new ApplicationUser { UserName = dto.UserName, Email = dto.Email };
-            var createUserResult = await _manager.CreateAsync(user, dto.Password);
-            if (!createUserResult.Succeeded)
-            {
-                return Result.Failure(
-                    new DomainError(
-                        "Identity.CreateUserFailed",
-                        "Failed to create user.",
-                        ErrorType.Validation
-                    )
-                );
-            }
-            return Result.Success(user);
-        }
-
         public async Task<Result<ApplicationUserDto>> CreateUserAsyncWithResult(
             RegisterDto dto,
             CancellationToken cancellationToken
