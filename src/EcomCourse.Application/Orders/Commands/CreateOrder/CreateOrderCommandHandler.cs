@@ -1,4 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
@@ -10,6 +11,14 @@ namespace EcomCourse.Application.Orders.Commands.CreateOrder;
 public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderCommand, Guid>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateOrderCommandHandler(
+        IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork)
+    {
+        _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     private readonly ICustomerStore _customerStore;
     private readonly IProductService _productService;
     private readonly TimeProvider _timeProvider;
@@ -84,6 +93,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
         var order = orderResult.Value!;
 
         await _orderRepository.AddAsync(order, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(order.Id);
     }

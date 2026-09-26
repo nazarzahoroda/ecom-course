@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using EcomCourse.Domain.Carts;
+using EcomCourse.Domain.Products;
+using EcomCourse.Infrastructure.Persistence.Repositories;
 
 namespace EcomCourse.Infrastructure;
 
@@ -55,7 +58,8 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtService, JwtService>();
 
-        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOrderRepository, EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository>();
+
         services.AddScoped<ICustomerStore, CustomerStore>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
@@ -66,6 +70,10 @@ public static class DependencyInjection
         services.AddScoped<IUserContext, UserContext>();
 
         services.AddScoped<ICartService, CartService>();
+
+        services.AddScoped<ICartRepository, CartRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
     }

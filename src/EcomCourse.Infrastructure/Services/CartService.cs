@@ -15,6 +15,7 @@ namespace EcomCourse.Infrastructure.Services
     {
         private readonly EcomCourseDbContext _context;
         private readonly IUserContext _currentUserService;
+        public CartService(EcomCourseDbContext context, IUserContext currentUserService)
         private readonly ICustomerStore _customerStore;
         private readonly TimeProvider _timeProvider;
 
@@ -199,85 +200,5 @@ namespace EcomCourse.Infrastructure.Services
             return Result.Success(item.Id);
         }
 
-        public async Task<Result<Guid>> CheckoutCart(CancellationToken cancellationToken)
-        {
-            var customerId = _currentUserService.CustomerId;
-
-            var cart = await _context
-                .Carts.Include(c => c.Items)
-                .FirstOrDefaultAsync(
-                    c => c.CustomerId == customerId && c.Status == CartStatus.Active,
-                    cancellationToken
-                );
-
-            if (cart is null)
-                return Result.Failure<Guid>(CartErrors.CartNotFound);
-
-            if (cart.Items is null || cart.Items.Count == 0)
-                return Result.Failure<Guid>(CartErrors.CartIsEmpty);
-
-            var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
-
-            var productsDict = await _context
-                .Products.AsNoTracking()
-                .Where(p => productIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.Price.Amount, p.Price.Currency })
-                .ToDictionaryAsync(p => p.Id, p => (p.Amount, p.Currency), cancellationToken);
-
-            var missing = productIds.Except(productsDict.Keys).ToList();
-            if (missing.Count > 0)
-                return Result.Failure<Guid>(ProductErrors.Unavailable);
-
-            var items = cart
-                .Items.Select(i =>
-                    (
-                        ProductId: i.ProductId,
-                        Quantity: i.Quantity,
-                        UnitPrice: productsDict[i.ProductId].Amount,
-                        Currency: productsDict[i.ProductId].Currency
-                    )
-                )
-                .ToList();
-
-            var customer = await _customerStore.GetByIdAsync(customerId, cancellationToken);
-            if (customer is null)
-                return Result.Failure<Guid>(CustomerErrors.NotFound);
-
-            var shippingAddressResult = Address.Create(
-                customer.Address.Street,
-                customer.Address.City,
-                customer.Address.PostalCode,
-                customer.Address.Country);
-            if (shippingAddressResult.IsFailure)
-                return Result.Failure<Guid>(shippingAddressResult.Error);
-
-            var orderResult = Order.Create(
-                customerId,
-                shippingAddressResult.Value!,
-                items,
-                _timeProvider.GetUtcNow());
-            if (orderResult.IsFailure)
-                return Result.Failure<Guid>(orderResult.Error);
-
-            var order = orderResult.Value!;
-
-            using var transaction = await _context.Database.BeginTransactionAsync(
-                cancellationToken
-            );
-            try
-            {
-                _context.Orders.Add(order);
-                cart.Checkout();
-                await _context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-
-                return Result.Success(order.Id);
-            }
-            catch
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                throw;
-            }
-        }
     }
 }
