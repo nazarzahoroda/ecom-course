@@ -1,7 +1,7 @@
 using EcomCourse.Application.Authentication.Interfaces;
 using EcomCourse.Application.Categories.Services;
-using EcomCourse.Application.Products.Services;
 using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Infrastructure.Customers;
@@ -44,6 +44,9 @@ public static class DependencyInjection
                 options.Password.RequireUppercase = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireNonAlphanumeric = true;
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<IdentityDbContext>()

@@ -191,9 +191,19 @@ namespace EcomCourse.Infrastructure.Services
             var result = await _signInManager.CheckPasswordSignInAsync(
                 user,
                 dto.Password!,
-                lockoutOnFailure: false
+                lockoutOnFailure: true
             );
 
+            if (result.IsLockedOut)
+            {
+                return Result.Failure(
+                    new DomainError(
+                        "Identity.AccountLocked",
+                        "User account is temporarily locked due to multiple failed login attempts",
+                        ErrorType.Unauthorized
+                    )
+                );
+            }
             if (!result.Succeeded)
             {
                 return Result.Failure(
@@ -204,6 +214,8 @@ namespace EcomCourse.Infrastructure.Services
                     )
                 );
             }
+
+            await _manager.ResetAccessFailedCountAsync(user);
 
             return Result.Success();
         }
