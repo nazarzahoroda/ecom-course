@@ -9,5 +9,5 @@ public sealed record ProductDto(
     Currency Currency,
     string SKU,
     Guid CategoryId,
-    List<ProductImageDto> Images
+    List<ProductImageDto>? Images = null
 );

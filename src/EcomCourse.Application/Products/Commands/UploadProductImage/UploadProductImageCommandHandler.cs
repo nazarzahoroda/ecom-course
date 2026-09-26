@@ -4,8 +4,6 @@ using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
-using Microsoft.EntityFrameworkCore;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace EcomCourse.Application.Products.Commands.UploadProductImage
 {
