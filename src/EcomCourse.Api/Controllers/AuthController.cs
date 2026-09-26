@@ -5,16 +5,9 @@ using EcomCourse.Application.Authentication.Commands.LogoutCommand;
 using EcomCourse.Application.Authentication.Commands.RefreshCommand;
 using EcomCourse.Application.Authentication.Commands.RegisterCommand;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
-using EcomCourse.Domain.Common;
-using EcomCourse.Infrastructure.Persistence;
-using EcomCourse.Infrastructure.Persistence.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Api.Controllers
 {
@@ -92,11 +85,9 @@ namespace EcomCourse.Api.Controllers
 
             if (result.IsFailure)
             {
-              
                 Response.Cookies.Delete("access_token");
                 Response.Cookies.Delete("refresh_token");
-  return result.ToProblemDetails();
-              
+                return result.ToProblemDetails();
             }
 
             Response.Cookies.Append(

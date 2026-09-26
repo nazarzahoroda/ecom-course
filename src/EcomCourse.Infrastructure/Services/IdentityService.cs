@@ -91,8 +91,31 @@ namespace EcomCourse.Infrastructure.Services
             {
                 var errors = string.Join("; ", createUserResult.Errors.Select(x => x.Description));
 
+                string message;
+
+                if (
+                    createUserResult.Errors.Any(x =>
+                        x.Code.StartsWith("Password", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    message = "Password does not meet requirements";
+                }
+                else if (
+                    createUserResult.Errors.Any(x =>
+                        x.Code.Contains("Email", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    message = "Email is invalid";
+                }
+                else
+                {
+                    message = "User creation failed";
+                }
+
                 return Result.Failure<ApplicationUserDto>(
-                    new DomainError("Identity.CreateUserFailed", errors, ErrorType.Validation)
+                    new DomainError("Identity.CreateUserFailed", message, ErrorType.Validation)
                 );
             }
             var roleResult = await _manager.AddToRoleAsync(user, "Customer");
@@ -182,7 +205,7 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure(
                     new DomainError(
                         "Identity.InvalidCredentials",
-                        "Invalid credentials",
+                        "Invalid email or password",
                         ErrorType.Unauthorized
                     )
                 );
@@ -209,7 +232,7 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure(
                     new DomainError(
                         "Identity.InvalidCredentials",
-                        "Invalid credentials",
+                        "Invalid email or password",
                         ErrorType.Unauthorized
                     )
                 );
