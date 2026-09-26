@@ -12,7 +12,6 @@ namespace EcomCourse.Application.Carts.Commands.CartCheckout;
 public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, Guid>
 {
     private readonly ICartRepository _cartRepository;
-    private readonly IProductRepository _productRepository;
     private readonly IProductService _productService;
     private readonly IOrderRepository _orderRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -21,7 +20,6 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
 
     public CartCheckoutCommandHandler(
         ICartRepository cartRepository,
-        IProductRepository productRepository,
         IProductService productService,
         IOrderRepository orderRepository,
         IUnitOfWork unitOfWork,
@@ -30,7 +28,6 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
     )
     {
         _cartRepository = cartRepository;
-        _productRepository = productRepository;
         _productService = productService;
         _orderRepository = orderRepository;
         _unitOfWork = unitOfWork;

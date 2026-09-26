@@ -6,34 +6,33 @@ using Microsoft.Extensions.Options;
 
 namespace EcomCourse.IntegrationTests.Common;
 
-public sealed class TestAuthenticationHandler
-    : AuthenticationHandler<AuthenticationSchemeOptions>
+public sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     public const string AuthenticationScheme = "TestScheme";
 
     public TestAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
-        : base(options, logger, encoder)
-    {
-    }
+        UrlEncoder encoder
+    )
+        : base(options, logger, encoder) { }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (Request.Headers.TryGetValue("X-Test-Anonymous", out var anonymous) &&
-            anonymous == "true")
+        if (
+            Request.Headers.TryGetValue("X-Test-Anonymous", out var anonymous)
+            && anonymous == "true"
+        )
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
-        };
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) };
 
-        if (Request.Headers.TryGetValue("X-Test-CustomerId", out var customerIdHeader) &&
-            Guid.TryParse(customerIdHeader, out var customerId))
+        if (
+            Request.Headers.TryGetValue("X-Test-CustomerId", out var customerIdHeader)
+            && Guid.TryParse(customerIdHeader, out var customerId)
+        )
         {
             claims.Add(new Claim("CustomerId", customerId.ToString()));
         }
