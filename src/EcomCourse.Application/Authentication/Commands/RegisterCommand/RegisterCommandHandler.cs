@@ -34,8 +34,8 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                 return Result.Failure(
                     new DomainError(
                         "Identity.RegistrationFailed",
-                        "Registration failed. Please check your details and try again",
-                        ErrorType.Unauthorized
+                        "Registration failed: user already exists",
+                        ErrorType.Conflict
                     )
                 );
             }

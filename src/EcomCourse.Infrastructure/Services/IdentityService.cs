@@ -91,12 +91,31 @@ namespace EcomCourse.Infrastructure.Services
             {
                 var errors = string.Join("; ", createUserResult.Errors.Select(x => x.Description));
 
-                return Result.Failure<ApplicationUserDto>(
-                    new DomainError(
-                        "Identity.CreateUserFailed",
-                        "Invalid email or password",
-                        ErrorType.Validation
+                string message;
+
+                if (
+                    createUserResult.Errors.Any(x =>
+                        x.Code.StartsWith("Password", StringComparison.OrdinalIgnoreCase)
                     )
+                )
+                {
+                    message = "Password does not meet requirements";
+                }
+                else if (
+                    createUserResult.Errors.Any(x =>
+                        x.Code.Contains("Email", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    message = "Email is invalid";
+                }
+                else
+                {
+                    message = "User creation failed";
+                }
+
+                return Result.Failure<ApplicationUserDto>(
+                    new DomainError("Identity.CreateUserFailed", message, ErrorType.Validation)
                 );
             }
             var roleResult = await _manager.AddToRoleAsync(user, "Customer");

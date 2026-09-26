@@ -30,9 +30,9 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
             {
                 return Result.Failure<AuthResponse>(
                     new DomainError(
-                        "Identity.InvalidCredentials",
-                        "Invalid email or password",
-                        ErrorType.Unauthorized
+                        checkResult.Error.Code,
+                        checkResult.Error.Description,
+                        checkResult.Error.Type
                     )
                 );
             }
