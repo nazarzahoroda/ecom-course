@@ -52,9 +52,10 @@ public class RefreshCommandHandlerTests
         var refreshToken = "invalid-or-expired-token";
         var command = new RefreshCommand(refreshToken);
         var error = new DomainError(
-                        "Identity.InvalidRefreshToken",
-                        "Refresh token is invalid or expired.",
-                        ErrorType.Unauthorized);
+            "Identity.InvalidRefreshToken",
+            "Refresh token is invalid or expired.",
+            ErrorType.Unauthorized
+        );
 
         _identityServiceMock
             .Setup(x => x.CheckRefreshToken(refreshToken, It.IsAny<CancellationToken>()))

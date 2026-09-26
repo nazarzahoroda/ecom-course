@@ -13,40 +13,51 @@ namespace EcomCourse.Infrastructure.Persistence.Configurations
 
             builder.HasKey(product => product.Id);
 
-            builder.Property(product => product.Name)
-            .HasMaxLength(100)
-            .IsRequired();
+            builder.Property(product => product.Name).HasMaxLength(100).IsRequired();
 
-            builder.OwnsOne(product => product.Price, priceBuilder =>
-            {
-                priceBuilder.Property(price => price.Amount)
-                    .HasColumnName("PriceAmount")
-                    .HasPrecision(18, 2)
-                    .IsRequired();
+            builder.OwnsOne(
+                product => product.Price,
+                priceBuilder =>
+                {
+                    priceBuilder
+                        .Property(price => price.Amount)
+                        .HasColumnName("PriceAmount")
+                        .HasPrecision(18, 2)
+                        .IsRequired();
 
-                priceBuilder.Property(price => price.Currency)
-                    .HasConversion<string>()
-                    .HasColumnName("Currency")
-                    .IsRequired();
-            });
+                    priceBuilder
+                        .Property(price => price.Currency)
+                        .HasConversion<string>()
+                        .HasColumnName("Currency")
+                        .IsRequired();
+                }
+            );
 
-            builder.OwnsOne(product => product.SKU, skuBuilder =>
-            {
-                skuBuilder.Property(sku => sku.Value)
-                    .HasColumnName("SKUValue")
-                    .HasMaxLength(8)
-                    .IsRequired();
+            builder.OwnsOne(
+                product => product.SKU,
+                skuBuilder =>
+                {
+                    skuBuilder
+                        .Property(sku => sku.Value)
+                        .HasColumnName("SKUValue")
+                        .HasMaxLength(8)
+                        .IsRequired();
 
-                skuBuilder.HasIndex(sku => sku.Value)
-                    .IsUnique();
-            });
+                    skuBuilder.HasIndex(sku => sku.Value).IsUnique();
+                }
+            );
 
-            builder.Property(product => product.CategoryId)
-                .IsRequired();
+            builder.Property(product => product.CategoryId).IsRequired();
 
-            builder.HasOne<Category>()
-                .WithMany()
-                .HasForeignKey(product => product.CategoryId);
+            builder.HasOne<Category>().WithMany().HasForeignKey(product => product.CategoryId);
+
+            builder
+                .HasMany(p => p.Images)
+                .WithOne()
+                .HasForeignKey(img => img.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Navigation(p => p.Images).UsePropertyAccessMode(PropertyAccessMode.Field);
         }
     }
 }
