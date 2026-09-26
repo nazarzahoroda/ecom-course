@@ -7,7 +7,7 @@ using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
-namespace EcomCourse.IntegrationTests.Authentication;
+namespace EcomCourse.IntegrationTests.Common;
 
 public class LoginSecurityIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -15,7 +15,6 @@ public class LoginSecurityIntegrationTests : IClassFixture<WebApplicationFactory
 
     public LoginSecurityIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        // Створюємо клієнт через тестову фабрику
         _client = factory.WithTestAuthentication().CreateClient();
     }
 

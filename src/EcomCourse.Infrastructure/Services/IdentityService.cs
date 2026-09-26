@@ -92,7 +92,11 @@ namespace EcomCourse.Infrastructure.Services
                 var errors = string.Join("; ", createUserResult.Errors.Select(x => x.Description));
 
                 return Result.Failure<ApplicationUserDto>(
-                    new DomainError("Identity.CreateUserFailed", errors, ErrorType.Validation)
+                    new DomainError(
+                        "Identity.CreateUserFailed",
+                        "Invalid email or password",
+                        ErrorType.Validation
+                    )
                 );
             }
             var roleResult = await _manager.AddToRoleAsync(user, "Customer");

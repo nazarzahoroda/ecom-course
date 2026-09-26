@@ -35,7 +35,7 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                     new DomainError(
                         "Identity.RegistrationFailed",
                         "Registration failed. Please check your details and try again",
-                        ErrorType.Validation
+                        ErrorType.Unauthorized
                     )
                 );
             }

@@ -32,7 +32,7 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
                     new DomainError(
                         "Identity.InvalidCredentials",
                         "Invalid email or password",
-                        ErrorType.Validation
+                        ErrorType.Unauthorized
                     )
                 );
             }
@@ -44,7 +44,7 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
                     new DomainError(
                         "Identity.InvalidCredentials",
                         "Invalid email or password",
-                        ErrorType.Validation
+                        ErrorType.Unauthorized
                     )
                 );
             }
