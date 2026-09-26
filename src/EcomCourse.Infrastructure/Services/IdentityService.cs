@@ -78,26 +78,6 @@ namespace EcomCourse.Infrastructure.Services
             return Result.Success(result);
         }
 
-        public async Task<Result> CreateUserAsync(
-            RegisterDto dto,
-            CancellationToken cancellationToken
-        )
-        {
-            var user = new ApplicationUser { UserName = dto.UserName, Email = dto.Email };
-            var createUserResult = await _manager.CreateAsync(user, dto.Password);
-            if (!createUserResult.Succeeded)
-            {
-                return Result.Failure(
-                    new DomainError(
-                        "Identity.CreateUserFailed",
-                        "Failed to create user.",
-                        ErrorType.Validation
-                    )
-                );
-            }
-            return Result.Success(user);
-        }
-
         public async Task<Result<ApplicationUserDto>> CreateUserAsyncWithResult(
             RegisterDto dto,
             CancellationToken cancellationToken
@@ -111,8 +91,31 @@ namespace EcomCourse.Infrastructure.Services
             {
                 var errors = string.Join("; ", createUserResult.Errors.Select(x => x.Description));
 
+                string message;
+
+                if (
+                    createUserResult.Errors.Any(x =>
+                        x.Code.StartsWith("Password", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    message = "Password does not meet requirements";
+                }
+                else if (
+                    createUserResult.Errors.Any(x =>
+                        x.Code.Contains("Email", StringComparison.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    message = "Email is invalid";
+                }
+                else
+                {
+                    message = "User creation failed";
+                }
+
                 return Result.Failure<ApplicationUserDto>(
-                    new DomainError("Identity.CreateUserFailed", errors, ErrorType.Validation)
+                    new DomainError("Identity.CreateUserFailed", message, ErrorType.Validation)
                 );
             }
             var roleResult = await _manager.AddToRoleAsync(user, "Customer");
@@ -202,7 +205,7 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure(
                     new DomainError(
                         "Identity.InvalidCredentials",
-                        "Invalid credentials",
+                        "Invalid email or password",
                         ErrorType.Unauthorized
                     )
                 );
@@ -211,19 +214,31 @@ namespace EcomCourse.Infrastructure.Services
             var result = await _signInManager.CheckPasswordSignInAsync(
                 user,
                 dto.Password!,
-                lockoutOnFailure: false
+                lockoutOnFailure: true
             );
 
+            if (result.IsLockedOut)
+            {
+                return Result.Failure(
+                    new DomainError(
+                        "Identity.AccountLocked",
+                        "User account is temporarily locked due to multiple failed login attempts",
+                        ErrorType.Unauthorized
+                    )
+                );
+            }
             if (!result.Succeeded)
             {
                 return Result.Failure(
                     new DomainError(
                         "Identity.InvalidCredentials",
-                        "Invalid credentials",
+                        "Invalid email or password",
                         ErrorType.Unauthorized
                     )
                 );
             }
+
+            await _manager.ResetAccessFailedCountAsync(user);
 
             return Result.Success();
         }

@@ -1,4 +1,6 @@
+using System;
 using EcomCourse.Domain.Carts;
+using Xunit;
 
 namespace EcomCourse.UnitTests.CartTest
 {
@@ -7,7 +9,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void ItemCannotBeAddedToCartWhenNotActive()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             cart.Abandon();
 
@@ -20,7 +22,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void ItemCannotBeAddedToCartWhenNotActiveCheckout()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             cart.Checkout();
 
@@ -33,8 +35,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void CreateItemQuantityWithZeroQuantityHaveToFail()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
-
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             var result = cart.AddItem(productId, 0);
@@ -46,8 +47,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void UpdateItemQuantityWithZeroQuantityHaveToFail()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
-
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             cart.AddItem(productId, 2);
@@ -61,7 +61,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void UpdateItemQuantity_WithValidQuantity_ShouldUpdateQuantity()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             cart.AddItem(productId, 2);
@@ -75,7 +75,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void UpdateItemQuantity_WithNegativeQuantity_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             cart.AddItem(productId, 2);
@@ -90,7 +90,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void UpdateItemQuantity_WhenProductDoesNotExist_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             var result = cart.UpdateItemQuantity(Guid.NewGuid(), 2);
 
@@ -101,24 +101,33 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void AddItem_WhenProductAlreadyInCart_SumsQuantity()
         {
-            // Arrange
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
-            // Act
             cart.AddItem(productId, 2);
+
             var result = cart.AddItem(productId, 3);
 
-            // Assert
             Assert.True(result.IsSuccess);
-            Assert.Single(cart.Items);
-            Assert.Equal(5, cart.Items.First().Quantity);
+
+            var item = Assert.Single(cart.Items);
+            Assert.Equal(productId, item.ProductId);
+            Assert.Equal(5, item.Quantity);
+        }
+
+        [Fact]
+        public void Create_ShouldReturnFailure_WhenCustomerIdIsEmpty()
+        {
+            var result = Cart.Create(Guid.Empty);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(CartErrors.EmptyCustomerId, result.Error);
         }
 
         [Fact]
         public void RemoveItem_WhenProductExists_ShouldRemoveItem()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             cart.AddItem(productId, 2);
@@ -132,7 +141,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void RemoveItem_WhenProductDoesNotExist_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             var result = cart.RemoveItem(Guid.NewGuid());
 
@@ -143,7 +152,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void RemoveItem_WhenCartIsNotActive_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             cart.AddItem(productId, 2);
@@ -159,7 +168,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void Checkout_WhenCartIsActive_ShouldChangeStatusToCheckedOut()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             var result = cart.Checkout();
 
@@ -170,7 +179,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void Checkout_WhenCartIsNotActive_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             cart.Abandon();
 
@@ -184,7 +193,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void Abandon_WhenCartIsActive_ShouldChangeStatusToAbandoned()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             var result = cart.Abandon();
 
@@ -195,7 +204,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void Abandon_WhenCartIsNotActive_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
 
             cart.Checkout();
 
@@ -209,7 +218,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void AddItem_WithValidProduct_ShouldAddItemToCart()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             var result = cart.AddItem(productId, 2);
@@ -224,7 +233,7 @@ namespace EcomCourse.UnitTests.CartTest
         [Fact]
         public void AddItem_WhenQuantityIsNegative_ShouldReturnFailure()
         {
-            var cart = new Cart(Guid.NewGuid(), Guid.NewGuid());
+            var cart = Cart.Create(Guid.NewGuid()).Value!;
             var productId = Guid.NewGuid();
 
             var result = cart.AddItem(productId, -1);
