@@ -9,7 +9,7 @@ public class OrderTests
     private static Address CreateAddress() =>
         Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
 
-    private static readonly DateTimeOffset FixedCreatedAt = new(2026, 5, 14, 12, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset _fixedCreatedAt = new(2026, 5, 14, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public void Create_ShouldReturnFailure_WhenItemsListIsEmpty()
@@ -18,7 +18,7 @@ public class OrderTests
         var emptyItems = Array.Empty<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)>();
 
         // Act
-        var result = Order.Create(customerId, CreateAddress(), emptyItems, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), emptyItems, _fixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -36,7 +36,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, CreateAddress(), invalidItems, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), invalidItems, _fixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -54,7 +54,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, CreateAddress(), invalidItems, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), invalidItems, _fixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -72,7 +72,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, CreateAddress(), invalidItems, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), invalidItems, _fixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -91,7 +91,7 @@ public class OrderTests
         };
 
         // Act
-        var result = Order.Create(customerId, CreateAddress(), items, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), items, _fixedCreatedAt);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -112,7 +112,7 @@ public class OrderTests
         const decimal expectedTotal = 375.5m;
 
         // Act
-        var result = Order.Create(customerId, CreateAddress(), items, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), items, _fixedCreatedAt);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -121,7 +121,7 @@ public class OrderTests
         Assert.Equal(3, result.Value.Lines.Count);
         Assert.Equal(OrderStatus.Pending, result.Value.Status);
         Assert.Equal(Currency.USD, result.Value.Currency);
-        Assert.Equal(FixedCreatedAt, result.Value.CreatedAt);
+        Assert.Equal(_fixedCreatedAt, result.Value.CreatedAt);
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class OrderTests
         var productId = Guid.NewGuid();
         var items = new[] { (ProductId: productId, Quantity: 2, UnitPrice: 150m, Currency: Currency.USD) };
 
-        var result = Order.Create(customerId, CreateAddress(), items, FixedCreatedAt);
+        var result = Order.Create(customerId, CreateAddress(), items, _fixedCreatedAt);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
@@ -152,7 +152,7 @@ public class OrderTests
             Guid.NewGuid(),
             CreateAddress(),
             new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) },
-            FixedCreatedAt);
+            _fixedCreatedAt);
 
         return result.Value!;
     }
@@ -229,5 +229,32 @@ public class OrderTests
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
         Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
+
+    [Fact]
+    public void Create_WithValidData_ShouldSetCustomerAndShippingAddress()
+    {
+        var customerId = Guid.NewGuid();
+        var shippingAddress = CreateAddress();
+
+        var items = new[]
+        {
+        (
+            ProductId: Guid.NewGuid(),
+            Quantity: 1,
+            UnitPrice: 100m,
+            Currency: Currency.USD
+        )
+    };
+
+        var result = Order.Create(
+            customerId,
+            shippingAddress,
+            items,
+            _fixedCreatedAt);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(customerId, result.Value!.CustomerId);
+        Assert.Equal(shippingAddress, result.Value.ShippingAddress);
     }
 }
