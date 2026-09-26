@@ -16,6 +16,10 @@ public interface IProductService
 
     Task<Result<ProductDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken = default);
+
     Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
         CancellationToken cancellationToken = default
     );
