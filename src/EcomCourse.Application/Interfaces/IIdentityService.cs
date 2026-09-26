@@ -9,7 +9,6 @@ namespace EcomCourse.Application.Interfaces
         Task<Result<ApplicationUserDto>> GetUserAsync(string email, CancellationToken cancellationToken);
         Task<bool> IsUserExist(string email, CancellationToken cancellationToken);
 
-        Task<Result> CreateUserAsync(RegisterDto dto, CancellationToken cancellationToken);
         Task<Result<ApplicationUserDto>> CreateUserAsyncWithResult(RegisterDto dto, CancellationToken cancellationToken);
         Task<Result> SetCustomerIdAsync(Guid userId, Guid customerId, CancellationToken cancellationToken);
 

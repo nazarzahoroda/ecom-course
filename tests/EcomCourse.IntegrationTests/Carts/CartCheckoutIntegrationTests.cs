@@ -38,7 +38,9 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
         {
             var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
 
-            var cart = new Cart(Guid.NewGuid(), customerId);
+            var cartResult = Cart.Create(customerId);
+            var cart = cartResult.Value!;
+
             db.Carts.Add(cart);
             await db.SaveChangesAsync();
         }
