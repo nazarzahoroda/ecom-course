@@ -39,6 +39,11 @@ namespace EcomCourse.Domain.Carts
             "Customer already has an active cart",
             ErrorType.Conflict
         );
+
+        public static readonly DomainError EmptyCustomerId = new(
+            "Cart.EmptyCustomerId",
+            "Customer ID cannot be empty."
+        );
     }
 
 }

@@ -106,6 +106,7 @@ namespace EcomCourse.Infrastructure.Services
                 .Where(c => c.CustomerId == customerId && c.Status == CartStatus.Active)
                 .Take(2)
                 .ToListAsync(cancellationToken);
+
             if (activeCarts.Count > 1)
                 return Result.Failure(CartErrors.ActiveCartAlreadyExists);
 
@@ -113,10 +114,18 @@ namespace EcomCourse.Infrastructure.Services
 
             if (cart is null)
             {
-                cart = new Cart(Guid.NewGuid(), customerId);
+                // Викликаємо фабрику замість публічного конструктора
+                var cartResult = Cart.Create(customerId);
 
+                if (cartResult.IsFailure)
+                {
+                    return Result.Failure(cartResult.Error);
+                }
+
+                cart = cartResult.Value!;
                 _context.Carts.Add(cart);
             }
+
             var productExists = await _context.Products.AnyAsync(
                 p => p.Id == dto.ProductId,
                 cancellationToken
@@ -126,6 +135,7 @@ namespace EcomCourse.Infrastructure.Services
             {
                 return Result.Failure(ProductErrors.NotFound(dto.ProductId));
             }
+
             var result = cart.AddItem(dto.ProductId, dto.Quantity);
 
             if (result.IsFailure)
@@ -151,10 +161,12 @@ namespace EcomCourse.Infrastructure.Services
                     c => c.CustomerId == customerId && c.Status == CartStatus.Active,
                     cancellationToken
                 );
+
             if (cart is null)
             {
                 return Result.Failure(CartErrors.CartNotFound);
             }
+
             var result = cart.UpdateItemQuantity(dto.ProductId, dto.Quantity);
 
             if (result.IsFailure)
