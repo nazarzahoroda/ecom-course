@@ -18,7 +18,7 @@ namespace EcomCourse.Api.Controllers
             _sender = sender;
         }
 
-        [HttpGet]
+        [HttpGet("{productId}")]
         public async Task<IActionResult> GetImages(
             Guid productId,
             CancellationToken cancellationToken
@@ -26,20 +26,23 @@ namespace EcomCourse.Api.Controllers
         {
             var request = new GetProductImagesQuery(productId);
             var images = await _sender.Send(request, cancellationToken);
-            return Ok(images);
+            return Ok(images.Value);
         }
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadImage(
-            Guid productId,
+            [FromQuery] Guid productId,
             IFormFile file,
             [FromQuery] bool isMain,
             CancellationToken cancellationToken
         )
         {
             if (file is null || file.Length == 0)
+            {
                 return BadRequest(new ProblemDetails { Detail = "Файл відсутній або порожній." });
+            }
 
             await using var stream = file.OpenReadStream();
             var command = new UploadProductImageCommand(
@@ -52,6 +55,7 @@ namespace EcomCourse.Api.Controllers
             var result = await _sender.Send(command, cancellationToken);
 
             if (result.IsFailure)
+            {
                 return BadRequest(
                     new ProblemDetails
                     {
@@ -59,6 +63,7 @@ namespace EcomCourse.Api.Controllers
                         Detail = result.Error.Description,
                     }
                 );
+            }
 
             return Ok(new { ImageId = result.Value });
         }
