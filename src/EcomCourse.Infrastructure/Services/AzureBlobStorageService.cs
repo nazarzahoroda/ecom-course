@@ -10,6 +10,26 @@ namespace EcomCourse.Infrastructure.Services
 {
     public class AzureBlobStorageService : IBlobStorageService
     {
+        private const long _maxSize = 5 * 1024 * 1024;
+
+        private static readonly Dictionary<string, string> _allowedImageTypes = new(
+            StringComparer.OrdinalIgnoreCase
+        )
+        {
+            { "image/jpeg", ".jpg" },
+            { "image/png", ".png" },
+            { "image/webp", ".webp" },
+        };
+
+        private static readonly HashSet<string> _allowedExtensions = new(
+            StringComparer.OrdinalIgnoreCase
+        )
+        {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+        };
         private readonly BlobContainerClient _containerClient;
         private readonly string _containerName;
 
@@ -27,7 +47,7 @@ namespace EcomCourse.Infrastructure.Services
             Stream content,
             string contentType,
             string fileName,
-            CancellationToken ct
+            CancellationToken cancellationToken
         )
         {
             if (content is null || content.Length == 0)
@@ -41,12 +61,51 @@ namespace EcomCourse.Infrastructure.Services
                 );
             }
 
+            if (content.Length > _maxSize)
+            {
+                return Result.Failure<string>(
+                    new DomainError(
+                        "Storage.FileTooLarge",
+                        $"File size exceeds the limit of {_maxSize / (1024 * 1024)} MB",
+                        ErrorType.Validation
+                    )
+                );
+            }
+
+            var normalizedContentType = contentType?.Trim().ToLowerInvariant() ?? string.Empty;
+            if (!_allowedImageTypes.ContainsKey(normalizedContentType))
+            {
+                return Result.Failure<string>(
+                    new DomainError(
+                        "Storage.InvalidContentType",
+                        "Only JPEG, PNG, and WebP image types are supported",
+                        ErrorType.Validation
+                    )
+                );
+            }
+
+            var extension = Path.GetExtension(fileName);
+            if (string.IsNullOrWhiteSpace(extension) || !_allowedExtensions.Contains(extension))
+            {
+                return Result.Failure<string>(
+                    new DomainError(
+                        "Storage.InvalidFileExtension",
+                        "File extension does not match allowed image formats",
+                        ErrorType.Validation
+                    )
+                );
+            }
             try
             {
                 await _containerClient.CreateIfNotExistsAsync(
                     PublicAccessType.None,
-                    cancellationToken: ct
+                    cancellationToken: cancellationToken
                 );
+
+                if (content.CanSeek && content.Position > 0)
+                {
+                    content.Position = 0;
+                }
 
                 var safeFileName = Path.GetFileName(fileName);
                 var blobName = $"{Guid.NewGuid()}-{safeFileName}";
@@ -58,7 +117,7 @@ namespace EcomCourse.Infrastructure.Services
                     {
                         HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
                     },
-                    ct
+                    cancellationToken
                 );
 
                 return Result.Success(blobName);
@@ -75,14 +134,14 @@ namespace EcomCourse.Infrastructure.Services
             }
         }
 
-        public async Task<Result> DeleteAsync(string blobName, CancellationToken ct)
+        public async Task<Result> DeleteAsync(string blobName, CancellationToken cancellationToken)
         {
             try
             {
                 var blobClient = _containerClient.GetBlobClient(blobName);
                 await blobClient.DeleteIfExistsAsync(
                     DeleteSnapshotsOption.IncludeSnapshots,
-                    cancellationToken: ct
+                    cancellationToken: cancellationToken
                 );
 
                 return Result.Success();

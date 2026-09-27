@@ -8,9 +8,9 @@ namespace EcomCourse.Application.Interfaces
             Stream content,
             string contentType,
             string fileName,
-            CancellationToken ct
+            CancellationToken cancellationToken
         );
-        Task<Result> DeleteAsync(string blobName, CancellationToken ct);
+        Task<Result> DeleteAsync(string blobName, CancellationToken cancellationToken);
         Result<string> GenerateReadSasUri(string blobName, TimeSpan expiresIn);
     }
 }

@@ -111,10 +111,11 @@ public sealed class ProductService : IProductService
 
     public async Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
         IReadOnlyCollection<Guid> ids,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var products = await _dbContext.Products
-            .AsNoTracking()
+        var products = await _dbContext
+            .Products.AsNoTracking()
             .Where(product => ids.Contains(product.Id))
             .ToListAsync(cancellationToken);
 
@@ -123,8 +124,7 @@ public sealed class ProductService : IProductService
 
         if (missingIds.Count > 0)
         {
-            return Result.Failure<IReadOnlyList<ProductDto>>(
-                ProductErrors.NotFound(missingIds[0]));
+            return Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingIds[0]));
         }
 
         IReadOnlyList<ProductDto> dtos = products
@@ -134,7 +134,8 @@ public sealed class ProductService : IProductService
                 product.Price.Amount,
                 product.Price.Currency,
                 product.SKU.Value,
-                product.CategoryId))
+                product.CategoryId
+            ))
             .ToList();
 
         return Result.Success(dtos);
@@ -413,7 +414,10 @@ public sealed class ProductService : IProductService
 
         _dbContext.ProductImages.Remove(image);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        var deleteResult = await _storageService.DeleteAsync(image.BlobName, cancellationToken);
+        var deleteResult = await _storageService.DeleteAsync(
+            image.BlobName,
+            CancellationToken.None
+        );
 
         if (deleteResult.IsFailure)
             return Result.Failure(deleteResult.Error);

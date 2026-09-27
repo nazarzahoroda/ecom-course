@@ -1,4 +1,3 @@
-using System.Security.AccessControl;
 using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products.Services;
@@ -33,28 +32,48 @@ namespace EcomCourse.Application.Products.Commands.UploadProductImage
             if (!isExists)
                 return Result.Failure<Guid>(ProductErrors.NotFound(request.productId));
 
-            var blobName = await _blobStorage.UploadAsync(
+            var uploadResult = await _blobStorage.UploadAsync(
                 request.fileStream,
                 request.contentType,
                 request.fileName,
                 cancellationToken
             );
-            if (blobName.IsFailure)
-                return Result.Failure<Guid>(blobName.Error);
+            if (uploadResult.IsFailure)
+                return Result.Failure<Guid>(uploadResult.Error);
 
-            if (request.isMain)
+            try
             {
-                await _productService.ChangeMainImages(request.productId, cancellationToken);
-            }
+                if (request.isMain)
+                {
+                    await _productService.ChangeMainImages(request.productId, cancellationToken);
+                }
 
-            var imageAddResult = await _productService.AddImage(
-                request.productId,
-                blobName.Value!,
-                request.contentType,
-                request.isMain,
-                cancellationToken
-            );
-            return Result.Success(imageAddResult.Value);
+                var imageAddResult = await _productService.AddImage(
+                    request.productId,
+                    uploadResult.Value!,
+                    request.contentType,
+                    request.isMain,
+                    cancellationToken
+                );
+
+                if (imageAddResult.IsFailure)
+                {
+                    await CompensateUploadedBlobAsync(uploadResult.Value!);
+                    return Result.Failure<Guid>(imageAddResult.Error);
+                }
+
+                return Result.Success(imageAddResult.Value);
+            }
+            catch
+            {
+                await CompensateUploadedBlobAsync(uploadResult.Value!);
+                throw;
+            }
+        }
+
+        private async Task CompensateUploadedBlobAsync(string blobName)
+        {
+            await _blobStorage.DeleteAsync(blobName, CancellationToken.None);
         }
     }
 }

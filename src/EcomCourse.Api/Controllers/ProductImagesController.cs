@@ -30,7 +30,7 @@ namespace EcomCourse.Api.Controllers
         }
 
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UploadImage(
             Guid productId,
             IFormFile file,
@@ -63,8 +63,8 @@ namespace EcomCourse.Api.Controllers
             return Ok(new { ImageId = result.Value });
         }
 
-        [HttpDelete("{imageId:guid}")]
-        //[Authorize(Roles = "Admin")]
+        [HttpDelete("{imageId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteImage(
             Guid productId,
             Guid imageId,
