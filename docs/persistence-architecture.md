@@ -104,3 +104,17 @@ The existing Order and Cart Checkout Unit of Work implementation should be prese
 6. Add optimistic concurrency to Cart.
 7. Add an integration test that performs two concurrent checkout attempts for the same Cart and verifies that exactly one Order is created.
 8. Run the complete unit and integration test suites.
+
+## Implementation notes
+
+During implementation, the remaining direct `SaveChangesAsync` usages were audited individually.
+
+The Unit of Work boundary is required for write use cases that coordinate multiple persistence operations or repositories under a single atomic commit. Existing infrastructure services that encapsulate a complete persistence operation and do not participate in a larger handler-owned atomic write boundary were retained.
+
+The Order and Cart Checkout flows use `IUnitOfWork` as their explicit commit boundary. Registration uses the common persistence context and an explicit transaction so that Identity and domain changes can be committed or rolled back atomically.
+
+The legacy `IdentityDbContext` type and its historical Identity migration metadata are retained for compatibility with the existing migration history. Runtime Identity persistence uses `EcomCourseDbContext`.
+
+The remaining direct `SaveChangesAsync` usages in Product, Category, Cart, Identity and `CustomerStore.AddAsync` were reviewed and intentionally retained where the service owns the complete persistence operation. Dead persistence code discovered during the audit was removed.
+
+Cart optimistic concurrency is implemented using a SQL Server `rowversion` concurrency token. The integration test verifies that when two independent contexts attempt to persist checkout changes based on the same Cart version, only one checkout commits successfully and exactly one Order remains persisted.
