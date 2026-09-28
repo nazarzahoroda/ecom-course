@@ -5,6 +5,7 @@ using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Authentication.Interfaces;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Common;
+using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -15,14 +16,14 @@ namespace EcomCourse.Infrastructure.Services
     public class IdentityService : IIdentityService
     {
         private readonly UserManager<ApplicationUser> _manager;
-        private readonly IdentityDbContext _context;
+        private readonly EcomCourseDbContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IJwtService _jwtService;
         private readonly IConfiguration _configuration;
 
         public IdentityService(
             UserManager<ApplicationUser> manager,
-            IdentityDbContext context,
+            EcomCourseDbContext context,
             SignInManager<ApplicationUser> signInManager,
             IJwtService jwtService,
             IConfiguration configuration
