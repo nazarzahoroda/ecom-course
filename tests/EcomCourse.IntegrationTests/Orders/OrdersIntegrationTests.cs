@@ -411,12 +411,6 @@ public class OrdersIntegrationTests
         {
             return Task.FromResult(_customers.FirstOrDefault(customer => customer.Id == id));
         }
-
-        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
-        {
-            var removed = _customers.RemoveAll(customer => customer.Id == id) > 0;
-            return Task.FromResult(removed);
-        }
     }
 
     private sealed class FakeProductService : IProductService

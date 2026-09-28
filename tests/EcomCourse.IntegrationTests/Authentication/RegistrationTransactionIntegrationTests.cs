@@ -95,12 +95,5 @@ public class RegistrationTransactionIntegrationTests
         {
             return Task.FromResult<Customer?>(null);
         }
-
-        public Task<bool> DeleteAsync(
-            Guid id,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(false);
-        }
     }
 }
