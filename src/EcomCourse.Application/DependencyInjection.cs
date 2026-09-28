@@ -1,5 +1,4 @@
 using EcomCourse.Application.Behaviors;
-using EcomCourse.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EcomCourse.Application;
@@ -19,7 +18,6 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
         });
-        services.AddScoped<CompensateAsync>();
         return services;
     }
 }
