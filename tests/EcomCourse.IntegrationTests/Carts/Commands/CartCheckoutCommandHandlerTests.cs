@@ -144,7 +144,7 @@ public class CartCheckoutCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldCommitTransaction_WhenSuccessful()
+    public async Task Handle_ShouldSaveChanges_WhenSuccessful()
     {
         var cart = Cart.Create(_customerId);
         var productId = Guid.NewGuid();
@@ -167,23 +167,19 @@ public class CartCheckoutCommandHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        _unitOfWorkMock.Verify(
-            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
-            Times.Once
-        );
         _orderRepositoryMock.Verify(
             x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
-        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+
         _unitOfWorkMock.Verify(
-            x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()),
+            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Once
         );
     }
 
     [Fact]
-    public async Task Handle_ShouldRollbackTransaction_WhenExceptionThrown()
+    public async Task Handle_ShouldPropagateException_WhenSaveChangesFails()
     {
         var cart = Cart.Create(_customerId);
         var productId = Guid.NewGuid();
@@ -211,7 +207,5 @@ public class CartCheckoutCommandHandlerTests
         );
 
         Assert.Equal("Database error", exception.Message);
-
-        _unitOfWorkMock.Verify(x => x.RollbackTransactionAsync(CancellationToken.None), Times.Once);
     }
 }

@@ -88,21 +88,11 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
 
         var order = orderResult.Value!;
 
-        await _unitOfWork.BeginTransactionAsync(cancellationToken);
-        try
-        {
-            await _orderRepository.AddAsync(order, cancellationToken);
-            cart.Checkout();
+        await _orderRepository.AddAsync(order, cancellationToken);
+        cart.Checkout();
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            return Result.Success(order.Id);
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
-            throw;
-        }
+        return Result.Success(order.Id);
     }
 }
