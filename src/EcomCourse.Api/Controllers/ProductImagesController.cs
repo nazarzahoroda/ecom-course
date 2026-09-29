@@ -1,11 +1,14 @@
+using EcomCourse.Api.Common;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Commands.ConfirmProductImageUpload;
 using EcomCourse.Application.Products.Commands.DeleteProductImage;
 using EcomCourse.Application.Products.Commands.InitiateProductImageUpload;
 using EcomCourse.Application.Products.Queries.GetProductImages;
+using EcomCourse.Domain.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EcomCourse.Api.Controllers
 {
@@ -28,6 +31,10 @@ namespace EcomCourse.Api.Controllers
         {
             var request = new GetProductImagesQuery(productId);
             var images = await _sender.Send(request, cancellationToken);
+            if (images.IsFailure)
+            {
+                return images.ToProblemDetails();
+            }
             return Ok(images.Value);
         }
 
@@ -46,15 +53,11 @@ namespace EcomCourse.Api.Controllers
             );
             var result = await _sender.Send(command, cancellationToken);
 
-            return result.IsSuccess
-                ? Ok(result.Value)
-                : BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                    }
-                );
+            if (result.IsFailure)
+            {
+                return result.ToProblemDetails();
+            }
+            return Ok(result.Value);
         }
 
         [HttpPost("{productId}/confirm-upload")]
@@ -72,16 +75,11 @@ namespace EcomCourse.Api.Controllers
                 request.IsMain
             );
             var result = await _sender.Send(command, cancellationToken);
-
-            return result.IsSuccess
-                ? Ok(new { ImageId = result.Value })
-                : BadRequest(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                    }
-                );
+            if (result.IsFailure)
+            {
+                return result.ToProblemDetails();
+            }
+            return Ok(new { ImageId = result.Value });
         }
 
         [HttpDelete("{imageId}")]
@@ -96,15 +94,10 @@ namespace EcomCourse.Api.Controllers
                 new DeleteProductImageCommand(productId, imageId),
                 cancellationToken
             );
-
             if (result.IsFailure)
-                return NotFound(
-                    new ProblemDetails
-                    {
-                        Title = result.Error.Code,
-                        Detail = result.Error.Description,
-                    }
-                );
+            {
+                return result.ToProblemDetails();
+            }
 
             return NoContent();
         }

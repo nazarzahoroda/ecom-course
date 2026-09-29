@@ -18,7 +18,8 @@ public interface IProductService
 
     Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
         IReadOnlyCollection<Guid> ids,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
         CancellationToken cancellationToken = default
@@ -41,22 +42,22 @@ public interface IProductService
 
     Task<bool> IsProductExists(Guid id, CancellationToken cancellationToken);
 
-    public Task ChangeMainImages(Guid id, CancellationToken cancellationToken);
+    Task ChangeMainImages(Guid id, CancellationToken cancellationToken);
 
-    public Task<Result<Guid>> AddImage(
-        Guid Id,
+    Task<Result<Guid>> AddImage(
+        Guid productId,
         string blobName,
         string contentType,
         bool isMain,
         CancellationToken cancellationToken
     );
 
-    public Task<Result<List<ProductImageDto>>> GetProductImagesAsync(
+    Task<Result<List<ProductImageDto>>> GetProductImagesAsync(
         Guid id,
         CancellationToken cancellationToken
     );
 
-    public Task<Result> DeleteImageAsync(
+    Task<Result> DeleteImageAsync(
         Guid productId,
         Guid imageId,
         CancellationToken cancellationToken

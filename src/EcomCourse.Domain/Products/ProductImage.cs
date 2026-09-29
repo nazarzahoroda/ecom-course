@@ -21,7 +21,6 @@ namespace EcomCourse.Domain.Products
         {
             return new ProductImage
             {
-                Id = Guid.NewGuid(),
                 ProductId = productId,
                 BlobName = blobName,
                 ContentType = contentType,

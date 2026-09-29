@@ -347,20 +347,26 @@ public sealed class ProductService : IProductService
     }
 
     public async Task<Result<Guid>> AddImage(
-        Guid Id,
+        Guid productId,
         string blobName,
         string contentType,
         bool isMain,
         CancellationToken cancellationToken
     )
     {
-        var image = ProductImage.Create(Id, blobName, contentType, isMain);
+        var product = await _dbContext
+            .Products.Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+        if (product is null)
+            return Result.Failure<Guid>(ProductErrors.NotFound(productId));
 
-        _dbContext.ProductImages.Add(image);
+        var addResult = product.AddImage(blobName, contentType, isMain);
+        if (addResult.IsFailure)
+            return Result.Failure<Guid>(addResult.Error);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(image.Id);
+        return Result.Success(addResult.Value!.Id);
     }
 
     public async Task<Result<List<ProductImageDto>>> GetProductImagesAsync(
@@ -405,22 +411,26 @@ public sealed class ProductService : IProductService
         CancellationToken cancellationToken
     )
     {
-        var imageResult = await GetProductImageAsync(imageId, productId, cancellationToken);
+        var product = await _dbContext
+            .Products.Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
 
-        if (imageResult.IsFailure)
-            return Result.Failure(imageResult.Error);
+        if (product is null)
+            return Result.Failure(ProductErrors.NotFound(productId));
 
-        var image = imageResult.Value!;
+        var image = product.Images.FirstOrDefault(i => i.Id == imageId);
+        if (image is null)
+            return Result.Failure(ProductErrors.ImageNotFound(imageId));
 
-        _dbContext.ProductImages.Remove(image);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        var deleteResult = await _storageService.DeleteAsync(
-            image.BlobName,
-            CancellationToken.None
-        );
-
+        var deleteResult = await _storageService.DeleteAsync(image.BlobName, cancellationToken);
         if (deleteResult.IsFailure)
             return Result.Failure(deleteResult.Error);
+
+        var removeResult = product.RemoveImage(imageId);
+        if (removeResult.IsFailure)
+            return Result.Failure(removeResult.Error);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
