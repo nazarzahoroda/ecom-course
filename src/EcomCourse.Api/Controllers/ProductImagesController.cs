@@ -1,5 +1,7 @@
+using EcomCourse.Application.Products;
+using EcomCourse.Application.Products.Commands.ConfirmProductImageUpload;
 using EcomCourse.Application.Products.Commands.DeleteProductImage;
-using EcomCourse.Application.Products.Commands.UploadProductImage;
+using EcomCourse.Application.Products.Commands.InitiateProductImageUpload;
 using EcomCourse.Application.Products.Queries.GetProductImages;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -29,43 +31,57 @@ namespace EcomCourse.Api.Controllers
             return Ok(images.Value);
         }
 
-        [HttpPost]
+        [HttpPost("{productId}/initiate-upload")]
         [Authorize(Roles = "Admin")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadImage(
-            [FromQuery] Guid productId,
-            IFormFile file,
-            [FromQuery] bool isMain,
+        public async Task<IActionResult> InitiateUpload(
+            [FromRoute] Guid productId,
+            [FromBody] InitiateUploadRequest request,
             CancellationToken cancellationToken
         )
         {
-            if (file is null || file.Length == 0)
-            {
-                return BadRequest(new ProblemDetails { Detail = "Файл відсутній або порожній." });
-            }
-
-            await using var stream = file.OpenReadStream();
-            var command = new UploadProductImageCommand(
+            var command = new InitiateProductImageUploadCommand(
                 productId,
-                stream,
-                file.FileName,
-                file.ContentType,
-                isMain
+                request.FileName,
+                request.ContentType
             );
             var result = await _sender.Send(command, cancellationToken);
 
-            if (result.IsFailure)
-            {
-                return BadRequest(
+            return result.IsSuccess
+                ? Ok(result.Value)
+                : BadRequest(
                     new ProblemDetails
                     {
                         Title = result.Error.Code,
                         Detail = result.Error.Description,
                     }
                 );
-            }
+        }
 
-            return Ok(new { ImageId = result.Value });
+        [HttpPost("{productId}/confirm-upload")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ConfirmUpload(
+            [FromRoute] Guid productId,
+            [FromBody] ConfirmUploadRequest request,
+            CancellationToken cancellationToken
+        )
+        {
+            var command = new ConfirmProductImageUploadCommand(
+                productId,
+                request.BlobName,
+                request.ContentType,
+                request.IsMain
+            );
+            var result = await _sender.Send(command, cancellationToken);
+
+            return result.IsSuccess
+                ? Ok(new { ImageId = result.Value })
+                : BadRequest(
+                    new ProblemDetails
+                    {
+                        Title = result.Error.Code,
+                        Detail = result.Error.Description,
+                    }
+                );
         }
 
         [HttpDelete("{imageId}")]

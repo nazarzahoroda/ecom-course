@@ -373,7 +373,7 @@ public sealed class ProductService : IProductService
             .Where(x => x.ProductId == id)
             .ToListAsync(cancellationToken);
 
-        if (images is null || images.Count == 0)
+        if (images is null)
         {
             return Result.Failure<List<ProductImageDto>>(ProductErrors.ProductImagesNotFound(id));
         }
