@@ -42,18 +42,18 @@ a blocking issue.
    `Kind = Unspecified` or `Kind = Local`; comparing dates of different
    `Kind` without an explicit conversion.
 
-10. **Infrastructure Port Interfaces** — Persistence ports (repositories) must be named `I*Repository` and placed in `Domain//` with no framework/DTO dependencies. Other infrastructure capabilities (clock, token issuance, etc.) must be named for their capability (e.g. `ITokenIssuer`, not `IJwtService`) and placed in `Application/Abstractions/`. No `I*Service` port names are allowed.
+10. **Infrastructure Port Interfaces** — Persistence ports (repositories) must be named `I*Repository` and placed in `Domain/` with no framework/DTO dependencies. Other infrastructure capabilities (clock, token issuance, etc.) must be named for their capability (e.g. `ITokenIssuer`, not `IJwtService`) and placed in `Application/Abstractions/`. No `I*Service` port names are allowed.
 
 ## Suggestion (comment, non-blocking)
 
-10. Naming that doesn't match the Command/Query/Handler/Result convention
+11. Naming that doesn't match the Command/Query/Handler/Result convention
     used elsewhere in the repo.
-11. Missing or misleading XML doc / summary on public handler classes.
-12. Magic strings/numbers that should be constants or config.
-13. Overly broad `catch` blocks that could hide the specific failure mode.
-14. Log message uses string interpolation (`$"..."`) instead of structured
+12. Missing or misleading XML doc / summary on public handler classes.
+13. Magic strings/numbers that should be constants or config.
+14. Overly broad `catch` blocks that could hide the specific failure mode.
+15. Log message uses string interpolation (`$"..."`) instead of structured
     `{Name}` placeholders — see [logging.md](logging.md).
-15. **No linked tracking issue** — the PR description doesn't close a
+16. **No linked tracking issue** — the PR description doesn't close a
     GitHub Issue (`Closes #N` / `Fixes #N` / `Resolves #N`), i.e.
     `closingIssuesReferences` is empty. Every task on the
     [Project board](https://github.com/users/nazarzahoroda/projects/1) is
