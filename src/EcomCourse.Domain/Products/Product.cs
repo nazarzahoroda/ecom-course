@@ -1,15 +1,13 @@
 using EcomCourse.Domain.Common;
+using EcomCourse.Domain.Primitives;
 
 namespace EcomCourse.Domain.Products;
 
-public sealed class Product
+public sealed class Product : Entity<Guid>
 {
-    private Product()
+    private Product() : base(Guid.Empty)
     {
-
     }
-
-    public Guid Id { get; private set; }
 
     public string Name { get; private set; } = null!;
 
@@ -19,9 +17,8 @@ public sealed class Product
 
     public Guid CategoryId { get; private set; }
 
-    private Product(Guid id, string name, Price price, SKU sku, Guid categoryId)
+    private Product(Guid id, string name, Price price, SKU sku, Guid categoryId) : base(id)
     {
-        Id = id;
         Name = name;
         Price = price;
         SKU = sku;

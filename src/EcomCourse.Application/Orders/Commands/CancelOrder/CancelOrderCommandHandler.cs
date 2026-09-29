@@ -1,4 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
+using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Orders;
 
@@ -7,10 +8,14 @@ namespace EcomCourse.Application.Orders.Commands.CancelOrder;
 public sealed class CancelOrderCommandHandler : ICommandHandler<CancelOrderCommand>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CancelOrderCommandHandler(IOrderRepository orderRepository)
+    public CancelOrderCommandHandler(
+        IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork)
     {
         _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Result> Handle(
@@ -32,6 +37,7 @@ public sealed class CancelOrderCommandHandler : ICommandHandler<CancelOrderComma
         }
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

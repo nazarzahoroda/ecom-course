@@ -2,7 +2,6 @@ using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
-using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Application.Carts.Commands.AddItemToCartCommand
 {

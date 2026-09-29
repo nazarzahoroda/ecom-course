@@ -16,11 +16,23 @@ namespace EcomCourse.Domain.Carts
         private Cart()
             : base(Guid.Empty) { }
 
-        public Cart(Guid id, Guid customerId)
+        // Змінено на private
+        private Cart(Guid id, Guid customerId)
             : base(id)
         {
             CustomerId = customerId;
             Status = CartStatus.Active;
+        }
+
+        // Нова фабрика
+        public static Result<Cart> Create(Guid customerId)
+        {
+            if (customerId == Guid.Empty)
+            {
+                return Result.Failure<Cart>(CartErrors.EmptyCustomerId);
+            }
+
+            return Result.Success(new Cart(Guid.NewGuid(), customerId));
         }
 
         public Result AddItem(Guid productId, int quantity)

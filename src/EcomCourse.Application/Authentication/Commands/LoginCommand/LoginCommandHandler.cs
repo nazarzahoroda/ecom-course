@@ -6,7 +6,7 @@ using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Authentication.Commands.LoginCommand
 {
-    public class LoginCommandHandler: ICommandHandler<LoginCommand, AuthResponse>
+    public class LoginCommandHandler : ICommandHandler<LoginCommand, AuthResponse>
     {
         private readonly IIdentityProvider _identityProvider;
         private readonly ITokenIssuer _tokenIssuer;
@@ -16,7 +16,10 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
             _tokenIssuer = tokenIssuer;
         }
 
-        public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
+        public async Task<Result<AuthResponse>> Handle(
+            LoginCommand request,
+            CancellationToken cancellationToken
+        )
         {
             var user = await _identityProvider.GetUserAsync(request.dto.Email, cancellationToken);
             if (user.IsFailure)
@@ -33,7 +36,7 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
                 UserId = user.Value!.Id,
                 Email = user.Value.Email!,
                 CustomerId = user.Value.CustomerId,
-                Roles = roles!
+                Roles = roles!,
             };
             var accessToken = _tokenIssuer.GenerateAccessToken(details);
 
@@ -46,10 +49,9 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
             var result = new AuthResponse
             {
                 AccessToken = accessToken,
-                RefreshToken = refreshToken
+                RefreshToken = refreshToken,
             };
             return Result.Success(result);
-
         }
     }
 }

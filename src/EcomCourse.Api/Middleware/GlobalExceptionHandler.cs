@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EcomCourse.Api.Middleware
 {
@@ -21,34 +23,65 @@ namespace EcomCourse.Api.Middleware
             CancellationToken cancellationToken
         )
         {
-            LogUnhandledException(
-                _logger,
-                exception,
-                httpContext.Request.Method,
-                httpContext.Request.Path
-            );
+            var traceId = httpContext.TraceIdentifier;
+            ProblemDetails problemDetails;
 
-            var isUnauthorized = exception is UnauthorizedAccessException;
-            var statusCode = isUnauthorized
-                ? StatusCodes.Status401Unauthorized
-                : StatusCodes.Status500InternalServerError;
-
-            var problemDetails = new ProblemDetails
+            if (exception is UnauthorizedAccessException unauthorizedException)
             {
-                Title = isUnauthorized ? "Unauthorized" : "Server Error",
-                Status = statusCode,
-                Detail = _env.IsDevelopment()
-                    ? isUnauthorized ? exception.Message : exception.ToString()
-                    : isUnauthorized ? "Authentication is required." : "An unexpected error occurred.",
-            };
+                LogUnauthorizedException(
+                    _logger,
+                    unauthorizedException,
+                    httpContext.Request.Method,
+                    httpContext.Request.Path
+                );
 
-            httpContext.Response.StatusCode = statusCode;
+                problemDetails = new ProblemDetails
+                {
+                    Title = "Unauthorized",
+                    Status = StatusCodes.Status401Unauthorized,
+                    Detail = unauthorizedException.Message,
+                };
+            }
+            else
+            {
+                LogUnhandledException(
+                    _logger,
+                    exception,
+                    httpContext.Request.Method,
+                    httpContext.Request.Path
+                );
+
+                problemDetails = new ProblemDetails
+                {
+                    Title = "Server Error",
+                    Status = StatusCodes.Status500InternalServerError,
+                    Detail = _env.IsDevelopment()
+                        ? exception.ToString()
+                        : "An unexpected error occurred.",
+                };
+
+                problemDetails.Extensions["traceId"] = traceId;
+            }
+
+            httpContext.Response.StatusCode = problemDetails.Status!.Value;
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
         }
 
         [LoggerMessage(
+            Level = LogLevel.Warning,
+            Message = "Unauthorized access attempt while processing {Method} {Path}"
+        )]
+        private static partial void LogUnauthorizedException(
+            ILogger logger,
+            Exception exception,
+            string method,
+            string path
+        );
+
+        [LoggerMessage(
+            EventId = 1,
             Level = LogLevel.Error,
             Message = "Unhandled exception while processing {Method} {Path}"
         )]

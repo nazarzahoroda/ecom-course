@@ -313,5 +313,20 @@ namespace EcomCourse.UnitTests.Products
             Assert.Equal("TVL-2026", product.SKU.Value);
             Assert.Equal(categoryId, product.CategoryId);
         }
+
+        [Fact]
+        public void Create_WithInvalidCurrency_ShouldReturnFailure()
+        {
+            var name = "Samsung";
+            var amount = 100m;
+            var currency = (Currency)999;
+            var sku = "TVL-2026";
+            var categoryId = Guid.NewGuid();
+
+            var result = Product.Create(name, amount, currency, sku, categoryId);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(PriceErrors.CurrencyInvalid, result.Error);
+        }
     }
 }
