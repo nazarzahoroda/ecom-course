@@ -1,25 +1,25 @@
-using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Products;
 using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Abstractions.Messaging;
+using EcomCourse.Application.Products;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 
 namespace EcomCourse.Application.Orders.Commands.CreateOrder;
 
 public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderCommand, Guid>
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IProductManager _productManager;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ICustomerStore _customerStore;
-    private readonly IProductService _productService;
     private readonly TimeProvider _timeProvider;
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
-        ICustomerStore customerStore,
-        IProductService productService,
+        ICustomerRepository customerRepository,
+        IProductManager productManager,
         TimeProvider timeProvider,
         IUnitOfWork unitOfWork
     )
@@ -36,36 +36,45 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
         CancellationToken cancellationToken
     )
     {
-        var productIds = request.items.Select(item => item.ProductId).Distinct().ToList();
+        if (request.items.Count == 0)
+        {
+            return Result.Failure<Guid>(OrderErrors.EmptyLines);
+        }
 
-        var productsResult = await _productManager.GetByIdsAsync(productIds, cancellationToken);
+        var productIds = request.items
+            .Select(item => item.ProductId)
+            .Distinct()
+            .ToList();
+
+        var productsResult = await _productManager.GetByIdsAsync(
+            productIds,
+            cancellationToken
+        );
 
         if (productsResult.IsFailure)
         {
             return Result.Failure<Guid>(productsResult.Error);
         }
 
-        var productsById = productsResult.Value!.ToDictionary(product => product.Id);
+        var productsById = productsResult.Value!
+            .ToDictionary(product => product.Id);
 
-        // Server derives UnitPrice and Currency from the product's own price —
-        // never trust these financial fields from the client (see docs/review-rules.md).
-        var items = request
-            .items.Select(i =>
+        var items = request.items
+            .Select(i =>
                 (
-                    i.ProductId,
-                    i.Quantity,
+                    ProductId: i.ProductId,
+                    Quantity: i.Quantity,
                     UnitPrice: productsById[i.ProductId].Amount,
                     Currency: productsById[i.ProductId].Currency
                 )
             )
             .ToList();
 
-        if (items.Count == 0)
-        {
-            return Result.Failure<Guid>(OrderErrors.EmptyLines);
-        }
+        var customer = await _customerRepository.GetByIdAsync(
+            request.customerId,
+            cancellationToken
+        );
 
-        var customer = await _customerRepository.GetByIdAsync(request.customerId, cancellationToken);
         if (customer is null)
         {
             return Result.Failure<Guid>(CustomerErrors.NotFound);
@@ -77,6 +86,7 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
             customer.Address.PostalCode,
             customer.Address.Country
         );
+
         if (shippingAddressResult.IsFailure)
         {
             return Result.Failure<Guid>(shippingAddressResult.Error);
@@ -101,4 +111,6 @@ public sealed class CreateOrderCommandHandler : ICommandHandler<CreateOrderComma
 
         return Result.Success(order.Id);
     }
+
+
 }

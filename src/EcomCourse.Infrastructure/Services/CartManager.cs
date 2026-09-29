@@ -1,284 +1,230 @@
-using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Carts.DTOs;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
-using EcomCourse.Domain.Customers;
-using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-namespace EcomCourse.Infrastructure.Services
+namespace EcomCourse.Infrastructure.Services;
+
+public class CartManager : ICartManager
 {
-    public class CartManager : ICartManager
+    private readonly EcomCourseDbContext _context;
+    private readonly IUserContext _currentUserService;
+
+    public CartManager(
+        EcomCourseDbContext context,
+        IUserContext currentUserService)
     {
-        private readonly EcomCourseDbContext _context;
-        private readonly IUserContext _currentUserService;
-        private readonly ICustomerStore _customerStore;
-        private readonly TimeProvider _timeProvider;
+        _context = context;
+        _currentUserService = currentUserService;
+    }
 
-        public CartManager(
-            EcomCourseDbContext context,
-            IUserContext currentUserService,
-            ICustomerStore customerStore,
-            TimeProvider timeProvider
-        )
+    public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
+        CancellationToken cancellationToken)
+    {
+        var customerId = _currentUserService.CustomerId;
+
+        var cart = await _context
+            .Carts
+            .AsNoTracking()
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync(
+                c => c.CustomerId == customerId
+                    && c.Status == CartStatus.Active,
+                cancellationToken);
+
+        if (cart is null || cart.Items.Count == 0)
         {
-            _context = context;
-            _currentUserService = currentUserService;
-            _customerRepository = customerRepository;
-            _timeProvider = timeProvider;
+            return Result.Success(
+                new CartDetailsDto(
+                    Guid.Empty,
+                    new List<CartItemDetailsDto>(),
+                    0m));
         }
 
-        public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
-            CancellationToken cancellationToken
-        )
-        {
-            var customerId = _currentUserService.CustomerId;
+        var productIds = cart.Items
+            .Select(i => i.ProductId)
+            .Distinct()
+            .ToList();
 
-            var cart = await _context
-                .Carts.AsNoTracking()
-                .Include(c => c.Items)
-                .FirstOrDefaultAsync(
-                    c => c.CustomerId == customerId && c.Status == CartStatus.Active,
-                    cancellationToken
-                );
-
-            if (cart is null || cart.Items.Count == 0)
+        var products = await _context
+            .Products
+            .AsNoTracking()
+            .Where(p => productIds.Contains(p.Id))
+            .Select(p => new
             {
-                return Result.Success(
-                    new CartDetailsDto(Guid.Empty, new List<CartItemDetailsDto>(), 0m)
-                );
-            }
+                p.Id,
+                p.Name,
+                UnitPrice = p.Price.Amount,
+                Currency = p.Price.Currency.ToString(),
+                Sku = p.SKU.Value,
+            })
+            .ToDictionaryAsync(
+                p => p.Id,
+                cancellationToken);
 
-            var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
+        var missingProductIds = productIds
+            .Except(products.Keys)
+            .ToList();
 
-            var products = await _context
-                .Products.AsNoTracking()
-                .Where(p => productIds.Contains(p.Id))
-                .Select(p => new
-                {
-                    p.Id,
-                    p.Name,
-                    UnitPrice = p.Price.Amount,
-                    Currency = p.Price.Currency.ToString(),
-                    Sku = p.SKU.Value,
-                })
-                .ToDictionaryAsync(p => p.Id, cancellationToken);
-
-            var missingProductIds = productIds.Except(products.Keys).ToList();
-
-            if (missingProductIds.Count > 0)
-                return Result.Failure<CartDetailsDto>(ProductErrors.Unavailable);
-
-            var itemsDto = cart
-                .Items.Where(item => products.ContainsKey(item.ProductId))
-                .Select(item =>
-                {
-                    var product = products[item.ProductId];
-                    return new CartItemDetailsDto
-                    {
-                        Id = item.Id,
-                        ProductId = item.ProductId,
-                        Name = product.Name,
-                        Sku = product.Sku,
-                        UnitPrice = product.UnitPrice,
-                        Currency = product.Currency,
-                        Quantity = item.Quantity,
-                    };
-                })
-                .ToList();
-
-            var totalAmount = itemsDto.Sum(i => i.UnitPrice * i.Quantity);
-
-            return Result.Success(new CartDetailsDto(cart.Id, itemsDto, totalAmount));
+        if (missingProductIds.Count > 0)
+        {
+            return Result.Failure<CartDetailsDto>(
+                ProductErrors.Unavailable);
         }
 
-        public async Task<Result> AddItemToCartAsync(
-            AddItemToCartDto dto,
-            CancellationToken cancellationToken
-        )
-        {
-            var customerId = _currentUserService.CustomerId;
-
-            var activeCarts = await _context
-                .Carts.Include(c => c.Items)
-                .Where(c => c.CustomerId == customerId && c.Status == CartStatus.Active)
-                .Take(2)
-                .ToListAsync(cancellationToken);
-
-            if (activeCarts.Count > 1)
-                return Result.Failure(CartErrors.ActiveCartAlreadyExists);
-
-            var cart = activeCarts.FirstOrDefault();
-
-            if (cart is null)
+        var itemsDto = cart
+            .Items
+            .Select(item =>
             {
-                // Викликаємо фабрику замість публічного конструктора
-                var cartResult = Cart.Create(customerId);
+                var product = products[item.ProductId];
 
-                if (cartResult.IsFailure)
+                return new CartItemDetailsDto
                 {
-                    return Result.Failure(cartResult.Error);
-                }
+                    Id = item.Id,
+                    ProductId = item.ProductId,
+                    Name = product.Name,
+                    Sku = product.Sku,
+                    UnitPrice = product.UnitPrice,
+                    Currency = product.Currency,
+                    Quantity = item.Quantity,
+                };
+            })
+            .ToList();
 
-                cart = cartResult.Value!;
-                _context.Carts.Add(cart);
+        var totalAmount = itemsDto.Sum(
+            i => i.UnitPrice * i.Quantity);
+
+        return Result.Success(
+            new CartDetailsDto(
+                cart.Id,
+                itemsDto,
+                totalAmount));
+    }
+
+    public async Task<Result> AddItemToCartAsync(
+        AddItemToCartDto dto,
+        CancellationToken cancellationToken)
+    {
+        var customerId = _currentUserService.CustomerId;
+
+        var activeCarts = await _context
+            .Carts
+            .Include(c => c.Items)
+            .Where(c =>
+                c.CustomerId == customerId
+                && c.Status == CartStatus.Active)
+            .Take(2)
+            .ToListAsync(cancellationToken);
+
+        if (activeCarts.Count > 1)
+        {
+            return Result.Failure(
+                CartErrors.ActiveCartAlreadyExists);
+        }
+
+        var cart = activeCarts.FirstOrDefault();
+
+        if (cart is null)
+        {
+            var cartResult = Cart.Create(customerId);
+
+            if (cartResult.IsFailure)
+            {
+                return Result.Failure(cartResult.Error);
             }
 
-            var productExists = await _context.Products.AnyAsync(
+            cart = cartResult.Value!;
+            _context.Carts.Add(cart);
+        }
+
+        var productExists = await _context
+            .Products
+            .AnyAsync(
                 p => p.Id == dto.ProductId,
-                cancellationToken
-            );
+                cancellationToken);
 
-            if (!productExists)
-            {
-                return Result.Failure(ProductErrors.NotFound(dto.ProductId));
-            }
-
-            var result = cart.AddItem(dto.ProductId, dto.Quantity);
-
-            if (result.IsFailure)
-            {
-                return result;
-            }
-
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return Result.Success();
-        }
-
-        public async Task<Result> UpdateCartItemQuantityAsync(
-            UpdateCartItemQuantityDto dto,
-            CancellationToken cancellationToken
-        )
+        if (!productExists)
         {
-            var customerId = _currentUserService.CustomerId;
-
-            var cart = await _context
-                .Carts.Include(c => c.Items)
-                .SingleOrDefaultAsync(
-                    c => c.CustomerId == customerId && c.Status == CartStatus.Active,
-                    cancellationToken
-                );
-
-            if (cart is null)
-            {
-                return Result.Failure(CartErrors.CartNotFound);
-            }
-
-            var result = cart.UpdateItemQuantity(dto.ProductId, dto.Quantity);
-
-            if (result.IsFailure)
-                return result;
-
-            await _context.SaveChangesAsync(cancellationToken);
-            return Result.Success();
+            return Result.Failure(
+                ProductErrors.NotFound(dto.ProductId));
         }
 
-        public async Task<Result<Guid>> RemoveItemFromCartAsync(
-            Guid id,
-            CancellationToken cancellationToken
-        )
+        var result = cart.AddItem(
+            dto.ProductId,
+            dto.Quantity);
+
+        if (result.IsFailure)
         {
-            var customerId = _currentUserService.CustomerId;
-
-            var item = await _context.CartItems.FirstOrDefaultAsync(
-                x => x.Id == id && x.Cart.CustomerId == customerId,
-                cancellationToken
-            );
-
-            if (item is null)
-            {
-                return Result.Failure<Guid>(CartErrors.CartItemNotFound);
-            }
-
-            _context.CartItems.Remove(item);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return Result.Success(item.Id);
+            return result;
         }
 
-        public async Task<Result<Guid>> CheckoutCart(CancellationToken cancellationToken)
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> UpdateCartItemQuantityAsync(
+        UpdateCartItemQuantityDto dto,
+        CancellationToken cancellationToken)
+    {
+        var customerId = _currentUserService.CustomerId;
+
+        var cart = await _context
+            .Carts
+            .Include(c => c.Items)
+            .SingleOrDefaultAsync(
+                c =>
+                    c.CustomerId == customerId
+                    && c.Status == CartStatus.Active,
+                cancellationToken);
+
+        if (cart is null)
         {
-            var customerId = _currentUserService.CustomerId;
-
-            var cart = await _context
-                .Carts.Include(c => c.Items)
-                .FirstOrDefaultAsync(
-                    c => c.CustomerId == customerId && c.Status == CartStatus.Active,
-                    cancellationToken
-                );
-
-            if (cart is null)
-                return Result.Failure<Guid>(CartErrors.CartNotFound);
-
-            if (cart.Items is null || cart.Items.Count == 0)
-                return Result.Failure<Guid>(CartErrors.CartIsEmpty);
-
-            var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
-
-            var productsDict = await _context
-                .Products.AsNoTracking()
-                .Where(p => productIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.Price.Amount, p.Price.Currency })
-                .ToDictionaryAsync(p => p.Id, p => (p.Amount, p.Currency), cancellationToken);
-
-            var missing = productIds.Except(productsDict.Keys).ToList();
-            if (missing.Count > 0)
-                return Result.Failure<Guid>(ProductErrors.Unavailable);
-
-            var items = cart
-                .Items.Select(i =>
-                    (
-                        ProductId: i.ProductId,
-                        Quantity: i.Quantity,
-                        UnitPrice: productsDict[i.ProductId].Amount,
-                        Currency: productsDict[i.ProductId].Currency
-                    )
-                )
-                .ToList();
-
-            var customer = await _customerRepository.GetByIdAsync(customerId, cancellationToken);
-            if (customer is null)
-                return Result.Failure<Guid>(CustomerErrors.NotFound);
-
-            var shippingAddressResult = Address.Create(
-                customer.Address.Street,
-                customer.Address.City,
-                customer.Address.PostalCode,
-                customer.Address.Country);
-            if (shippingAddressResult.IsFailure)
-                return Result.Failure<Guid>(shippingAddressResult.Error);
-
-            var orderResult = Order.Create(
-                customerId,
-                shippingAddressResult.Value!,
-                items,
-                _timeProvider.GetUtcNow());
-            if (orderResult.IsFailure)
-                return Result.Failure<Guid>(orderResult.Error);
-
-            var order = orderResult.Value!;
-
-            using var transaction = await _context.Database.BeginTransactionAsync(
-                cancellationToken
-            );
-            try
-            {
-                _context.Orders.Add(order);
-                cart.Checkout();
-                await _context.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-
-                return Result.Success(order.Id);
-            }
-            catch
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                throw;
-            }
+            return Result.Failure(
+                CartErrors.CartNotFound);
         }
+
+        var result = cart.UpdateItemQuantity(
+            dto.ProductId,
+            dto.Quantity);
+
+        if (result.IsFailure)
+        {
+            return result;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+    public async Task<Result<Guid>> RemoveItemFromCartAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var customerId = _currentUserService.CustomerId;
+
+        var item = await _context
+            .CartItems
+            .FirstOrDefaultAsync(
+                x =>
+                    x.Id == id
+                    && x.Cart.CustomerId == customerId,
+                cancellationToken);
+
+        if (item is null)
+        {
+            return Result.Failure<Guid>(
+                CartErrors.CartItemNotFound);
+        }
+
+        _context.CartItems.Remove(item);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Result.Success(item.Id);
     }
 }

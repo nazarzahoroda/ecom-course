@@ -1,4 +1,4 @@
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Orders.Commands.CancelOrder;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
@@ -17,18 +17,44 @@ public class CancelOrderCommandHandlerTests
     {
         _orderRepositoryMock = Substitute.For<IOrderRepository>();
         _unitOfWorkMock = Substitute.For<IUnitOfWork>();
-        _handler = new CancelOrderCommandHandler(_orderRepositoryMock, _unitOfWorkMock);
+
+        _handler = new CancelOrderCommandHandler(
+            _orderRepositoryMock,
+            _unitOfWorkMock
+        );
     }
 
     private static Order CreatePendingOrder()
     {
-        var address = Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
+        var address = Address.Create(
+            "Khreshchatyk St 1",
+            "Kyiv",
+            "01001",
+            "Ukraine"
+        ).Value!;
 
         var result = Order.Create(
             Guid.NewGuid(),
             address,
-            new[] { (ProductId: Guid.NewGuid(), Quantity: 1, UnitPrice: 10m, Currency: Currency.USD) },
-            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+            new[]
+            {
+                (
+                    ProductId: Guid.NewGuid(),
+                    Quantity: 1,
+                    UnitPrice: 10m,
+                    Currency: Currency.USD
+                )
+            },
+            new DateTimeOffset(
+                2026,
+                1,
+                1,
+                0,
+                0,
+                0,
+                TimeSpan.Zero
+            )
+        );
 
         return result.Value!;
     }
@@ -39,19 +65,33 @@ public class CancelOrderCommandHandlerTests
         var order = CreatePendingOrder();
         var command = new CancelOrderCommand(order.Id);
 
-        _orderRepositoryMock.GetByIdAsync(order.Id, Arg.Any<CancellationToken>())
+        _orderRepositoryMock
+            .GetByIdAsync(
+                order.Id,
+                Arg.Any<CancellationToken>()
+            )
             .Returns(order);
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
 
         Assert.True(result.IsSuccess);
         Assert.Equal(OrderStatus.Cancelled, order.Status);
 
-        await _orderRepositoryMock.Received(1)
-            .UpdateAsync(order, Arg.Any<CancellationToken>());
+        await _orderRepositoryMock
+            .Received(1)
+            .UpdateAsync(
+                order,
+                Arg.Any<CancellationToken>()
+            );
 
-        await _unitOfWorkMock.Received(1)
-            .SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _unitOfWorkMock
+            .Received(1)
+            .SaveChangesAsync(
+                Arg.Any<CancellationToken>()
+            );
     }
 
     [Fact]
@@ -59,41 +99,73 @@ public class CancelOrderCommandHandlerTests
     {
         var command = new CancelOrderCommand(Guid.NewGuid());
 
-        _orderRepositoryMock.GetByIdAsync(command.OrderId, Arg.Any<CancellationToken>())
+        _orderRepositoryMock
+            .GetByIdAsync(
+                command.OrderId,
+                Arg.Any<CancellationToken>()
+            )
             .Returns((Order?)null);
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
 
         Assert.True(result.IsFailure);
         Assert.Equal(OrderErrors.NotFound, result.Error);
 
-        await _orderRepositoryMock.DidNotReceive()
-            .UpdateAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _orderRepositoryMock
+            .DidNotReceive()
+            .UpdateAsync(
+                Arg.Any<Order>(),
+                Arg.Any<CancellationToken>()
+            );
 
-        await _unitOfWorkMock.DidNotReceive()
-            .SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _unitOfWorkMock
+            .DidNotReceive()
+            .SaveChangesAsync(
+                Arg.Any<CancellationToken>()
+            );
     }
 
     [Fact]
     public async Task Handle_ShouldReturnFailure_WhenTransitionIsInvalid()
     {
         var order = CreatePendingOrder();
+
         order.MarkAsPaid();
 
         var command = new CancelOrderCommand(order.Id);
 
-        _orderRepositoryMock.GetByIdAsync(order.Id, Arg.Any<CancellationToken>())
+        _orderRepositoryMock
+            .GetByIdAsync(
+                order.Id,
+                Arg.Any<CancellationToken>()
+            )
             .Returns(order);
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
 
         Assert.True(result.IsFailure);
-        Assert.Equal(OrderErrors.InvalidStatusTransition, result.Error);
+        Assert.Equal(
+            OrderErrors.InvalidStatusTransition,
+            result.Error
+        );
 
-        await _orderRepositoryMock.DidNotReceive()
-            .UpdateAsync(Arg.Any<Order>(), Arg.Any<CancellationToken>());
+        await _orderRepositoryMock
+            .DidNotReceive()
+            .UpdateAsync(
+                Arg.Any<Order>(),
+                Arg.Any<CancellationToken>()
+            );
 
-        await _unitOfWorkMock.DidNotReceive()
-            .SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _unitOfWorkMock
+            .DidNotReceive()
+            .SaveChangesAsync(
+                Arg.Any<CancellationToken>()
+            );
     }
 }

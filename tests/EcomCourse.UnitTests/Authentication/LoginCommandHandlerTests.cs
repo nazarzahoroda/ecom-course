@@ -232,11 +232,11 @@ public class LoginCommandHandlerTests
             ErrorType.Unauthorized
         );
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.GetUserAsync(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(user));
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.CheckPasswordSignInAsync(dto, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(lockoutError));
 
@@ -246,16 +246,16 @@ public class LoginCommandHandlerTests
         Assert.Equal(lockoutError.Code, result.Error.Code);
         Assert.Equal(lockoutError.Description, result.Error.Description);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.GetRolesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
 
-        _jwtServiceMock.Verify(
+        _tokenIssuerMock.Verify(
             x => x.GenerateAccessToken(It.IsAny<UserTokenDetails>()),
             Times.Never
         );
 
-        _jwtServiceMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
+        _tokenIssuerMock.Verify(x => x.GenerateRefreshToken(), Times.Never);
     }
 }
