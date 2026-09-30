@@ -13,9 +13,9 @@ namespace EcomCourse.IntegrationTests.TestSupport;
 public static class TestAuthHandler
 {
     public const string SchemeName = "TestScheme";
-    private const string CustomerIdHeader = "X-Test-CustomerId";
-    private const string RoleHeader = "X-Test-Role";
-    private const string AnonymousHeader = "X-Test-Anonymous";
+    private const string _customerIdHeader = "X-Test-CustomerId";
+    private const string _roleHeader = "X-Test-Role";
+    private const string _anonymousHeader = "X-Test-Anonymous";
 
     public static WebApplicationFactory<TEntryPoint> WithTestAuthentication<TEntryPoint>(
         this WebApplicationFactory<TEntryPoint> factory
@@ -39,20 +39,20 @@ public static class TestAuthHandler
 
     public static void AuthenticateAs(this HttpClient client, Guid customerId, string? role = null)
     {
-        client.DefaultRequestHeaders.Remove(CustomerIdHeader);
-        client.DefaultRequestHeaders.Add(CustomerIdHeader, customerId.ToString());
+        client.DefaultRequestHeaders.Remove(_customerIdHeader);
+        client.DefaultRequestHeaders.Add(_customerIdHeader, customerId.ToString());
 
-        client.DefaultRequestHeaders.Remove(RoleHeader);
+        client.DefaultRequestHeaders.Remove(_roleHeader);
         if (role is not null)
         {
-            client.DefaultRequestHeaders.Add(RoleHeader, role);
+            client.DefaultRequestHeaders.Add(_roleHeader, role);
         }
     }
 
     public static void AuthenticateAsAnonymous(this HttpClient client)
     {
-        client.DefaultRequestHeaders.Remove(AnonymousHeader);
-        client.DefaultRequestHeaders.Add(AnonymousHeader, "true");
+        client.DefaultRequestHeaders.Remove(_anonymousHeader);
+        client.DefaultRequestHeaders.Add(_anonymousHeader, "true");
     }
 
     private sealed class Handler : AuthenticationHandler<AuthenticationSchemeOptions>
@@ -67,7 +67,7 @@ public static class TestAuthHandler
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (
-                Request.Headers.TryGetValue(AnonymousHeader, out var anonymous)
+                Request.Headers.TryGetValue(_anonymousHeader, out var anonymous)
                 && anonymous == "true"
             )
             {
@@ -75,7 +75,7 @@ public static class TestAuthHandler
             }
 
             if (
-                !Request.Headers.TryGetValue(CustomerIdHeader, out var customerIdHeader)
+                !Request.Headers.TryGetValue(_customerIdHeader, out var customerIdHeader)
                 || !Guid.TryParse(customerIdHeader, out var customerId)
             )
             {
@@ -84,7 +84,7 @@ public static class TestAuthHandler
 
             var claims = new List<Claim> { new("CustomerId", customerId.ToString()) };
 
-            if (Request.Headers.TryGetValue(RoleHeader, out var role) && role.Count > 0)
+            if (Request.Headers.TryGetValue(_roleHeader, out var role) && role.Count > 0)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
             }

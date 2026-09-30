@@ -241,19 +241,33 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
     public async Task ConcurrentCheckouts_OnSameCart_ProduceExactlyOneOrder()
     {
         var customerId = Guid.NewGuid();
-        var productId = Guid.NewGuid();
 
-        var cartResult = Cart.Create(customerId);
-        Assert.True(cartResult.IsSuccess);
+        var categoryResult = Category.Create($"Concurrent Category-{Guid.NewGuid()}");
+        Assert.True(categoryResult.IsSuccess);
+        var category = categoryResult.Value!;
 
-        var cart = cartResult.Value!;
+        var priceResult = Price.Create(100.00m, Currency.USD);
+        Assert.True(priceResult.IsSuccess);
 
-        var addItemResult = cart.AddItem(productId, 1);
-        Assert.True(addItemResult.IsSuccess);
+        var skuResult = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}");
+        Assert.True(skuResult.IsSuccess);
+
+        var productResult = Product.Create(
+            "Concurrent Checkout Product",
+            priceResult.Value!.Amount,
+            priceResult.Value.Currency,
+            skuResult.Value!.Value,
+            category.Id
+        );
+        Assert.True(productResult.IsSuccess);
+        var product = productResult.Value!;
 
         using (var setupScope = _factory.Services.CreateScope())
         {
             var db = setupScope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+            db.Categories.Add(category);
+            db.Products.Add(product);
 
             SeedCustomer(
                 db,
@@ -261,76 +275,40 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
                 "Khreshchatyk St 1",
                 "Kyiv",
                 "01001",
-                "Ukraine");
-
-            db.Carts.Add(cart);
+                "Ukraine"
+            );
 
             await db.SaveChangesAsync();
         }
 
-        using var scopeA = _factory.Services.CreateScope();
-        using var scopeB = _factory.Services.CreateScope();
+        using var clientA = _factory.WithTestAuthentication().CreateClient();
+        using var clientB = _factory.WithTestAuthentication().CreateClient();
 
-        var dbA = scopeA.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-        var dbB = scopeB.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+        clientA.AuthenticateAs(customerId);
+        clientB.AuthenticateAs(customerId);
 
-        var cartA = await dbA.Carts
-            .Include(c => c.Items)
-            .SingleAsync(c => c.Id == cart.Id);
+        var addItemResponse = await clientA.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto
+            {
+                ProductId = product.Id,
+                Quantity = 1
+            }
+        );
 
-        var cartB = await dbB.Carts
-            .Include(c => c.Items)
-            .SingleAsync(c => c.Id == cart.Id);
+        Assert.Equal(HttpStatusCode.OK, addItemResponse.StatusCode);
 
-        Assert.Equal(CartStatus.Active, cartA.Status);
-        Assert.Equal(CartStatus.Active, cartB.Status);
+        var checkoutTaskA = clientA.PostAsync("/api/Cart/checkout", null);
+        var checkoutTaskB = clientB.PostAsync("/api/Cart/checkout", null);
 
-        var addressResult = Address.Create(
-            "Khreshchatyk St 1",
-            "Kyiv",
-            "01001",
-            "Ukraine");
+        var responses = await Task.WhenAll(checkoutTaskA, checkoutTaskB);
 
-        Assert.True(addressResult.IsSuccess);
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
 
-        var items = new[]
-        {
-        (
-            ProductId: productId,
-            Quantity: 1,
-            UnitPrice: 100m,
-            Currency: Currency.USD
-        )
-    };
-
-        var orderAResult = Order.Create(
-            customerId,
-            addressResult.Value!,
-            items,
-            DateTime.UtcNow);
-
-        var orderBResult = Order.Create(
-            customerId,
-            addressResult.Value!,
-            items,
-            DateTime.UtcNow);
-
-        Assert.True(orderAResult.IsSuccess);
-        Assert.True(orderBResult.IsSuccess);
-
-        dbA.Orders.Add(orderAResult.Value!);
-        dbB.Orders.Add(orderBResult.Value!);
-
-        var checkoutAResult = cartA.Checkout();
-        var checkoutBResult = cartB.Checkout();
-
-        Assert.True(checkoutAResult.IsSuccess);
-        Assert.True(checkoutBResult.IsSuccess);
-
-        await dbA.SaveChangesAsync();
-
-        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
-            () => dbB.SaveChangesAsync());
+        Assert.Single(
+            responses,
+            response => response.StatusCode == HttpStatusCode.Conflict
+        );
 
         using var verificationScope = _factory.Services.CreateScope();
 
@@ -338,7 +316,7 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
             verificationScope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
 
         var persistedCart = await verificationDb.Carts
-            .SingleAsync(c => c.Id == cart.Id);
+            .SingleAsync(c => c.CustomerId == customerId);
 
         var orderCount = await verificationDb.Orders
             .CountAsync(o => o.CustomerId == customerId);

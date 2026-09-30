@@ -1,4 +1,5 @@
 using EcomCourse.Application.Carts.Commands.CartCheckout;
+using EcomCourse.Application.Exceptions;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
@@ -166,6 +167,54 @@ public class CartCheckoutCommandHandlerTests
         var result = await _handler.Handle(new CartCheckoutCommand(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
+
+        _orderRepositoryMock.Verify(
+            x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnCartNotActive_WhenConcurrencyConflictOccurs()
+    {
+        var cart = Cart.Create(_customerId);
+        var productId = Guid.NewGuid();
+        cart.Value!.AddItem(productId, 2);
+
+        _cartRepositoryMock
+            .Setup(x =>
+                x.GetActiveCartByCustomerIdAsync(_customerId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(cart.Value);
+
+        var productDto = CreateTestProductDto(productId, 100m);
+
+        _productServiceMock
+            .Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+                Result.Success<IReadOnlyList<ProductDto>>(new List<ProductDto> { productDto })
+            );
+
+        _unitOfWorkMock
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(
+                new ConcurrencyException(
+                    new InvalidOperationException("Concurrency conflict")
+                )
+            );
+
+        var result = await _handler.Handle(
+            new CartCheckoutCommand(),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CartErrors.CartNotActive, result.Error);
 
         _orderRepositoryMock.Verify(
             x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()),

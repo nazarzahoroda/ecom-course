@@ -1,4 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
+using EcomCourse.Application.Exceptions;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Carts;
@@ -91,7 +92,14 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
         await _orderRepository.AddAsync(order, cancellationToken);
         cart.Checkout();
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConcurrencyException)
+        {
+            return Result.Failure<Guid>(CartErrors.CartNotActive);
+        }
 
         return Result.Success(order.Id);
     }
