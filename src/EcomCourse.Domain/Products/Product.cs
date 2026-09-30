@@ -5,13 +5,11 @@ namespace EcomCourse.Domain.Products;
 
 public sealed class Product : Entity<Guid>
 {
-
+    public const int MaxImagesLimit = 10;
     private readonly List<ProductImage> _images = new();
 
-    private Product() : base(Guid.Empty)
-    {
-    }
-
+    private Product()
+        : base(Guid.Empty) { }
 
     public string Name { get; private set; } = null!;
 
@@ -23,7 +21,8 @@ public sealed class Product : Entity<Guid>
 
     public IReadOnlyCollection<ProductImage> Images => _images.AsReadOnly();
 
-    private Product(Guid id, string name, Price price, SKU sku, Guid categoryId) : base(id)
+    private Product(Guid id, string name, Price price, SKU sku, Guid categoryId)
+        : base(id)
     {
         Name = name;
         Price = price;
@@ -124,7 +123,7 @@ public sealed class Product : Entity<Guid>
             return Result.Failure<ProductImage>(ProductErrors.ImageContentTypeEmpty);
         }
 
-        if (_images.Count >= 10)
+        if (_images.Count >= MaxImagesLimit)
         {
             return Result.Failure<ProductImage>(ProductErrors.MaxImagesLimitReached);
         }

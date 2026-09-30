@@ -8,15 +8,10 @@ namespace EcomCourse.Application.Products.Commands.DeleteProductImage
     public class DeleteProductImageCommandHandler : ICommandHandler<DeleteProductImageCommand>
     {
         private readonly IProductService _productService;
-        private readonly IBlobStorageService _storageService;
 
-        public DeleteProductImageCommandHandler(
-            IProductService productService,
-            IBlobStorageService storageService
-        )
+        public DeleteProductImageCommandHandler(IProductService productService)
         {
             _productService = productService;
-            _storageService = storageService;
         }
 
         public async Task<Result> Handle(

@@ -1,5 +1,4 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
 
@@ -9,15 +8,10 @@ namespace EcomCourse.Application.Products.Queries.GetProductImages
         : IQueryHandler<GetProductImagesQuery, List<ProductImageDto>>
     {
         private readonly IProductService _productService;
-        private readonly IBlobStorageService _blobStorageService;
 
-        public GetProductImagesQueryHandler(
-            IProductService productService,
-            IBlobStorageService blobStorageService
-        )
+        public GetProductImagesQueryHandler(IProductService productService)
         {
             _productService = productService;
-            _blobStorageService = blobStorageService;
         }
 
         public async Task<Result<List<ProductImageDto>>> Handle(

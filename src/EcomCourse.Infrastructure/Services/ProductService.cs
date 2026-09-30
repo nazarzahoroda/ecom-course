@@ -1,4 +1,3 @@
-using Azure.Core;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
@@ -374,15 +373,16 @@ public sealed class ProductService : IProductService
         CancellationToken cancellationToken
     )
     {
+        var productExists = await IsProductExists(id, cancellationToken);
+        if (!productExists)
+        {
+            return Result.Failure<List<ProductImageDto>>(ProductErrors.NotFound(id));
+        }
+
         var images = await _dbContext
             .ProductImages.AsNoTracking()
             .Where(x => x.ProductId == id)
             .ToListAsync(cancellationToken);
-
-        if (images is null)
-        {
-            return Result.Failure<List<ProductImageDto>>(ProductErrors.ProductImagesNotFound(id));
-        }
 
         var imageDtos = images
             .Select(img =>

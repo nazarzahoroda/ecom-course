@@ -39,11 +39,6 @@ namespace EcomCourse.Application.Products.Commands.ConfirmProductImageUpload
 
             try
             {
-                if (request.IsMain)
-                {
-                    await _productService.ChangeMainImages(request.ProductId, cancellationToken);
-                }
-
                 var addResult = await _productService.AddImage(
                     request.ProductId,
                     request.BlobName,

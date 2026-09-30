@@ -70,6 +70,6 @@ public static class ProductErrors
     public static readonly DomainError MaxImagesLimitReached = new(
         "Product.MaxImagesLimitReached",
         "Maximum limit of product images has been reached",
-        ErrorType.Failure
+        ErrorType.Conflict
     );
 }

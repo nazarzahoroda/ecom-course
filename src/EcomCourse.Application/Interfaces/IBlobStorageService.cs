@@ -7,12 +7,8 @@ namespace EcomCourse.Application.Interfaces
         Task<Result> DeleteAsync(string blobName, CancellationToken cancellationToken);
         Result<string> GenerateReadSasUri(string blobName, TimeSpan expiresIn);
 
-        public Result<string> GenerateWriteSasUri(
-            string blobName,
-            string contentType,
-            TimeSpan expiresIn
-        );
+        Result<string> GenerateWriteSasUri(string blobName, string contentType, TimeSpan expiresIn);
 
-        public Task<bool> ExistsAsync(string blobName, CancellationToken cancellationToken);
+        Task<bool> ExistsAsync(string blobName, CancellationToken cancellationToken);
     }
 }

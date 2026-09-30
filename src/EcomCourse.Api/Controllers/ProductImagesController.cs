@@ -4,11 +4,9 @@ using EcomCourse.Application.Products.Commands.ConfirmProductImageUpload;
 using EcomCourse.Application.Products.Commands.DeleteProductImage;
 using EcomCourse.Application.Products.Commands.InitiateProductImageUpload;
 using EcomCourse.Application.Products.Queries.GetProductImages;
-using EcomCourse.Domain.Common;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace EcomCourse.Api.Controllers
 {

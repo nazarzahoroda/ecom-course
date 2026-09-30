@@ -5,16 +5,23 @@ using Azure.Storage.Sas;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Common;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace EcomCourse.Infrastructure.Services
 {
-    public class AzureBlobStorageService : IBlobStorageService
+    public partial class AzureBlobStorageService : IBlobStorageService
     {
         private readonly BlobContainerClient _containerClient;
         private readonly string _containerName;
+        private readonly ILogger<AzureBlobStorageService> _logger;
 
-        public AzureBlobStorageService(IConfiguration configuration)
+        public AzureBlobStorageService(
+            IConfiguration configuration,
+            ILogger<AzureBlobStorageService> logger
+        )
         {
+            _logger = logger;
+
             var connectionString = configuration["AzureBlobStorage:ConnectionString"];
 
             _containerName = configuration["AzureBlobStorage:ContainerName"] ?? "product-images";
@@ -35,12 +42,20 @@ namespace EcomCourse.Infrastructure.Services
 
                 return Result.Success();
             }
-            catch (RequestFailedException)
+            catch (RequestFailedException ex)
             {
+                LogStorageOperationFailed(
+                    _logger,
+                    ex,
+                    blobName,
+                    ex.Status,
+                    ex.ErrorCode ?? "Unknown"
+                );
+
                 return Result.Failure(
                     new DomainError(
-                        "Storage.DeleteFailed",
-                        "Failed to delete the file from storage.",
+                        ex.ErrorCode ?? "Storage.OperationFailed",
+                        "Failed to perform storage operation",
                         ErrorType.Failure
                     )
                 );
@@ -115,5 +130,17 @@ namespace EcomCourse.Infrastructure.Services
             var blobClient = _containerClient.GetBlobClient(blobName);
             return await blobClient.ExistsAsync(cancellationToken);
         }
+
+        [LoggerMessage(
+            Level = LogLevel.Error,
+            Message = "Azure Blob Storage operation failed for {BlobName}. Status: {Status}, ErrorCode: {ErrorCode}"
+        )]
+        private static partial void LogStorageOperationFailed(
+            ILogger logger,
+            Exception exception,
+            string blobName,
+            int status,
+            string errorCode
+        );
     }
 }

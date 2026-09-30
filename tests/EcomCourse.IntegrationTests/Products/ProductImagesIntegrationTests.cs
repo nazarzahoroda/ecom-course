@@ -6,6 +6,7 @@ using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.Infrastructure.Persistence.Identity;
 using EcomCourse.IntegrationTests.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -44,16 +45,25 @@ namespace EcomCourse.IntegrationTests.Products
                             _ => { }
                         );
 
-                    services.RemoveAll<DbContextOptions<EcomCourseDbContext>>();
-                    services.RemoveAll<EcomCourseDbContext>();
-
                     var inMemoryServiceProvider = new ServiceCollection()
                         .AddEntityFrameworkInMemoryDatabase()
                         .BuildServiceProvider();
 
+                    services.RemoveAll<DbContextOptions<EcomCourseDbContext>>();
+                    services.RemoveAll<EcomCourseDbContext>();
+
                     services.AddDbContext<EcomCourseDbContext>(options =>
                     {
                         options.UseInMemoryDatabase(dbName);
+                        options.UseInternalServiceProvider(inMemoryServiceProvider);
+                    });
+
+                    services.RemoveAll<DbContextOptions<IdentityDbContext>>();
+                    services.RemoveAll<IdentityDbContext>();
+
+                    services.AddDbContext<IdentityDbContext>(options =>
+                    {
+                        options.UseInMemoryDatabase($"Identity_{dbName}");
                         options.UseInternalServiceProvider(inMemoryServiceProvider);
                     });
 
@@ -178,7 +188,7 @@ namespace EcomCourse.IntegrationTests.Products
 
             var response = await _client.SendAsync(request);
 
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         [Fact]
@@ -214,6 +224,46 @@ namespace EcomCourse.IntegrationTests.Products
             var images = await getResponse.Content.ReadFromJsonAsync<List<ProductImageDto>>();
             Assert.NotNull(images);
             Assert.Empty(images);
+        }
+
+        [Fact]
+        public async Task InitiateUpload_ShouldReturnNotFound_WhenProductDoesNotExist()
+        {
+            var nonExistentProductId = Guid.NewGuid();
+
+            var request = BuildRequest(
+                HttpMethod.Post,
+                $"/api/ProductImages/{nonExistentProductId}/initiate-upload",
+                role: "Admin"
+            );
+            request.Content = JsonContent.Create(
+                new InitiateUploadRequest("photo.png", "image/png")
+            );
+
+            var response = await _client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("executable.exe", "application/x-msdownload")]
+        [InlineData("script.sh", "application/x-sh")]
+        [InlineData("document.pdf", "application/pdf")]
+        public async Task InitiateUpload_ShouldReturnBadRequest_WhenExtensionIsInvalid(
+            string fileName,
+            string contentType
+        )
+        {
+            var request = BuildRequest(
+                HttpMethod.Post,
+                $"/api/ProductImages/{_productId}/initiate-upload",
+                role: "Admin"
+            );
+            request.Content = JsonContent.Create(new InitiateUploadRequest(fileName, contentType));
+
+            var response = await _client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         private static HttpRequestMessage BuildRequest(

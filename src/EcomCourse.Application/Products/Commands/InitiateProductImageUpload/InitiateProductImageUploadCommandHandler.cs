@@ -12,14 +12,14 @@ namespace EcomCourse.Application.Products.Commands.InitiateProductImageUpload
         private readonly IProductService _productService;
         private readonly IBlobStorageService _storageService;
 
-        private static readonly HashSet<string> _allowedExtensions = new(
+        private static readonly Dictionary<string, string[]> _allowedMimeTypes = new(
             StringComparer.OrdinalIgnoreCase
         )
         {
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".webp",
+            [".jpg"] = ["image/jpeg"],
+            [".jpeg"] = ["image/jpeg"],
+            [".png"] = ["image/png"],
+            [".webp"] = ["image/webp"],
         };
 
         public InitiateProductImageUploadCommandHandler(
@@ -42,14 +42,23 @@ namespace EcomCourse.Application.Products.Commands.InitiateProductImageUpload
                 );
 
             var ext = Path.GetExtension(request.FileName);
-            if (string.IsNullOrWhiteSpace(ext) || !_allowedExtensions.Contains(ext))
+            if (
+                string.IsNullOrWhiteSpace(ext)
+                || !_allowedMimeTypes.TryGetValue(ext, out var allowedContentTypes)
+                || !allowedContentTypes.Contains(
+                    request.ContentType,
+                    StringComparer.OrdinalIgnoreCase
+                )
+            )
+            {
                 return Result.Failure<InitiateUploadResponse>(
                     new DomainError(
-                        "Storage.InvalidExtension",
-                        "Unsupported file type",
+                        "Storage.InvalidFileType",
+                        "Unsupported file extension or content type.",
                         ErrorType.Validation
                     )
                 );
+            }
 
             var safeFileName = Path.GetFileName(request.FileName);
             var blobName = $"{Guid.NewGuid()}-{safeFileName}";
