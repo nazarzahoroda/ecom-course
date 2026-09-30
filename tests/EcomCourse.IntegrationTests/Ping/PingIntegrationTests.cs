@@ -1,17 +1,26 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.IntegrationTests.Infrastructure;
 
 namespace EcomCourse.IntegrationTests.Ping;
 
+[Collection("IntegrationTests")]
 public sealed class PingIntegrationTests
 {
+    private readonly HttpClient _client;
+
+    public PingIntegrationTests(
+        CustomWebApplicationFactory<Program, EcomCourseDbContext, IdentityDbContext> factory
+    )
+    {
+        _client = factory.CreateClient();
+    }
+
     [Fact]
     public async Task GetPing_ShouldReturnPong()
     {
-        await using var factory = new WebApplicationFactory<Program>();
-        using var client = factory.CreateClient();
-
-        var response = await client.GetAsync("/ping");
+        var response = await _client.GetAsync("/ping");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 

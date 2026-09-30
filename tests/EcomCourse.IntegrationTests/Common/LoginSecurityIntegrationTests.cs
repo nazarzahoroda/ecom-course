@@ -3,19 +3,36 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using EcomCourse.Application.Authentication.DTOs;
+using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.IntegrationTests.Infrastructure;
 using EcomCourse.IntegrationTests.TestSupport;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Xunit;
 
 namespace EcomCourse.IntegrationTests.Common;
 
-public class LoginSecurityIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection("IntegrationTests")]
+public class LoginSecurityIntegrationTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory<
+        Program,
+        EcomCourseDbContext,
+        IdentityDbContext
+    > _factory;
 
-    public LoginSecurityIntegrationTests(WebApplicationFactory<Program> factory)
+    public LoginSecurityIntegrationTests(
+        CustomWebApplicationFactory<Program, EcomCourseDbContext, IdentityDbContext> factory
+    )
     {
+        _factory = factory;
         _client = factory.WithTestAuthentication().CreateClient();
+    }
+
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
+    {
+        await _factory.ResetDatabaseAsync();
     }
 
     [Fact]
