@@ -51,9 +51,7 @@ a blocking issue.
 12. Missing or misleading XML doc / summary on public handler classes.
 13. Magic strings/numbers that should be constants or config.
 14. Overly broad `catch` blocks that could hide the specific failure mode.
-15. Log message uses string interpolation (`$"..."`) instead of structured
-    `{Name}` placeholders — see [logging.md](logging.md).
-16. **No linked tracking issue** — the PR description doesn't close a
+15. **No linked tracking issue** — the PR description doesn't close a
     GitHub Issue (`Closes #N` / `Fixes #N` / `Resolves #N`), i.e.
     `closingIssuesReferences` is empty. Every task on the
     [Project board](https://github.com/users/nazarzahoroda/projects/1) is
@@ -61,9 +59,13 @@ a blocking issue.
     closes automatically on merge. Suggestion-tier, not Blocking — ask
     the author to add the link rather than holding up the PR for it.
 
+16. Log message uses string interpolation (`$"..."`) instead of structured
+    `{Name}` placeholders — see [logging.md](logging.md).
+
+
 ## Nit (comment, clearly labeled "nit:")
 
-16. Formatting, ordering of usings, minor naming style (casing, plurals).
+17. Formatting, ordering of usings, minor naming style (casing, plurals).
 
 ## What NOT to flag
 

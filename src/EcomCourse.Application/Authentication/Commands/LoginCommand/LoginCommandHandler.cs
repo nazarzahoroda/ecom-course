@@ -21,13 +21,21 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
             CancellationToken cancellationToken
         )
         {
-            var user = await _identityProvider.GetUserAsync(request.dto.Email, cancellationToken);
-            if (user.IsFailure)
-                return Result.Failure<AuthResponse>(user.Error);
+            var checkResult = await _identityProvider.CheckPasswordSignInAsync(
+                request.dto,
+                cancellationToken
+            );
 
-            var checkResult = await _identityProvider.CheckPasswordSignInAsync(request.dto, cancellationToken);
             if (checkResult.IsFailure)
                 return Result.Failure<AuthResponse>(checkResult.Error);
+
+            var user = await _identityProvider.GetUserAsync(
+                request.dto.Email,
+                cancellationToken
+            );
+
+            if (user.IsFailure)
+                return Result.Failure<AuthResponse>(user.Error);
 
             var roles = await _identityProvider.GetRolesAsync(request.dto.Email, cancellationToken);
 

@@ -1,4 +1,3 @@
-using EcomCourse.Application.Abstractions;
 using EcomCourse.Api.Middleware;
 using EcomCourse.Application;
 using EcomCourse.Infrastructure;

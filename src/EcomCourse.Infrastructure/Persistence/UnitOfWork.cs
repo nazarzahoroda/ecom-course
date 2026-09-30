@@ -1,10 +1,12 @@
 using EcomCourse.Application.Abstractions;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EcomCourse.Infrastructure.Persistence;
 
 public sealed class UnitOfWork : IUnitOfWork
 {
     private readonly EcomCourseDbContext _context;
+    private IDbContextTransaction? _transaction;
 
     public UnitOfWork(EcomCourseDbContext context)
     {
@@ -14,25 +16,29 @@ public sealed class UnitOfWork : IUnitOfWork
     public async Task BeginTransactionAsync(
         CancellationToken cancellationToken = default)
     {
-        await _context.Database.BeginTransactionAsync(cancellationToken);
+        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
     }
 
     public async Task CommitTransactionAsync(
         CancellationToken cancellationToken = default)
     {
-        var transaction = _context.Database.CurrentTransaction;
-
-        if (transaction is not null)
-            await transaction.CommitAsync(cancellationToken);
+        if (_transaction is not null)
+        {
+            await _transaction.CommitAsync(cancellationToken);
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
     }
 
     public async Task RollbackTransactionAsync(
         CancellationToken cancellationToken = default)
     {
-        var transaction = _context.Database.CurrentTransaction;
-
-        if (transaction is not null)
-            await transaction.RollbackAsync(cancellationToken);
+        if (_transaction is not null)
+        {
+            await _transaction.RollbackAsync(cancellationToken);
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
     }
 
     public async Task SaveChangesAsync(
