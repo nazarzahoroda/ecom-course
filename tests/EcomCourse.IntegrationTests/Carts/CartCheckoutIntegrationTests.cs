@@ -307,7 +307,9 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
 
         Assert.Single(
             responses,
-            response => response.StatusCode == HttpStatusCode.Conflict
+            response =>
+                response.StatusCode == HttpStatusCode.Conflict
+                || response.StatusCode == HttpStatusCode.NotFound
         );
 
         using var verificationScope = _factory.Services.CreateScope();

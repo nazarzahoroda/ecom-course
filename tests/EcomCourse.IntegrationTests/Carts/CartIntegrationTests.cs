@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Carts.DTOs;
-using EcomCourse.IntegrationTests.Common;
+using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.IntegrationTests.Common;
 using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -124,6 +125,96 @@ public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>
             Assert.Equal(product1.Id, remainingItems[0].ProductId);
             Assert.Equal(5, remainingItems[0].Quantity);
         }
+    }
+
+    [Fact]
+    public async Task UpdateCartItemQuantity_ChangesCartRowVersion()
+    {
+        var customerId = Guid.NewGuid();
+
+        var category = Category.Create($"Category-{Guid.NewGuid()}").Value!;
+        var price = Price.Create(100m, Currency.USD).Value!;
+        var skuResult = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}");
+        Assert.True(skuResult.IsSuccess);
+        var sku = skuResult.Value!;
+
+        var product = Product
+            .Create(
+                "RowVersion Test Product",
+                price.Amount,
+                price.Currency,
+                sku.Value,
+                category.Id
+            )
+            .Value!;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+            db.Categories.Add(category);
+            db.Products.Add(product);
+
+            await db.SaveChangesAsync();
+        }
+
+        _httpClient.AuthenticateAs(customerId);
+
+        var addResponse = await _httpClient.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto
+            {
+                ProductId = product.Id,
+                Quantity = 1,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, addResponse.StatusCode);
+
+        byte[] originalRowVersion;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+            var cart = await db.Carts.SingleAsync(
+                c => c.CustomerId == customerId && c.Status == CartStatus.Active
+            );
+
+            originalRowVersion = db.Entry(cart)
+                .Property<byte[]>("RowVersion")
+                .CurrentValue!
+                .ToArray();
+        }
+
+        var updateResponse = await _httpClient.PutAsJsonAsync(
+            "/api/Cart/items",
+            new UpdateCartItemQuantityDto
+            {
+                ProductId = product.Id,
+                Quantity = 5,
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+        byte[] updatedRowVersion;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+            var cart = await db.Carts.SingleAsync(
+                c => c.CustomerId == customerId && c.Status == CartStatus.Active
+            );
+
+            updatedRowVersion = db.Entry(cart)
+                .Property<byte[]>("RowVersion")
+                .CurrentValue!
+                .ToArray();
+        }
+
+        Assert.False(originalRowVersion.SequenceEqual(updatedRowVersion));
     }
 
     [Fact]
