@@ -11,21 +11,23 @@ public interface IProductService
         Currency currency,
         string sku,
         Guid categoryId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
-    Task<Result<ProductDto>> GetByIdAsync(
-        Guid id,
-        CancellationToken cancellationToken = default);
+    Task<Result<ProductDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
         IReadOnlyCollection<Guid> ids,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     Task<Result<IReadOnlyList<ProductDto>>> GetTopAsync(
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     Task<Result> UpdateAsync(
         Guid id,
@@ -34,8 +36,30 @@ public interface IProductService
         Currency currency,
         string sku,
         Guid categoryId,
-        CancellationToken cancellationToken = default);
-    Task<Result> DeleteAsync(
+        CancellationToken cancellationToken = default
+    );
+    Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<bool> IsProductExists(Guid id, CancellationToken cancellationToken);
+
+    Task ChangeMainImages(Guid id, CancellationToken cancellationToken);
+
+    Task<Result<Guid>> AddImage(
+        Guid productId,
+        string blobName,
+        string contentType,
+        bool isMain,
+        CancellationToken cancellationToken
+    );
+
+    Task<Result<List<ProductImageDto>>> GetProductImagesAsync(
         Guid id,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken
+    );
+
+    Task<Result> DeleteImageAsync(
+        Guid productId,
+        Guid imageId,
+        CancellationToken cancellationToken
+    );
 }

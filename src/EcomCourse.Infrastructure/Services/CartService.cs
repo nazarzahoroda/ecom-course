@@ -15,18 +15,21 @@ namespace EcomCourse.Infrastructure.Services
         private readonly IUserContext _currentUserService;
         private readonly ICustomerStore _customerStore;
         private readonly TimeProvider _timeProvider;
+        private readonly IBlobStorageService _storageService;
 
         public CartService(
             EcomCourseDbContext context,
             IUserContext currentUserService,
             ICustomerStore customerStore,
-            TimeProvider timeProvider
+            TimeProvider timeProvider,
+            IBlobStorageService storageService
         )
         {
             _context = context;
             _currentUserService = currentUserService;
             _customerStore = customerStore;
             _timeProvider = timeProvider;
+            _storageService = storageService;
         }
 
         public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
@@ -52,8 +55,9 @@ namespace EcomCourse.Infrastructure.Services
 
             var productIds = cart.Items.Select(i => i.ProductId).Distinct().ToList();
 
-            var products = await _context
+            var productsRaw = await _context
                 .Products.AsNoTracking()
+                .Include(p => p.Images)
                 .Where(p => productIds.Contains(p.Id))
                 .Select(p => new
                 {
@@ -62,13 +66,54 @@ namespace EcomCourse.Infrastructure.Services
                     UnitPrice = p.Price.Amount,
                     Currency = p.Price.Currency.ToString(),
                     Sku = p.SKU.Value,
+                    Images = p
+                        .Images.Select(img => new
+                        {
+                            img.Id,
+                            img.BlobName,
+                            img.IsMain,
+                        })
+                        .ToList(),
                 })
-                .ToDictionaryAsync(p => p.Id, cancellationToken);
+                .ToListAsync(cancellationToken);
 
-            var missingProductIds = productIds.Except(products.Keys).ToList();
+            var missingProductIds = productIds.Except(productsRaw.Select(p => p.Id)).ToList();
 
             if (missingProductIds.Count > 0)
                 return Result.Failure<CartDetailsDto>(ProductErrors.Unavailable);
+
+            var products = productsRaw.ToDictionary(
+                p => p.Id,
+                p =>
+                {
+                    var mainImage =
+                        p.Images.FirstOrDefault(i => i.IsMain) ?? p.Images.FirstOrDefault();
+                    var imageUrl = string.Empty;
+
+                    if (mainImage is not null)
+                    {
+                        var sasResult = _storageService.GenerateReadSasUri(
+                            mainImage.BlobName,
+                            TimeSpan.FromHours(2)
+                        );
+
+                        if (sasResult.IsSuccess)
+                        {
+                            imageUrl = sasResult.Value!;
+                        }
+                    }
+
+                    return new
+                    {
+                        p.Id,
+                        p.Name,
+                        p.UnitPrice,
+                        p.Currency,
+                        p.Sku,
+                        ImageUrl = imageUrl,
+                    };
+                }
+            );
 
             var itemsDto = cart
                 .Items.Where(item => products.ContainsKey(item.ProductId))
@@ -84,6 +129,7 @@ namespace EcomCourse.Infrastructure.Services
                         UnitPrice = product.UnitPrice,
                         Currency = product.Currency,
                         Quantity = item.Quantity,
+                        ImageUrl = product.ImageUrl,
                     };
                 })
                 .ToList();

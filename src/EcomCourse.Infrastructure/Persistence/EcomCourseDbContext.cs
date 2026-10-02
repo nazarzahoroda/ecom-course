@@ -23,6 +23,7 @@ public class EcomCourseDbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -46,6 +47,7 @@ public class EcomCourseDbContext
 
         builder.Entity<IdentityUserRole<Guid>>()
             .ToTable("AspNetUserRoles", "identity");
+
 
         builder.Entity<IdentityUserToken<Guid>>()
             .ToTable("AspNetUserTokens", "identity");
