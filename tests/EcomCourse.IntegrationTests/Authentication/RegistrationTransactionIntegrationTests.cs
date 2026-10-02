@@ -32,8 +32,8 @@ public class RegistrationTransactionIntegrationTests
         {
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<ICustomerStore>();
-                services.AddScoped<ICustomerStore, FailingCustomerStore>();
+                services.RemoveAll<ICustomerRepository>();
+                services.AddScoped<ICustomerRepository, FailingCustomerRepository>();
             });
         });
 
@@ -73,7 +73,7 @@ public class RegistrationTransactionIntegrationTests
         Assert.False(customerExists);
     }
 
-    private sealed class FailingCustomerStore : ICustomerStore
+    private sealed class FailingCustomerRepository : ICustomerRepository
     {
         public Task<bool> ExistsByEmailAsync(
             Email email,

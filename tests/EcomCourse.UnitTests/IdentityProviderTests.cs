@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Abstractions.Authentication;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using EcomCourse.Infrastructure.Services;
@@ -15,14 +16,14 @@ using Moq;
 
 namespace EcomCourse.UnitTests;
 
-public class IdentityServiceTests : IDisposable
+public class IdentityProviderTests : IDisposable
 {
     private readonly EcomCourseDbContext _context;
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
-    private readonly Mock<IJwtService> _jwtServiceMock = new();
+    private readonly Mock<ITokenIssuer> _jwtServiceMock = new();
     private readonly Mock<IConfiguration> _configurationMock = new();
-    private readonly IdentityService _sut;
+    private readonly IdentityProvider _sut;
 
     private static string HashToken(string token)
     {
@@ -30,7 +31,7 @@ public class IdentityServiceTests : IDisposable
         return Convert.ToHexString(bytes);
     }
 
-    public IdentityServiceTests()
+    public IdentityProviderTests()
     {
         var options = new DbContextOptionsBuilder<EcomCourseDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -77,7 +78,7 @@ public class IdentityServiceTests : IDisposable
             .Setup(c => c["Jwt:RefreshTokenDays"])
             .Returns("7");
 
-        _sut = new IdentityService(
+        _sut = new IdentityProvider(
             _userManagerMock.Object,
             _context,
             _signInManagerMock.Object,

@@ -1,6 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
 
@@ -9,7 +8,7 @@ namespace EcomCourse.Application.Products.Commands.InitiateProductImageUpload
     public class InitiateProductImageUploadCommandHandler
         : ICommandHandler<InitiateProductImageUploadCommand, InitiateUploadResponse>
     {
-        private readonly IProductService _productService;
+        private readonly IProductManager _productService;
         private readonly IBlobStorageService _storageService;
 
         private static readonly Dictionary<string, string[]> _allowedMimeTypes = new(
@@ -23,7 +22,7 @@ namespace EcomCourse.Application.Products.Commands.InitiateProductImageUpload
         };
 
         public InitiateProductImageUploadCommandHandler(
-            IProductService productService,
+            IProductManager productService,
             IBlobStorageService storageService
         )
         {

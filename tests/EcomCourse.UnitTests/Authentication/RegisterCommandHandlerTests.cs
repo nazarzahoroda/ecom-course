@@ -1,6 +1,6 @@
 using EcomCourse.Application.Authentication.Commands.RegisterCommand;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using Moq;
@@ -9,15 +9,15 @@ namespace EcomCourse.Application.Tests.Authentication;
 
 public class RegisterCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
-    private readonly Mock<ICustomerStore> _customerStoreMock;
+    private readonly Mock<IIdentityProvider> _identityServiceMock;
+    private readonly Mock<ICustomerRepository> _customerStoreMock;
     private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _customerStoreMock = new Mock<ICustomerStore>();
+        _identityServiceMock = new Mock<IIdentityProvider>();
+        _customerStoreMock = new Mock<ICustomerRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _handler = new RegisterCommandHandler(

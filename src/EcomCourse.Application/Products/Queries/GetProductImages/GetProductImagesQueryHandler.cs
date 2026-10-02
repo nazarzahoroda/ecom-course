@@ -1,5 +1,5 @@
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Products.Queries.GetProductImages
@@ -7,9 +7,9 @@ namespace EcomCourse.Application.Products.Queries.GetProductImages
     public class GetProductImagesQueryHandler
         : IQueryHandler<GetProductImagesQuery, List<ProductImageDto>>
     {
-        private readonly IProductService _productService;
+        private readonly IProductManager _productService;
 
-        public GetProductImagesQueryHandler(IProductService productService)
+        public GetProductImagesQueryHandler(IProductManager productService)
         {
             _productService = productService;
         }
