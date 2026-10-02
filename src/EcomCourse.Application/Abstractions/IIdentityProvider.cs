@@ -12,8 +12,6 @@ namespace EcomCourse.Application.Abstractions
         Task<Result<ApplicationUserDto>> CreateUserAsyncWithResult(RegisterDto dto, CancellationToken cancellationToken);
         Task<Result> SetCustomerIdAsync(Guid userId, Guid customerId, CancellationToken cancellationToken);
 
-        Task<Result> DeleteUserAsync(Guid userId, CancellationToken cancellationToken);
-
         Task<Result> CheckPasswordSignInAsync(LoginDto dto, CancellationToken cancellationToken);
 
         Task<IList<string>?> GetRolesAsync(string email, CancellationToken cancellationToken);

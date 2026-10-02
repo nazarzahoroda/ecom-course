@@ -5,6 +5,7 @@ using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Abstractions.Authentication;
 using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
+using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -15,14 +16,14 @@ namespace EcomCourse.Infrastructure.Services
     public class IdentityProvider : IIdentityProvider
     {
         private readonly UserManager<ApplicationUser> _manager;
-        private readonly IdentityDbContext _context;
+        private readonly EcomCourseDbContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ITokenIssuer _tokenIssuer;
         private readonly IConfiguration _configuration;
 
         public IdentityProvider(
             UserManager<ApplicationUser> manager,
-            IdentityDbContext context,
+            EcomCourseDbContext context,
             SignInManager<ApplicationUser> signInManager,
             ITokenIssuer tokenIssuer,
             IConfiguration configuration
@@ -122,8 +123,6 @@ namespace EcomCourse.Infrastructure.Services
 
             if (!roleResult.Succeeded)
             {
-                var deleteResult = await DeleteUserAsync(user.Id, cancellationToken);
-
                 return Result.Failure<ApplicationUserDto>(
                     new DomainError(
                         "Identity.AddRoleFailed",
@@ -167,29 +166,6 @@ namespace EcomCourse.Infrastructure.Services
                 );
             }
 
-            return Result.Success();
-        }
-
-        public async Task<Result> DeleteUserAsync(Guid userId, CancellationToken cancellationToken)
-        {
-            var user = await _manager.FindByIdAsync(userId.ToString());
-            if (user is null)
-            {
-                return Result.Failure(
-                    new DomainError("Identity.UserNotFound", "User not found", ErrorType.NotFound)
-                );
-            }
-            var result = await _manager.DeleteAsync(user);
-            if (!result.Succeeded)
-            {
-                return Result.Failure(
-                    new DomainError(
-                        "Identity.DeleteUserFailed",
-                        "Failed to delete user",
-                        ErrorType.Failure
-                    )
-                );
-            }
             return Result.Success();
         }
 

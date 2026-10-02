@@ -1,5 +1,6 @@
 using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Abstractions.Messaging;
+using EcomCourse.Application.Exceptions;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
@@ -24,8 +25,7 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
         IOrderRepository orderRepository,
         IUnitOfWork unitOfWork,
         IUserContext currentUserService,
-        ICustomerRepository customerRepository
-    )
+        ICustomerRepository customerRepository)
     {
         _cartRepository = cartRepository;
         _productManager = productManager;
@@ -37,15 +37,13 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
 
     public async Task<Result<Guid>> Handle(
         CartCheckoutCommand request,
-        CancellationToken cancellationToken
-    )
+        CancellationToken cancellationToken)
     {
         var customerId = _currentUserService.CustomerId;
 
         var customer = await _customerRepository.GetByIdAsync(
             customerId,
-            cancellationToken
-        );
+            cancellationToken);
 
         if (customer is null)
         {
@@ -54,8 +52,7 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
 
         var cart = await _cartRepository.GetActiveCartByCustomerIdAsync(
             customerId,
-            cancellationToken
-        );
+            cancellationToken);
 
         if (cart is null)
         {
@@ -74,8 +71,7 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
 
         var productsResult = await _productManager.GetByIdsAsync(
             productIds,
-            cancellationToken
-        );
+            cancellationToken);
 
         if (productsResult.IsFailure)
         {
@@ -101,16 +97,14 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
                     Quantity: i.Quantity,
                     UnitPrice: productsById[i.ProductId].Amount,
                     Currency: productsById[i.ProductId].Currency
-                )
-            )
+                ))
             .ToList();
 
         var orderResult = Order.Create(
             customerId,
             customer.Address,
             items,
-            DateTime.UtcNow
-        );
+            DateTime.UtcNow);
 
         if (orderResult.IsFailure)
         {
@@ -129,15 +123,18 @@ public class CartCheckoutCommandHandler : ICommandHandler<CartCheckoutCommand, G
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-            return Result.Success(order.Id);
+        }
+        catch (ConcurrencyException)
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            return Result.Failure<Guid>(CartErrors.CartNotActive);
         }
         catch
         {
             await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
             throw;
         }
+
+        return Result.Success(order.Id);
     }
-
-
 }

@@ -1,5 +1,5 @@
-using EcomCourse.Application.Products;
 using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Products;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -10,10 +10,14 @@ namespace EcomCourse.Infrastructure.Services;
 public sealed class ProductManager : IProductManager
 {
     private readonly EcomCourseDbContext _dbContext;
+    private readonly IBlobStorageService _storageService;
 
-    public ProductManager(EcomCourseDbContext dbContext)
+    public ProductManager(
+        EcomCourseDbContext dbContext,
+        IBlobStorageService storageService)
     {
         _dbContext = dbContext;
+        _storageService = storageService;
     }
 
     public async Task<Result<Guid>> CreateAsync(
@@ -22,14 +26,10 @@ public sealed class ProductManager : IProductManager
         Currency currency,
         string sku,
         Guid categoryId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var productResult = Product.Create(
-            name,
-            amount,
-            currency,
-            sku,
-            categoryId);
+        var productResult = Product.Create(name, amount, currency, sku, categoryId);
 
         if (productResult.IsFailure)
         {
@@ -38,24 +38,24 @@ public sealed class ProductManager : IProductManager
 
         var product = productResult.Value!;
 
-        var categoryExists = await _dbContext.Categories
-            .AnyAsync(category => category.Id == product.CategoryId, cancellationToken);
+        var categoryExists = await _dbContext.Categories.AnyAsync(
+            category => category.Id == product.CategoryId,
+            cancellationToken
+        );
 
         if (!categoryExists)
         {
-            return Result.Failure<Guid>(
-                ProductErrors.CategoryNotFound(product.CategoryId));
+            return Result.Failure<Guid>(ProductErrors.CategoryNotFound(product.CategoryId));
         }
 
-        var skuExists = await _dbContext.Products
-            .AnyAsync(
-                existingProduct => existingProduct.SKU.Value == product.SKU.Value,
-                cancellationToken);
+        var skuExists = await _dbContext.Products.AnyAsync(
+            existingProduct => existingProduct.SKU.Value == product.SKU.Value,
+            cancellationToken
+        );
 
         if (skuExists)
         {
-            return Result.Failure<Guid>(
-                ProductErrors.SKUAlreadyExists(product.SKU.Value));
+            return Result.Failure<Guid>(ProductErrors.SKUAlreadyExists(product.SKU.Value));
         }
 
         _dbContext.Products.Add(product);
@@ -67,19 +67,35 @@ public sealed class ProductManager : IProductManager
 
     public async Task<Result<ProductDto>> GetByIdAsync(
         Guid id,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var product = await _dbContext.Products
+        var product = await _dbContext
+            .Products
+            .Include(p => p.Images)
             .AsNoTracking()
-            .FirstOrDefaultAsync(
-                product => product.Id == id,
-                cancellationToken);
+            .FirstOrDefaultAsync(product => product.Id == id, cancellationToken);
 
         if (product is null)
-        {
-            return Result.Failure<ProductDto>(
-                ProductErrors.NotFound(id));
-        }
+            return Result.Failure<ProductDto>(ProductErrors.NotFound(id));
+
+        var imageDtos = product.Images
+            .Select(img =>
+            {
+                var sasResult = _storageService.GenerateReadSasUri(
+                    img.BlobName,
+                    TimeSpan.FromHours(2)
+                );
+
+                return new ProductImageDto
+                {
+                    Id = img.Id,
+                    ProductId = product.Id,
+                    Url = sasResult.IsSuccess ? sasResult.Value! : string.Empty,
+                    IsMain = img.IsMain,
+                };
+            })
+            .ToList();
 
         var dto = new ProductDto(
             product.Id,
@@ -87,16 +103,20 @@ public sealed class ProductManager : IProductManager
             product.Price.Amount,
             product.Price.Currency,
             product.SKU.Value,
-            product.CategoryId);
+            product.CategoryId,
+            imageDtos
+        );
 
         return Result.Success(dto);
     }
 
     public async Task<Result<IReadOnlyList<ProductDto>>> GetByIdsAsync(
         IReadOnlyCollection<Guid> ids,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var products = await _dbContext.Products
+        var products = await _dbContext
+            .Products
             .AsNoTracking()
             .Where(product => ids.Contains(product.Id))
             .ToListAsync(cancellationToken);
@@ -117,45 +137,116 @@ public sealed class ProductManager : IProductManager
                 product.Price.Amount,
                 product.Price.Currency,
                 product.SKU.Value,
-                product.CategoryId))
+                product.CategoryId
+            ))
             .ToList();
 
         return Result.Success(dtos);
     }
 
     public async Task<Result<IReadOnlyList<ProductDto>>> GetAllAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var products = await _dbContext.Products
+        var products = await _dbContext
+            .Products
+            .Include(p => p.Images)
             .AsNoTracking()
-            .Select(product => new ProductDto(
-                product.Id,
-                product.Name,
-                product.Price.Amount,
-                product.Price.Currency,
-                product.SKU.Value,
-                product.CategoryId))
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IReadOnlyList<ProductDto>>(products);
+        var productDtos = products
+            .Select(product =>
+            {
+                var mainImage =
+                    product.Images.FirstOrDefault(i => i.IsMain)
+                    ?? product.Images.FirstOrDefault();
+
+                var imagesList = new List<ProductImageDto>();
+
+                if (mainImage is not null)
+                {
+                    var sasResult = _storageService.GenerateReadSasUri(
+                        mainImage.BlobName,
+                        TimeSpan.FromHours(2)
+                    );
+
+                    imagesList.Add(
+                        new ProductImageDto
+                        {
+                            Id = mainImage.Id,
+                            ProductId = product.Id,
+                            Url = sasResult.IsSuccess ? sasResult.Value! : string.Empty,
+                            IsMain = mainImage.IsMain,
+                        }
+                    );
+                }
+
+                return new ProductDto(
+                    product.Id,
+                    product.Name,
+                    product.Price.Amount,
+                    product.Price.Currency,
+                    product.SKU.Value,
+                    product.CategoryId,
+                    imagesList
+                );
+            })
+            .ToList();
+
+        return Result.Success<IReadOnlyList<ProductDto>>(productDtos);
     }
 
     public async Task<Result<IReadOnlyList<ProductDto>>> GetTopAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var products = await _dbContext.Products
+        var products = await _dbContext
+            .Products
+            .Include(p => p.Images)
             .AsNoTracking()
             .Take(4)
-            .Select(product => new ProductDto(
-                product.Id,
-                product.Name,
-                product.Price.Amount,
-                product.Price.Currency,
-                product.SKU.Value,
-                product.CategoryId))
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IReadOnlyList<ProductDto>>(products);
+        var productDtos = products
+            .Select(product =>
+            {
+                var mainImage =
+                    product.Images.FirstOrDefault(i => i.IsMain)
+                    ?? product.Images.FirstOrDefault();
+
+                var imagesList = new List<ProductImageDto>();
+
+                if (mainImage is not null)
+                {
+                    var sasResult = _storageService.GenerateReadSasUri(
+                        mainImage.BlobName,
+                        TimeSpan.FromHours(2)
+                    );
+
+                    imagesList.Add(
+                        new ProductImageDto
+                        {
+                            Id = mainImage.Id,
+                            ProductId = product.Id,
+                            Url = sasResult.IsSuccess ? sasResult.Value! : string.Empty,
+                            IsMain = mainImage.IsMain,
+                        }
+                    );
+                }
+
+                return new ProductDto(
+                    product.Id,
+                    product.Name,
+                    product.Price.Amount,
+                    product.Price.Currency,
+                    product.SKU.Value,
+                    product.CategoryId,
+                    imagesList
+                );
+            })
+            .ToList();
+
+        return Result.Success<IReadOnlyList<ProductDto>>(productDtos);
     }
 
     public async Task<Result> UpdateAsync(
@@ -165,47 +256,40 @@ public sealed class ProductManager : IProductManager
         Currency currency,
         string sku,
         Guid categoryId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var product = await _dbContext.Products
-            .FirstOrDefaultAsync(
-                product => product.Id == id,
-                cancellationToken);
+        var product = await _dbContext.Products.FirstOrDefaultAsync(
+            product => product.Id == id,
+            cancellationToken
+        );
 
         if (product is null)
         {
             return Result.Failure(ProductErrors.NotFound(id));
         }
 
-        var categoryExists = await _dbContext.Categories
-            .AnyAsync(
-                category => category.Id == categoryId,
-                cancellationToken);
+        var categoryExists = await _dbContext.Categories.AnyAsync(
+            category => category.Id == categoryId,
+            cancellationToken
+        );
 
         if (!categoryExists)
         {
-            return Result.Failure(
-                ProductErrors.CategoryNotFound(categoryId));
+            return Result.Failure(ProductErrors.CategoryNotFound(categoryId));
         }
 
-        var skuExists = await _dbContext.Products
-            .AnyAsync(
-                product => product.Id != id &&
-                           product.SKU.Value == sku,
-                cancellationToken);
+        var skuExists = await _dbContext.Products.AnyAsync(
+            product => product.Id != id && product.SKU.Value == sku,
+            cancellationToken
+        );
 
         if (skuExists)
         {
-            return Result.Failure(
-                ProductErrors.SKUAlreadyExists(sku));
+            return Result.Failure(ProductErrors.SKUAlreadyExists(sku));
         }
 
-        var updateResult = product.Update(
-            name,
-            amount,
-            currency,
-            sku,
-            categoryId);
+        var updateResult = product.Update(name, amount, currency, sku, categoryId);
 
         if (updateResult.IsFailure)
         {
@@ -219,20 +303,162 @@ public sealed class ProductManager : IProductManager
 
     public async Task<Result> DeleteAsync(
         Guid id,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var product = await _dbContext.Products
-            .FirstOrDefaultAsync(
-                product => product.Id == id,
-                cancellationToken);
+        var product = await _dbContext.Products.FirstOrDefaultAsync(
+            product => product.Id == id,
+            cancellationToken
+        );
 
         if (product is null)
         {
-            return Result.Failure(
-                ProductErrors.NotFound(id));
+            return Result.Failure(ProductErrors.NotFound(id));
         }
 
         _dbContext.Products.Remove(product);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+    private async Task<Result<ProductImage?>> GetProductImageAsync(
+        Guid imageId,
+        Guid productId,
+        CancellationToken cancellationToken
+    )
+    {
+        var image = await _dbContext.ProductImages.FirstOrDefaultAsync(
+            x => x.Id == imageId && x.ProductId == productId,
+            cancellationToken
+        );
+
+        if (image is null)
+            return Result.Failure<ProductImage?>(
+                ProductErrors.ImageNotFound(imageId));
+
+        return Result.Success<ProductImage?>(image);
+    }
+
+    public async Task<bool> IsProductExists(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.Products.AnyAsync(
+            p => p.Id == id,
+            cancellationToken);
+    }
+
+    public async Task ChangeMainImages(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var currentMains = await _dbContext
+            .ProductImages
+            .Where(x => x.ProductId == id && x.IsMain)
+            .ToListAsync(cancellationToken);
+
+        foreach (var img in currentMains)
+            img.SetMain(false);
+    }
+
+    public async Task<Result<Guid>> AddImage(
+        Guid productId,
+        string blobName,
+        string contentType,
+        bool isMain,
+        CancellationToken cancellationToken
+    )
+    {
+        var product = await _dbContext
+            .Products
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+
+        if (product is null)
+            return Result.Failure<Guid>(ProductErrors.NotFound(productId));
+
+        var addResult = product.AddImage(blobName, contentType, isMain);
+
+        if (addResult.IsFailure)
+            return Result.Failure<Guid>(addResult.Error);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result.Success(addResult.Value!.Id);
+    }
+
+    public async Task<Result<List<ProductImageDto>>> GetProductImagesAsync(
+        Guid id,
+        CancellationToken cancellationToken
+    )
+    {
+        var productExists = await IsProductExists(id, cancellationToken);
+
+        if (!productExists)
+        {
+            return Result.Failure<List<ProductImageDto>>(
+                ProductErrors.NotFound(id));
+        }
+
+        var images = await _dbContext
+            .ProductImages
+            .AsNoTracking()
+            .Where(x => x.ProductId == id)
+            .ToListAsync(cancellationToken);
+
+        var imageDtos = images
+            .Select(img =>
+            {
+                var sasResult = _storageService.GenerateReadSasUri(
+                    img.BlobName,
+                    TimeSpan.FromHours(1)
+                );
+
+                return new ProductImageDto
+                {
+                    Id = img.Id,
+                    ProductId = img.ProductId,
+                    Url = sasResult.IsSuccess ? sasResult.Value! : string.Empty,
+                    IsMain = img.IsMain,
+                };
+            })
+            .ToList();
+
+        return Result.Success(imageDtos);
+    }
+
+    public async Task<Result> DeleteImageAsync(
+        Guid productId,
+        Guid imageId,
+        CancellationToken cancellationToken
+    )
+    {
+        var product = await _dbContext
+            .Products
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+
+        if (product is null)
+            return Result.Failure(ProductErrors.NotFound(productId));
+
+        var image = product.Images.FirstOrDefault(i => i.Id == imageId);
+
+        if (image is null)
+            return Result.Failure(ProductErrors.ImageNotFound(imageId));
+
+        var deleteResult = await _storageService.DeleteAsync(
+            image.BlobName,
+            cancellationToken);
+
+        if (deleteResult.IsFailure)
+            return Result.Failure(deleteResult.Error);
+
+        var removeResult = product.RemoveImage(imageId);
+
+        if (removeResult.IsFailure)
+            return Result.Failure(removeResult.Error);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

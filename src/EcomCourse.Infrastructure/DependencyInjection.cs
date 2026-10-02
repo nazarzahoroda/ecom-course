@@ -29,11 +29,6 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString);
         });
 
-        services.AddDbContext<IdentityDbContext>(options =>
-        {
-            options.UseSqlServer(connectionString);
-        });
-
         services.AddJWTAuth(configuration);
 
         services
@@ -50,7 +45,7 @@ public static class DependencyInjection
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
-            .AddEntityFrameworkStores<IdentityDbContext>()
+            .AddEntityFrameworkStores<EcomCourseDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
@@ -65,7 +60,6 @@ public static class DependencyInjection
         // Repositories
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<IOrderRepository, EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository>();
-
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
 
@@ -76,6 +70,9 @@ public static class DependencyInjection
 
         // Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Blob storage
+        services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
 
         return services;
     }

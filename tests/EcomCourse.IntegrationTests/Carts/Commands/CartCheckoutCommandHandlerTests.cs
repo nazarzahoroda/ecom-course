@@ -1,5 +1,7 @@
 using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Carts.Commands.CartCheckout;
+using EcomCourse.Application.Exceptions;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
@@ -102,10 +104,7 @@ public class CartCheckoutCommandHandlerTests
         );
 
         Assert.True(result.IsFailure);
-        Assert.Equal(
-            CustomerErrors.NotFound,
-            result.Error
-        );
+        Assert.Equal(CustomerErrors.NotFound, result.Error);
     }
 
     [Fact]
@@ -126,10 +125,7 @@ public class CartCheckoutCommandHandlerTests
         );
 
         Assert.True(result.IsFailure);
-        Assert.Equal(
-            CartErrors.CartNotFound,
-            result.Error
-        );
+        Assert.Equal(CartErrors.CartNotFound, result.Error);
     }
 
     [Fact]
@@ -152,10 +148,7 @@ public class CartCheckoutCommandHandlerTests
         );
 
         Assert.True(result.IsFailure);
-        Assert.Equal(
-            CartErrors.CartIsEmpty,
-            result.Error
-        );
+        Assert.Equal(CartErrors.CartIsEmpty, result.Error);
     }
 
     [Fact]
@@ -164,10 +157,7 @@ public class CartCheckoutCommandHandlerTests
         var cartResult = Cart.Create(_customerId);
         var cart = cartResult.Value!;
 
-        cart.AddItem(
-            Guid.NewGuid(),
-            1
-        );
+        cart.AddItem(Guid.NewGuid(), 1);
 
         _cartRepositoryMock
             .Setup(x =>
@@ -197,24 +187,18 @@ public class CartCheckoutCommandHandlerTests
         );
 
         Assert.True(result.IsFailure);
-        Assert.Equal(
-            ProductErrors.Unavailable,
-            result.Error
-        );
+        Assert.Equal(ProductErrors.Unavailable, result.Error);
     }
 
     [Fact]
-    public async Task Handle_ShouldCommitTransaction_WhenSuccessful()
+    public async Task Handle_ShouldSaveChanges_WhenSuccessful()
     {
         var cartResult = Cart.Create(_customerId);
         var cart = cartResult.Value!;
 
         var productId = Guid.NewGuid();
 
-        cart.AddItem(
-            productId,
-            2
-        );
+        cart.AddItem(productId, 2);
 
         _cartRepositoryMock
             .Setup(x =>
@@ -225,10 +209,7 @@ public class CartCheckoutCommandHandlerTests
             )
             .ReturnsAsync(cart);
 
-        var productDto = CreateTestProductDto(
-            productId,
-            100m
-        );
+        var productDto = CreateTestProductDto(productId, 100m);
 
         _productManagerMock
             .Setup(x =>
@@ -239,10 +220,7 @@ public class CartCheckoutCommandHandlerTests
             )
             .ReturnsAsync(
                 Result.Success<IReadOnlyList<ProductDto>>(
-                    new List<ProductDto>
-                    {
-                        productDto
-                    }
+                    new List<ProductDto> { productDto }
                 )
             );
 
@@ -284,17 +262,12 @@ public class CartCheckoutCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldRollbackTransaction_WhenExceptionThrown()
+    public async Task Handle_ShouldReturnCartNotActive_WhenConcurrencyConflictOccurs()
     {
-        var cartResult = Cart.Create(_customerId);
-        var cart = cartResult.Value!;
-
+        var cart = Cart.Create(_customerId);
         var productId = Guid.NewGuid();
 
-        cart.AddItem(
-            productId,
-            2
-        );
+        cart.Value!.AddItem(productId, 2);
 
         _cartRepositoryMock
             .Setup(x =>
@@ -303,12 +276,9 @@ public class CartCheckoutCommandHandlerTests
                     It.IsAny<CancellationToken>()
                 )
             )
-            .ReturnsAsync(cart);
+            .ReturnsAsync(cart.Value);
 
-        var productDto = CreateTestProductDto(
-            productId,
-            100m
-        );
+        var productDto = CreateTestProductDto(productId, 100m);
 
         _productManagerMock
             .Setup(x =>
@@ -319,10 +289,73 @@ public class CartCheckoutCommandHandlerTests
             )
             .ReturnsAsync(
                 Result.Success<IReadOnlyList<ProductDto>>(
-                    new List<ProductDto>
-                    {
-                        productDto
-                    }
+                    new List<ProductDto> { productDto }
+                )
+            );
+
+        _unitOfWorkMock
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(
+                new ConcurrencyException(
+                    new InvalidOperationException("Concurrency conflict")
+                )
+            );
+
+        var result = await _handler.Handle(
+            new CartCheckoutCommand(),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CartErrors.CartNotActive, result.Error);
+
+        _orderRepositoryMock.Verify(
+            x => x.AddAsync(
+                It.IsAny<Order>(),
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.SaveChangesAsync(
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPropagateException_WhenSaveChangesFails()
+    {
+        var cartResult = Cart.Create(_customerId);
+        var cart = cartResult.Value!;
+
+        var productId = Guid.NewGuid();
+
+        cart.AddItem(productId, 2);
+
+        _cartRepositoryMock
+            .Setup(x =>
+                x.GetActiveCartByCustomerIdAsync(
+                    _customerId,
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(cart);
+
+        var productDto = CreateTestProductDto(productId, 100m);
+
+        _productManagerMock
+            .Setup(x =>
+                x.GetByIdsAsync(
+                    It.IsAny<IReadOnlyCollection<Guid>>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .ReturnsAsync(
+                Result.Success<IReadOnlyList<ProductDto>>(
+                    new List<ProductDto> { productDto }
                 )
             );
 
@@ -343,10 +376,7 @@ public class CartCheckoutCommandHandlerTests
             )
         );
 
-        Assert.Equal(
-            "Database error",
-            exception.Message
-        );
+        Assert.Equal("Database error", exception.Message);
 
         _unitOfWorkMock.Verify(
             x => x.RollbackTransactionAsync(
