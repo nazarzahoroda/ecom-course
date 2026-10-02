@@ -15,6 +15,7 @@ namespace EcomCourse.UnitTests.CartTest
         private readonly Mock<IUserContext> _currentUserServiceMock = new();
         private readonly Mock<ICustomerStore> _customerStoreMock = new();
         private readonly DbContextOptions<EcomCourseDbContext> _dbOptions;
+        private readonly Mock<IBlobStorageService> _storageServiceMock = new();
 
         public GetActiveCartDetailsTests()
         {
@@ -34,7 +35,8 @@ namespace EcomCourse.UnitTests.CartTest
                 context,
                 _currentUserServiceMock.Object,
                 _customerStoreMock.Object,
-                TimeProvider.System
+                TimeProvider.System,
+                _storageServiceMock.Object
             );
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
@@ -63,7 +65,8 @@ namespace EcomCourse.UnitTests.CartTest
                 context,
                 _currentUserServiceMock.Object,
                 _customerStoreMock.Object,
-                TimeProvider.System
+                TimeProvider.System,
+                _storageServiceMock.Object
             );
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
@@ -103,7 +106,8 @@ namespace EcomCourse.UnitTests.CartTest
                 context,
                 _currentUserServiceMock.Object,
                 _customerStoreMock.Object,
-                TimeProvider.System
+                TimeProvider.System,
+                _storageServiceMock.Object
             );
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
@@ -160,7 +164,8 @@ namespace EcomCourse.UnitTests.CartTest
                 context,
                 _currentUserServiceMock.Object,
                 _customerStoreMock.Object,
-                TimeProvider.System
+                TimeProvider.System,
+                _storageServiceMock.Object
             );
 
             var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);

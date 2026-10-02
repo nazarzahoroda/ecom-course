@@ -1,3 +1,5 @@
+using EcomCourse.Application.Products;
+
 namespace EcomCourse.Application.Carts.DTOs
 {
     public class CartItemDetailsDto
@@ -9,5 +11,6 @@ namespace EcomCourse.Application.Carts.DTOs
         public decimal UnitPrice { get; set; }
         public string Currency { get; set; } = string.Empty;
         public int Quantity { get; set; }
+        public string ImageUrl { get; set; } = string.Empty;
     }
 }

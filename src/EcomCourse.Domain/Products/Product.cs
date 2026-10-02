@@ -5,9 +5,11 @@ namespace EcomCourse.Domain.Products;
 
 public sealed class Product : Entity<Guid>
 {
-    private Product() : base(Guid.Empty)
-    {
-    }
+    public const int MaxImagesLimit = 10;
+    private readonly List<ProductImage> _images = new();
+
+    private Product()
+        : base(Guid.Empty) { }
 
     public string Name { get; private set; } = null!;
 
@@ -17,7 +19,10 @@ public sealed class Product : Entity<Guid>
 
     public Guid CategoryId { get; private set; }
 
-    private Product(Guid id, string name, Price price, SKU sku, Guid categoryId) : base(id)
+    public IReadOnlyCollection<ProductImage> Images => _images.AsReadOnly();
+
+    private Product(Guid id, string name, Price price, SKU sku, Guid categoryId)
+        : base(id)
     {
         Name = name;
         Price = price;
@@ -25,7 +30,13 @@ public sealed class Product : Entity<Guid>
         CategoryId = categoryId;
     }
 
-    public static Result<Product> Create(string name, decimal amount, Currency currency, string sku, Guid categoryId)
+    public static Result<Product> Create(
+        string name,
+        decimal amount,
+        Currency currency,
+        string sku,
+        Guid categoryId
+    )
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -56,7 +67,13 @@ public sealed class Product : Entity<Guid>
             return Result.Failure<Product>(ProductErrors.CategoryIdEmpty);
         }
 
-        var product = new Product(Guid.NewGuid(), name.Trim(), priceResult.Value!, skuResult.Value!, categoryId);
+        var product = new Product(
+            Guid.NewGuid(),
+            name.Trim(),
+            priceResult.Value!,
+            skuResult.Value!,
+            categoryId
+        );
 
         return Result.Success(product);
     }
@@ -66,7 +83,8 @@ public sealed class Product : Entity<Guid>
         decimal amount,
         Currency currency,
         string sku,
-        Guid categoryId)
+        Guid categoryId
+    )
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result.Failure(ProductErrors.ProductNameEmpty);
@@ -89,6 +107,59 @@ public sealed class Product : Entity<Guid>
         Price = priceResult.Value!;
         SKU = skuResult.Value!;
         CategoryId = categoryId;
+
+        return Result.Success();
+    }
+
+    public Result<ProductImage> AddImage(string blobName, string contentType, bool isMain = false)
+    {
+        if (string.IsNullOrWhiteSpace(blobName))
+        {
+            return Result.Failure<ProductImage>(ProductErrors.ImageBlobNameEmpty);
+        }
+
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return Result.Failure<ProductImage>(ProductErrors.ImageContentTypeEmpty);
+        }
+
+        if (_images.Count >= MaxImagesLimit)
+        {
+            return Result.Failure<ProductImage>(ProductErrors.MaxImagesLimitReached);
+        }
+
+        if (isMain)
+        {
+            foreach (var img in _images.Where(i => i.IsMain))
+            {
+                img.SetMain(false);
+            }
+        }
+        else if (_images.Count == 0)
+        {
+            isMain = true;
+        }
+
+        var image = ProductImage.Create(Id, blobName.Trim(), contentType.Trim(), isMain);
+        _images.Add(image);
+
+        return Result.Success(image);
+    }
+
+    public Result RemoveImage(Guid imageId)
+    {
+        var image = _images.FirstOrDefault(i => i.Id == imageId);
+        if (image is null)
+        {
+            return Result.Failure(ProductErrors.ImageNotFound(imageId));
+        }
+
+        _images.Remove(image);
+
+        if (image.IsMain && _images.Count > 0)
+        {
+            _images[0].SetMain(true);
+        }
 
         return Result.Success();
     }

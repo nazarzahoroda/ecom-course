@@ -2,19 +2,19 @@ using EcomCourse.Application.Authentication.Interfaces;
 using EcomCourse.Application.Categories.Services;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products.Services;
+using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
+using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Customers;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.Infrastructure.Persistence.Repositories;
 using EcomCourse.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using EcomCourse.Domain.Carts;
-using EcomCourse.Domain.Products;
-using EcomCourse.Infrastructure.Persistence.Repositories;
 
 namespace EcomCourse.Infrastructure;
 
@@ -58,7 +58,10 @@ public static class DependencyInjection
 
         services.AddScoped<IJwtService, JwtService>();
 
-        services.AddScoped<IOrderRepository, EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository>();
+        services.AddScoped<
+            IOrderRepository,
+            EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository
+        >();
 
         services.AddScoped<ICustomerStore, CustomerStore>();
         services.AddScoped<ICategoryService, CategoryService>();
@@ -74,6 +77,8 @@ public static class DependencyInjection
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
 
         return services;
     }
