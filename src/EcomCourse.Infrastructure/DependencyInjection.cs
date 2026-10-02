@@ -1,7 +1,5 @@
-using EcomCourse.Application.Authentication.Interfaces;
-using EcomCourse.Application.Categories.Services;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Abstractions.Authentication;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
@@ -22,8 +20,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration
-    )
+        IConfiguration configuration)
     {
         var connectionString = ConnectionStringResolver.Resolve(configuration);
 
@@ -42,6 +39,7 @@ public static class DependencyInjection
                 options.Password.RequireUppercase = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireNonAlphanumeric = true;
+
                 options.Lockout.AllowedForNewUsers = true;
                 options.Lockout.MaxFailedAccessAttempts = 5;
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
@@ -51,28 +49,29 @@ public static class DependencyInjection
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
-        services.AddScoped<IJwtService, JwtService>();
+        // Authentication
+        services.AddScoped<ITokenIssuer, JwtTokenIssuer>();
+        services.AddScoped<IIdentityProvider, IdentityProvider>();
 
-        services.AddScoped<
-            IOrderRepository,
-            EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository
-        >();
-
-        services.AddScoped<ICustomerStore, CustomerStore>();
-        services.AddScoped<ICategoryService, CategoryService>();
-        services.AddScoped<IProductService, ProductService>();
-
-        services.AddScoped<IIdentityService, IdentityService>();
-
+        // User context
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
 
-        services.AddScoped<ICartService, CartService>();
-
+        // Repositories
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IOrderRepository, EcomCourse.Infrastructure.Persistence.Repositories.OrderRepository>();
         services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
+
+        // Application managers
+        services.AddScoped<ICartManager, CartManager>();
+        services.AddScoped<ICategoryManager, CategoryManager>();
+        services.AddScoped<IProductManager, ProductManager>();
+
+        // Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+        // Blob storage
         services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
 
         return services;

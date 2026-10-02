@@ -1,16 +1,16 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Carts.Commands.RemoveItemFromCartCommand
 {
     public class RemoveItemFromCartCommandHandler : ICommandHandler<RemoveItemFromCartCommand, Guid>
     {
-        private readonly ICartService _cartService;
+        private readonly ICartManager _cartManager;
 
-        public RemoveItemFromCartCommandHandler(ICartService cartService)
+        public RemoveItemFromCartCommandHandler(ICartManager cartManager)
         {
-            _cartService = cartService;
+            _cartManager = cartManager;
         }
 
         public async Task<Result<Guid>> Handle(
@@ -18,7 +18,7 @@ namespace EcomCourse.Application.Carts.Commands.RemoveItemFromCartCommand
             CancellationToken cancellationToken
         )
         {
-            var result = await _cartService.RemoveItemFromCartAsync(request.id, cancellationToken);
+            var result = await _cartManager.RemoveItemFromCartAsync(request.id, cancellationToken);
             return result;
         }
     }

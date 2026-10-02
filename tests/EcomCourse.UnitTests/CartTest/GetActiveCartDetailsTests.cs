@@ -1,4 +1,4 @@
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Customers;
@@ -13,9 +13,8 @@ namespace EcomCourse.UnitTests.CartTest
     public class GetActiveCartDetailsTests
     {
         private readonly Mock<IUserContext> _currentUserServiceMock = new();
-        private readonly Mock<ICustomerStore> _customerStoreMock = new();
+        private readonly Mock<ICustomerRepository> _customerRepositoryMock = new();
         private readonly DbContextOptions<EcomCourseDbContext> _dbOptions;
-        private readonly Mock<IBlobStorageService> _storageServiceMock = new();
 
         public GetActiveCartDetailsTests()
         {
@@ -31,15 +30,12 @@ namespace EcomCourse.UnitTests.CartTest
             _currentUserServiceMock.Setup(x => x.CustomerId).Returns(customerId);
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(
+            var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object,
-                _customerStoreMock.Object,
-                TimeProvider.System,
-                _storageServiceMock.Object
+                _currentUserServiceMock.Object
             );
 
-            var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
+            var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Equal(Guid.Empty, result.Value!.CartId);
@@ -61,15 +57,12 @@ namespace EcomCourse.UnitTests.CartTest
             }
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(
+            var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object,
-                _customerStoreMock.Object,
-                TimeProvider.System,
-                _storageServiceMock.Object
+                _currentUserServiceMock.Object
             );
 
-            var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
+            var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Equal(Guid.Empty, result.Value!.CartId);
@@ -102,15 +95,12 @@ namespace EcomCourse.UnitTests.CartTest
             }
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(
+            var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object,
-                _customerStoreMock.Object,
-                TimeProvider.System,
-                _storageServiceMock.Object
+                _currentUserServiceMock.Object
             );
 
-            var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
+            var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
 
             Assert.True(result.IsSuccess);
             Assert.Equal(cartResult.Value!.Id, result.Value!.CartId);
@@ -160,15 +150,12 @@ namespace EcomCourse.UnitTests.CartTest
             }
 
             await using var context = new EcomCourseDbContext(_dbOptions);
-            var service = new CartService(
+            var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object,
-                _customerStoreMock.Object,
-                TimeProvider.System,
-                _storageServiceMock.Object
+                _currentUserServiceMock.Object
             );
 
-            var result = await service.GetActiveCartDetailsAsync(CancellationToken.None);
+            var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
 
             Assert.True(result.IsFailure);
             Assert.Equal(ProductErrors.Unavailable.Code, result.Error.Code);

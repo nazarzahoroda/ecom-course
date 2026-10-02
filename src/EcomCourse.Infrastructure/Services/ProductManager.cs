@@ -1,6 +1,5 @@
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -8,12 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Infrastructure.Services;
 
-public sealed class ProductService : IProductService
+public sealed class ProductManager : IProductManager
 {
     private readonly EcomCourseDbContext _dbContext;
     private readonly IBlobStorageService _storageService;
 
-    public ProductService(EcomCourseDbContext dbContext, IBlobStorageService storageService)
+    public ProductManager(
+        EcomCourseDbContext dbContext,
+        IBlobStorageService storageService)
     {
         _dbContext = dbContext;
         _storageService = storageService;
@@ -70,15 +71,16 @@ public sealed class ProductService : IProductService
     )
     {
         var product = await _dbContext
-            .Products.Include(p => p.Images)
+            .Products
+            .Include(p => p.Images)
             .AsNoTracking()
             .FirstOrDefaultAsync(product => product.Id == id, cancellationToken);
 
         if (product is null)
             return Result.Failure<ProductDto>(ProductErrors.NotFound(id));
 
-        var imageDtos = product
-            .Images.Select(img =>
+        var imageDtos = product.Images
+            .Select(img =>
             {
                 var sasResult = _storageService.GenerateReadSasUri(
                     img.BlobName,
@@ -114,7 +116,8 @@ public sealed class ProductService : IProductService
     )
     {
         var products = await _dbContext
-            .Products.AsNoTracking()
+            .Products
+            .AsNoTracking()
             .Where(product => ids.Contains(product.Id))
             .ToListAsync(cancellationToken);
 
@@ -123,7 +126,8 @@ public sealed class ProductService : IProductService
 
         if (missingIds.Count > 0)
         {
-            return Result.Failure<IReadOnlyList<ProductDto>>(ProductErrors.NotFound(missingIds[0]));
+            return Result.Failure<IReadOnlyList<ProductDto>>(
+                ProductErrors.NotFound(missingIds[0]));
         }
 
         IReadOnlyList<ProductDto> dtos = products
@@ -145,7 +149,8 @@ public sealed class ProductService : IProductService
     )
     {
         var products = await _dbContext
-            .Products.Include(p => p.Images)
+            .Products
+            .Include(p => p.Images)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
@@ -153,7 +158,8 @@ public sealed class ProductService : IProductService
             .Select(product =>
             {
                 var mainImage =
-                    product.Images.FirstOrDefault(i => i.IsMain) ?? product.Images.FirstOrDefault();
+                    product.Images.FirstOrDefault(i => i.IsMain)
+                    ?? product.Images.FirstOrDefault();
 
                 var imagesList = new List<ProductImageDto>();
 
@@ -195,7 +201,8 @@ public sealed class ProductService : IProductService
     )
     {
         var products = await _dbContext
-            .Products.Include(p => p.Images)
+            .Products
+            .Include(p => p.Images)
             .AsNoTracking()
             .Take(4)
             .ToListAsync(cancellationToken);
@@ -204,7 +211,8 @@ public sealed class ProductService : IProductService
             .Select(product =>
             {
                 var mainImage =
-                    product.Images.FirstOrDefault(i => i.IsMain) ?? product.Images.FirstOrDefault();
+                    product.Images.FirstOrDefault(i => i.IsMain)
+                    ?? product.Images.FirstOrDefault();
 
                 var imagesList = new List<ProductImageDto>();
 
@@ -293,7 +301,10 @@ public sealed class ProductService : IProductService
         return Result.Success();
     }
 
-    public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Result> DeleteAsync(
+        Guid id,
+        CancellationToken cancellationToken = default
+    )
     {
         var product = await _dbContext.Products.FirstOrDefaultAsync(
             product => product.Id == id,
@@ -324,21 +335,28 @@ public sealed class ProductService : IProductService
         );
 
         if (image is null)
-            return Result.Failure<ProductImage?>(ProductErrors.ImageNotFound(imageId));
+            return Result.Failure<ProductImage?>(
+                ProductErrors.ImageNotFound(imageId));
 
         return Result.Success<ProductImage?>(image);
     }
 
-    public async Task<bool> IsProductExists(Guid id, CancellationToken cancellationToken)
+    public async Task<bool> IsProductExists(
+        Guid id,
+        CancellationToken cancellationToken)
     {
-        var productExists = await _dbContext.Products.AnyAsync(p => p.Id == id, cancellationToken);
-        return productExists;
+        return await _dbContext.Products.AnyAsync(
+            p => p.Id == id,
+            cancellationToken);
     }
 
-    public async Task ChangeMainImages(Guid id, CancellationToken cancellationToken)
+    public async Task ChangeMainImages(
+        Guid id,
+        CancellationToken cancellationToken)
     {
         var currentMains = await _dbContext
-            .ProductImages.Where(x => x.ProductId == id && x.IsMain)
+            .ProductImages
+            .Where(x => x.ProductId == id && x.IsMain)
             .ToListAsync(cancellationToken);
 
         foreach (var img in currentMains)
@@ -354,12 +372,15 @@ public sealed class ProductService : IProductService
     )
     {
         var product = await _dbContext
-            .Products.Include(p => p.Images)
+            .Products
+            .Include(p => p.Images)
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
+
         if (product is null)
             return Result.Failure<Guid>(ProductErrors.NotFound(productId));
 
         var addResult = product.AddImage(blobName, contentType, isMain);
+
         if (addResult.IsFailure)
             return Result.Failure<Guid>(addResult.Error);
 
@@ -374,13 +395,16 @@ public sealed class ProductService : IProductService
     )
     {
         var productExists = await IsProductExists(id, cancellationToken);
+
         if (!productExists)
         {
-            return Result.Failure<List<ProductImageDto>>(ProductErrors.NotFound(id));
+            return Result.Failure<List<ProductImageDto>>(
+                ProductErrors.NotFound(id));
         }
 
         var images = await _dbContext
-            .ProductImages.AsNoTracking()
+            .ProductImages
+            .AsNoTracking()
             .Where(x => x.ProductId == id)
             .ToListAsync(cancellationToken);
 
@@ -412,21 +436,27 @@ public sealed class ProductService : IProductService
     )
     {
         var product = await _dbContext
-            .Products.Include(p => p.Images)
+            .Products
+            .Include(p => p.Images)
             .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
 
         if (product is null)
             return Result.Failure(ProductErrors.NotFound(productId));
 
         var image = product.Images.FirstOrDefault(i => i.Id == imageId);
+
         if (image is null)
             return Result.Failure(ProductErrors.ImageNotFound(imageId));
 
-        var deleteResult = await _storageService.DeleteAsync(image.BlobName, cancellationToken);
+        var deleteResult = await _storageService.DeleteAsync(
+            image.BlobName,
+            cancellationToken);
+
         if (deleteResult.IsFailure)
             return Result.Failure(deleteResult.Error);
 
         var removeResult = product.RemoveImage(imageId);
+
         if (removeResult.IsFailure)
             return Result.Failure(removeResult.Error);
 

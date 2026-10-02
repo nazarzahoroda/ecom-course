@@ -1,8 +1,9 @@
+using EcomCourse.Application.Categories;
 using EcomCourse.Domain.Common;
 
-namespace EcomCourse.Application.Categories.Services;
+namespace EcomCourse.Application.Abstractions;
 
-public interface ICategoryService
+public interface ICategoryManager
 {
     Task<Result<Guid>> CreateAsync(
         string name,

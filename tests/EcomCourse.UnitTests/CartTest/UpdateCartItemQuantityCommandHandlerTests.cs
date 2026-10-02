@@ -1,6 +1,6 @@
 using EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand;
 using EcomCourse.Application.Carts.DTOs;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using Moq;
 
@@ -8,13 +8,13 @@ namespace EcomCourse.UnitTests.CartTest
 {
     public class UpdateCartItemQuantityCommandHandlerTests
     {
-        private readonly Mock<ICartService> _cartServiceMock;
+        private readonly Mock<ICartManager> _cartManagerMock;
         private readonly UpdateCartItemQuantityCommandHandler _handler;
 
         public UpdateCartItemQuantityCommandHandlerTests()
         {
-            _cartServiceMock = new Mock<ICartService>();
-            _handler = new UpdateCartItemQuantityCommandHandler(_cartServiceMock.Object);
+            _cartManagerMock = new Mock<ICartManager>();
+            _handler = new UpdateCartItemQuantityCommandHandler(_cartManagerMock.Object);
         }
 
         [Fact]
@@ -27,7 +27,7 @@ namespace EcomCourse.UnitTests.CartTest
                             "Item not found.",
                             ErrorType.NotFound);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.UpdateCartItemQuantityAsync(dto, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Failure(error));
 
@@ -36,7 +36,7 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.True(result.IsFailure);
             Assert.Equal(error.Code, result.Error.Code);
 
-            _cartServiceMock.Verify(
+            _cartManagerMock.Verify(
                 x => x.UpdateCartItemQuantityAsync(dto, It.IsAny<CancellationToken>()),
                 Times.Once
             );
@@ -48,7 +48,7 @@ namespace EcomCourse.UnitTests.CartTest
             var dto = new UpdateCartItemQuantityDto { ProductId = Guid.NewGuid(), Quantity = 2 };
             var command = new UpdateCartItemQuantityCommand(dto);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.UpdateCartItemQuantityAsync(dto, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Success());
 
@@ -56,7 +56,7 @@ namespace EcomCourse.UnitTests.CartTest
 
             Assert.True(result.IsSuccess);
 
-            _cartServiceMock.Verify(
+            _cartManagerMock.Verify(
                 x => x.UpdateCartItemQuantityAsync(dto, It.IsAny<CancellationToken>()),
                 Times.Once
             );

@@ -1,15 +1,14 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Products.Commands.DeleteProductImage
 {
     public class DeleteProductImageCommandHandler : ICommandHandler<DeleteProductImageCommand>
     {
-        private readonly IProductService _productService;
+        private readonly IProductManager _productService;
 
-        public DeleteProductImageCommandHandler(IProductService productService)
+        public DeleteProductImageCommandHandler(IProductManager productService)
         {
             _productService = productService;
         }

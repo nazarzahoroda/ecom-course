@@ -1,6 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Products.Commands.ConfirmProductImageUpload
@@ -8,11 +7,11 @@ namespace EcomCourse.Application.Products.Commands.ConfirmProductImageUpload
     public class ConfirmProductImageUploadCommandHandler
         : ICommandHandler<ConfirmProductImageUploadCommand, Guid>
     {
-        private readonly IProductService _productService;
+        private readonly IProductManager _productService;
         private readonly IBlobStorageService _storageService;
 
         public ConfirmProductImageUploadCommandHandler(
-            IProductService productService,
+            IProductManager productService,
             IBlobStorageService storageService
         )
         {

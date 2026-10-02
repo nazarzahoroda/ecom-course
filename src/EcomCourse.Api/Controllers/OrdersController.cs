@@ -1,5 +1,5 @@
 using EcomCourse.Api.Common;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Orders.Commands.CancelOrder;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Commands.MarkOrderAsPaid;

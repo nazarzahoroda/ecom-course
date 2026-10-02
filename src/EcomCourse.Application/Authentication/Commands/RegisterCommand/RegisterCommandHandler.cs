@@ -1,5 +1,5 @@
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 
@@ -7,30 +7,27 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
 {
     public class RegisterCommandHandler : ICommandHandler<RegisterCommand>
     {
-        private readonly IIdentityService _identityService;
-        private readonly ICustomerStore _customerStore;
+        private readonly IIdentityProvider _identityProvider;
+        private readonly ICustomerRepository _customerRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public RegisterCommandHandler(
-            IIdentityService identityService,
-            ICustomerStore customerStore,
-            IUnitOfWork unitOfWork
-        )
+            IIdentityProvider identityProvider,
+            ICustomerRepository customerRepository,
+            IUnitOfWork unitOfWork)
         {
-            _identityService = identityService;
-            _customerStore = customerStore;
+            _identityProvider = identityProvider;
+            _customerRepository = customerRepository;
             _unitOfWork = unitOfWork;
         }
 
         public async Task<Result> Handle(
             RegisterCommand request,
-            CancellationToken cancellationToken
-        )
+            CancellationToken cancellationToken)
         {
-            var exists = await _identityService.IsUserExist(
+            var exists = await _identityProvider.IsUserExist(
                 request.dto.Email,
-                cancellationToken
-            );
+                cancellationToken);
 
             if (exists)
             {
@@ -47,10 +44,9 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
 
             try
             {
-                var createResult = await _identityService.CreateUserAsyncWithResult(
+                var createResult = await _identityProvider.CreateUserAsyncWithResult(
                     request.dto,
-                    cancellationToken
-                );
+                    cancellationToken);
 
                 if (createResult.IsFailure)
                 {
@@ -78,10 +74,9 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
 
                 var customer = customerResult.Value!;
 
-                var wasAdded = await _customerStore.AddAsync(
+                var wasAdded = await _customerRepository.AddAsync(
                     customer,
-                    cancellationToken
-                );
+                    cancellationToken);
 
                 if (!wasAdded)
                 {
@@ -96,11 +91,10 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                     );
                 }
 
-                var updateUserResult = await _identityService.SetCustomerIdAsync(
+                var updateUserResult = await _identityProvider.SetCustomerIdAsync(
                     user.Id,
                     customer.Id,
-                    cancellationToken
-                );
+                    cancellationToken);
 
                 if (updateUserResult.IsFailure)
                 {

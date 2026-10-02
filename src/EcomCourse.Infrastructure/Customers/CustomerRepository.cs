@@ -5,11 +5,11 @@ using Microsoft.Data.SqlClient;
 
 namespace EcomCourse.Infrastructure.Customers;
 
-public sealed class CustomerStore : ICustomerStore
+public sealed class CustomerRepository : ICustomerRepository
 {
     private readonly EcomCourseDbContext _dbContext;
 
-    public CustomerStore(EcomCourseDbContext dbContext)
+    public CustomerRepository(EcomCourseDbContext dbContext)
     {
         _dbContext = dbContext;
     }

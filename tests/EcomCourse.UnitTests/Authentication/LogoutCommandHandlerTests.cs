@@ -1,5 +1,5 @@
 using EcomCourse.Application.Authentication.Commands.LogoutCommand;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using Moq;
 
@@ -7,13 +7,13 @@ namespace EcomCourse.Application.Tests.Authentication;
 
 public class LogoutCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
+    private readonly Mock<IIdentityProvider> _identityProviderMock;
     private readonly LogoutCommandHandler _handler;
 
     public LogoutCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _handler = new LogoutCommandHandler(_identityServiceMock.Object);
+        _identityProviderMock = new Mock<IIdentityProvider>();
+        _handler = new LogoutCommandHandler(_identityProviderMock.Object);
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public class LogoutCommandHandlerTests
         var token = "valid-refresh-token";
         var command = new LogoutCommand(token);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.RevokeRefreshToken(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
@@ -30,7 +30,7 @@ public class LogoutCommandHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.RevokeRefreshToken(token, It.IsAny<CancellationToken>()),
             Times.Once
         );
@@ -46,7 +46,7 @@ public class LogoutCommandHandlerTests
                         "Token is invalid",
                         ErrorType.Unauthorized);
 
-        _identityServiceMock
+        _identityProviderMock
             .Setup(x => x.RevokeRefreshToken(token, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(error));
 
@@ -55,7 +55,7 @@ public class LogoutCommandHandlerTests
         Assert.True(result.IsFailure);
         Assert.Equal(error.Code, result.Error.Code);
 
-        _identityServiceMock.Verify(
+        _identityProviderMock.Verify(
             x => x.RevokeRefreshToken(token, It.IsAny<CancellationToken>()),
             Times.Once
         );

@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Products;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Common;

@@ -1,5 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Products.Commands.Create;
@@ -7,18 +7,18 @@ namespace EcomCourse.Application.Products.Commands.Create;
 public sealed class CreateProductCommandHandler
     : ICommandHandler<CreateProductCommand, Guid>
 {
-    private readonly IProductService _productService;
+    private readonly IProductManager _productManager;
 
-    public CreateProductCommandHandler(IProductService productService)
+    public CreateProductCommandHandler(IProductManager productManager)
     {
-        _productService = productService;
+        _productManager = productManager;
     }
 
     public async Task<Result<Guid>> Handle(
         CreateProductCommand request,
         CancellationToken cancellationToken)
     {
-        return await _productService.CreateAsync(
+        return await _productManager.CreateAsync(
             request.Name,
             request.Amount,
             request.Currency,
