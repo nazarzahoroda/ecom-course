@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using EcomCourse.Application.Authentication.DTOs;
 using EcomCourse.Application.Authentication.Interfaces;
+using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;
 using EcomCourse.Infrastructure.Services;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,7 @@ namespace EcomCourse.UnitTests
 {
     public class IdentityServiceTests : IDisposable
     {
-        private readonly IdentityDbContext _context;
+        private readonly EcomCourseDbContext _context;
         private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
         private readonly Mock<SignInManager<ApplicationUser>> _signInManagerMock;
         private readonly Mock<IJwtService> _jwtServiceMock = new();
@@ -31,10 +32,11 @@ namespace EcomCourse.UnitTests
 
         public IdentityServiceTests()
         {
-            var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            var options = new DbContextOptionsBuilder<EcomCourseDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-            _context = new IdentityDbContext(options);
+
+            _context = new EcomCourseDbContext(options);
 
             var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
             _userManagerMock = new Mock<UserManager<ApplicationUser>>(

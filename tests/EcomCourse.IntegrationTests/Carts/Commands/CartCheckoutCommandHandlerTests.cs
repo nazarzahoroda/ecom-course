@@ -1,4 +1,5 @@
 using EcomCourse.Application.Carts.Commands.CartCheckout;
+using EcomCourse.Application.Exceptions;
 using EcomCourse.Application.Interfaces;
 using EcomCourse.Application.Products;
 using EcomCourse.Application.Products.Services;
@@ -144,7 +145,7 @@ public class CartCheckoutCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldCommitTransaction_WhenSuccessful()
+    public async Task Handle_ShouldSaveChanges_WhenSuccessful()
     {
         var cart = Cart.Create(_customerId);
         var productId = Guid.NewGuid();
@@ -167,23 +168,67 @@ public class CartCheckoutCommandHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        _unitOfWorkMock.Verify(
-            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
-            Times.Once
-        );
         _orderRepositoryMock.Verify(
             x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()),
             Times.Once
         );
-        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+
         _unitOfWorkMock.Verify(
-            x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()),
+            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
             Times.Once
         );
     }
 
     [Fact]
-    public async Task Handle_ShouldRollbackTransaction_WhenExceptionThrown()
+    public async Task Handle_ShouldReturnCartNotActive_WhenConcurrencyConflictOccurs()
+    {
+        var cart = Cart.Create(_customerId);
+        var productId = Guid.NewGuid();
+        cart.Value!.AddItem(productId, 2);
+
+        _cartRepositoryMock
+            .Setup(x =>
+                x.GetActiveCartByCustomerIdAsync(_customerId, It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync(cart.Value);
+
+        var productDto = CreateTestProductDto(productId, 100m);
+
+        _productServiceMock
+            .Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+                Result.Success<IReadOnlyList<ProductDto>>(new List<ProductDto> { productDto })
+            );
+
+        _unitOfWorkMock
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(
+                new ConcurrencyException(
+                    new InvalidOperationException("Concurrency conflict")
+                )
+            );
+
+        var result = await _handler.Handle(
+            new CartCheckoutCommand(),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CartErrors.CartNotActive, result.Error);
+
+        _orderRepositoryMock.Verify(
+            x => x.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPropagateException_WhenSaveChangesFails()
     {
         var cart = Cart.Create(_customerId);
         var productId = Guid.NewGuid();
@@ -211,7 +256,5 @@ public class CartCheckoutCommandHandlerTests
         );
 
         Assert.Equal("Database error", exception.Message);
-
-        _unitOfWorkMock.Verify(x => x.RollbackTransactionAsync(CancellationToken.None), Times.Once);
     }
 }

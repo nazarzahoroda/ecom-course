@@ -3,10 +3,8 @@ using EcomCourse.Application.Interfaces;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
-using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcomCourse.Infrastructure.Services
@@ -161,7 +159,6 @@ namespace EcomCourse.Infrastructure.Services
 
             if (cart is null)
             {
-                // Викликаємо фабрику замість публічного конструктора
                 var cartResult = Cart.Create(customerId);
 
                 if (cartResult.IsFailure)
@@ -190,9 +187,9 @@ namespace EcomCourse.Infrastructure.Services
                 return result;
             }
 
-            await _context.SaveChangesAsync(cancellationToken);
+            MarkCartModified(cart);
 
-            return Result.Success();
+            return await SaveCartChangesAsync(cancellationToken);
         }
 
         public async Task<Result> UpdateCartItemQuantityAsync(
@@ -219,8 +216,9 @@ namespace EcomCourse.Infrastructure.Services
             if (result.IsFailure)
                 return result;
 
-            await _context.SaveChangesAsync(cancellationToken);
-            return Result.Success();
+            MarkCartModified(cart);
+
+            return await SaveCartChangesAsync(cancellationToken);
         }
 
         public async Task<Result<Guid>> RemoveItemFromCartAsync(
@@ -230,10 +228,15 @@ namespace EcomCourse.Infrastructure.Services
         {
             var customerId = _currentUserService.CustomerId;
 
-            var item = await _context.CartItems.FirstOrDefaultAsync(
-                x => x.Id == id && x.Cart.CustomerId == customerId,
-                cancellationToken
-            );
+            var item = await _context
+                .CartItems.Include(x => x.Cart)
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == id
+                        && x.Cart.CustomerId == customerId
+                        && x.Cart.Status == CartStatus.Active,
+                    cancellationToken
+                );
 
             if (item is null)
             {
@@ -241,9 +244,40 @@ namespace EcomCourse.Infrastructure.Services
             }
 
             _context.CartItems.Remove(item);
-            await _context.SaveChangesAsync(cancellationToken);
+
+            MarkCartModified(item.Cart);
+
+            var saveResult = await SaveCartChangesAsync(cancellationToken);
+
+            if (saveResult.IsFailure)
+            {
+                return Result.Failure<Guid>(saveResult.Error);
+            }
 
             return Result.Success(item.Id);
+        }
+
+        private void MarkCartModified(Cart cart)
+        {
+            var entry = _context.Entry(cart);
+
+            if (entry.State != EntityState.Added)
+            {
+                entry.Property(c => c.Status).IsModified = true;
+            }
+        }
+
+        private async Task<Result> SaveCartChangesAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+                return Result.Success();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure(CartErrors.CartNotActive);
+            }
         }
     }
 }

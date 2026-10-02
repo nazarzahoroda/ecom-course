@@ -6,6 +6,7 @@ using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Customers;
+using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.IntegrationTests.TestSupport;
@@ -234,6 +235,96 @@ public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<
         Assert.NotNull(order);
         Assert.Equal("Original St 1", order.ShippingAddress.Street);
         Assert.Equal("Kyiv", order.ShippingAddress.City);
+    }
+
+    [Fact]
+    public async Task ConcurrentCheckouts_OnSameCart_ProduceExactlyOneOrder()
+    {
+        var customerId = Guid.NewGuid();
+
+        var categoryResult = Category.Create($"Concurrent Category-{Guid.NewGuid()}");
+        Assert.True(categoryResult.IsSuccess);
+        var category = categoryResult.Value!;
+
+        var priceResult = Price.Create(100.00m, Currency.USD);
+        Assert.True(priceResult.IsSuccess);
+
+        var skuResult = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}");
+        Assert.True(skuResult.IsSuccess);
+
+        var productResult = Product.Create(
+            "Concurrent Checkout Product",
+            priceResult.Value!.Amount,
+            priceResult.Value.Currency,
+            skuResult.Value!.Value,
+            category.Id
+        );
+        Assert.True(productResult.IsSuccess);
+        var product = productResult.Value!;
+
+        using (var setupScope = _factory.Services.CreateScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+            db.Categories.Add(category);
+            db.Products.Add(product);
+
+            SeedCustomer(
+                db,
+                customerId,
+                "Khreshchatyk St 1",
+                "Kyiv",
+                "01001",
+                "Ukraine"
+            );
+
+            await db.SaveChangesAsync();
+        }
+
+        using var clientA = _factory.WithTestAuthentication().CreateClient();
+        using var clientB = _factory.WithTestAuthentication().CreateClient();
+
+        clientA.AuthenticateAs(customerId);
+        clientB.AuthenticateAs(customerId);
+
+        var addItemResponse = await clientA.PostAsJsonAsync(
+            "/api/Cart/items",
+            new AddItemToCartDto
+            {
+                ProductId = product.Id,
+                Quantity = 1
+            }
+        );
+
+        Assert.Equal(HttpStatusCode.OK, addItemResponse.StatusCode);
+
+        var checkoutTaskA = clientA.PostAsync("/api/Cart/checkout", null);
+        var checkoutTaskB = clientB.PostAsync("/api/Cart/checkout", null);
+
+        var responses = await Task.WhenAll(checkoutTaskA, checkoutTaskB);
+
+        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
+
+        Assert.Single(
+            responses,
+            response =>
+                response.StatusCode == HttpStatusCode.Conflict
+                || response.StatusCode == HttpStatusCode.NotFound
+        );
+
+        using var verificationScope = _factory.Services.CreateScope();
+
+        var verificationDb =
+            verificationScope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+        var persistedCart = await verificationDb.Carts
+            .SingleAsync(c => c.CustomerId == customerId);
+
+        var orderCount = await verificationDb.Orders
+            .CountAsync(o => o.CustomerId == customerId);
+
+        Assert.Equal(CartStatus.CheckedOut, persistedCart.Status);
+        Assert.Equal(1, orderCount);
     }
 
     private static void SeedCustomer(

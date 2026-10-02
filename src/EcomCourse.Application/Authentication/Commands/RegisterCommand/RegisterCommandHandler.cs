@@ -1,6 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 
@@ -10,17 +9,17 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
     {
         private readonly IIdentityService _identityService;
         private readonly ICustomerStore _customerStore;
-        private readonly CompensateAsync _compensateAsync;
+        private readonly IUnitOfWork _unitOfWork;
 
         public RegisterCommandHandler(
             IIdentityService identityService,
             ICustomerStore customerStore,
-            CompensateAsync compensateAsync
+            IUnitOfWork unitOfWork
         )
         {
             _identityService = identityService;
             _customerStore = customerStore;
-            _compensateAsync = compensateAsync;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result> Handle(
@@ -28,7 +27,11 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
             CancellationToken cancellationToken
         )
         {
-            var exists = await _identityService.IsUserExist(request.dto.Email, cancellationToken);
+            var exists = await _identityService.IsUserExist(
+                request.dto.Email,
+                cancellationToken
+            );
+
             if (exists)
             {
                 return Result.Failure(
@@ -39,82 +42,81 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                     )
                 );
             }
-            var createResult = await _identityService.CreateUserAsyncWithResult(
-                request.dto,
-                cancellationToken
-            );
 
-            if (createResult.IsFailure)
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            try
             {
-                return createResult;
-            }
-
-            var user = createResult.Value;
-
-            var customerResult = Customer.Create(
-                user!.Id,
-                request.dto.Name,
-                request.dto.Email,
-                request.dto.Street,
-                request.dto.City,
-                request.dto.PostalCode,
-                request.dto.Country
-            );
-            if (customerResult.IsFailure)
-            {
-                var compensateResult = await _compensateAsync.CompensateAsyncTask(
-                    user!.Id,
-                    Guid.Empty,
+                var createResult = await _identityService.CreateUserAsyncWithResult(
+                    request.dto,
                     cancellationToken
                 );
-                if (compensateResult.IsFailure)
-                    return compensateResult;
 
-                return customerResult;
-            }
+                if (createResult.IsFailure)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return createResult;
+                }
 
-            var customer = customerResult.Value;
+                var user = createResult.Value!;
 
-            var wasAdded = await _customerStore.AddAsync(customer!, cancellationToken);
+                var customerResult = Customer.Create(
+                    user.Id,
+                    request.dto.Name,
+                    request.dto.Email,
+                    request.dto.Street,
+                    request.dto.City,
+                    request.dto.PostalCode,
+                    request.dto.Country
+                );
 
-            if (!wasAdded)
-            {
-                var compensateResult = await _compensateAsync.CompensateAsyncTask(
-                    user!.Id,
-                    Guid.Empty,
+                if (customerResult.IsFailure)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return customerResult;
+                }
+
+                var customer = customerResult.Value!;
+
+                var wasAdded = await _customerStore.AddAsync(
+                    customer,
                     cancellationToken
                 );
-                if (compensateResult.IsFailure)
-                    return compensateResult;
 
-                return Result.Failure(
-                    new DomainError(
-                        "Customer.CreateFailed",
-                        "Failed to create customer",
-                        ErrorType.Failure
-                    )
-                );
-            }
-            var updateUserResult = await _identityService.SetCustomerIdAsync(
-                user!.Id,
-                customer!.Id,
-                cancellationToken
-            );
+                if (!wasAdded)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
 
-            if (updateUserResult.IsFailure)
-            {
-                var compensateResult = await _compensateAsync.CompensateAsyncTask(
-                    user!.Id,
+                    return Result.Failure(
+                        new DomainError(
+                            "Customer.CreateFailed",
+                            "Failed to create customer",
+                            ErrorType.Failure
+                        )
+                    );
+                }
+
+                var updateUserResult = await _identityService.SetCustomerIdAsync(
+                    user.Id,
                     customer.Id,
                     cancellationToken
                 );
-                if (compensateResult.IsFailure)
-                    return compensateResult;
 
-                return updateUserResult;
+                if (updateUserResult.IsFailure)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return updateUserResult;
+                }
+
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                return Result.Success();
             }
-
-            return Result.Success();
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+                throw;
+            }
         }
     }
 }

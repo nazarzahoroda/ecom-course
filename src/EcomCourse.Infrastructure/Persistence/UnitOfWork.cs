@@ -1,3 +1,5 @@
+using EcomCourse.Application.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using EcomCourse.Application.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -40,6 +42,13 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConcurrencyException(exception);
+        }
     }
 }

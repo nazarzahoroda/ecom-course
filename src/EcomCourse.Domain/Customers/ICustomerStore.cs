@@ -7,6 +7,4 @@ public interface ICustomerStore
     Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken);
 
     Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
-
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }
