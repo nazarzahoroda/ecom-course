@@ -35,7 +35,15 @@ namespace EcomCourse.Application.Authentication.Commands.LoginCommand
             );
 
             if (user.IsFailure)
-                return Result.Failure<AuthResponse>(user.Error);
+            {
+                return Result.Failure<AuthResponse>(
+                    new DomainError(
+                        "Identity.InvalidCredentials",
+                        "Invalid email or password",
+                        ErrorType.Unauthorized
+                    )
+                );
+            }
 
             var roles = await _identityProvider.GetRolesAsync(request.dto.Email, cancellationToken);
 
