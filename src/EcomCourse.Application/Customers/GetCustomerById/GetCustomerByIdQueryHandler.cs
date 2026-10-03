@@ -7,11 +7,11 @@ namespace EcomCourse.Application.Customers.GetCustomerById;
 public sealed class GetCustomerByIdQueryHandler
     : IQueryHandler<GetCustomerByIdQuery, CustomerResponse>
 {
-    private readonly ICustomerStore _customerStore;
+    private readonly ICustomerRepository _customerRepository;
 
-    public GetCustomerByIdQueryHandler(ICustomerStore customerStore)
+    public GetCustomerByIdQueryHandler(ICustomerRepository customerRepository)
     {
-        _customerStore = customerStore;
+        _customerRepository = customerRepository;
     }
 
     public async Task<Result<CustomerResponse>> Handle(
@@ -19,7 +19,7 @@ public sealed class GetCustomerByIdQueryHandler
         CancellationToken cancellationToken
     )
     {
-        var customer = await _customerStore.GetByIdAsync(request.CustomerId, cancellationToken);
+        var customer = await _customerRepository.GetByIdAsync(request.CustomerId, cancellationToken);
 
         if (customer is null)
         {

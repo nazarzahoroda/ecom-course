@@ -1,5 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Products.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Products.Commands.Delete;
@@ -7,18 +7,18 @@ namespace EcomCourse.Application.Products.Commands.Delete;
 public sealed class DeleteProductCommandHandler
     : ICommandHandler<DeleteProductCommand>
 {
-    private readonly IProductService _productService;
+    private readonly IProductManager _productManager;
 
-    public DeleteProductCommandHandler(IProductService productService)
+    public DeleteProductCommandHandler(IProductManager productManager)
     {
-        _productService = productService;
+        _productManager = productManager;
     }
 
     public async Task<Result> Handle(
         DeleteProductCommand request,
         CancellationToken cancellationToken)
     {
-        return await _productService.DeleteAsync(
+        return await _productManager.DeleteAsync(
             request.Id,
             cancellationToken);
     }

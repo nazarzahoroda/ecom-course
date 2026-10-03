@@ -1,5 +1,5 @@
 using EcomCourse.Application.Carts.Commands.RemoveItemFromCartCommand;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using Moq;
 
@@ -7,13 +7,13 @@ namespace EcomCourse.UnitTests.CartTest
 {
     public class RemoveItemFromCartCommandHandlerTests
     {
-        private readonly Mock<ICartService> _cartServiceMock;
+        private readonly Mock<ICartManager> _cartManagerMock;
         private readonly RemoveItemFromCartCommandHandler _handler;
 
         public RemoveItemFromCartCommandHandlerTests()
         {
-            _cartServiceMock = new Mock<ICartService>();
-            _handler = new RemoveItemFromCartCommandHandler(_cartServiceMock.Object);
+            _cartManagerMock = new Mock<ICartManager>();
+            _handler = new RemoveItemFromCartCommandHandler(_cartManagerMock.Object);
         }
 
         [Fact]
@@ -26,7 +26,7 @@ namespace EcomCourse.UnitTests.CartTest
                             "Cart item not found.",
                             ErrorType.NotFound);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.RemoveItemFromCartAsync(itemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Failure<Guid>(error));
 
@@ -36,7 +36,7 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.Equal(error.Code, result.Error.Code);
             Assert.Equal(error.Description, result.Error.Description);
 
-            _cartServiceMock.Verify(
+            _cartManagerMock.Verify(
                 x => x.RemoveItemFromCartAsync(itemId, It.IsAny<CancellationToken>()),
                 Times.Once
             );
@@ -48,7 +48,7 @@ namespace EcomCourse.UnitTests.CartTest
             var itemId = Guid.NewGuid();
             var command = new RemoveItemFromCartCommand(itemId);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.RemoveItemFromCartAsync(itemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Success(itemId));
 
@@ -57,7 +57,7 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.True(result.IsSuccess);
             Assert.Equal(itemId, result.Value);
 
-            _cartServiceMock.Verify(
+            _cartManagerMock.Verify(
                 x => x.RemoveItemFromCartAsync(itemId, It.IsAny<CancellationToken>()),
                 Times.Once
             );

@@ -1,17 +1,17 @@
 using EcomCourse.Application.Abstractions.Messaging;
 using EcomCourse.Application.Carts.DTOs;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Carts.Queries.GetCartItems
 {
     public class GetCartDetailsQueryHandler : IQueryHandler<GetCartDetailsQuery, CartDetailsDto>
     {
-        private readonly ICartService _cartService;
+        private readonly ICartManager _cartManager;
 
-        public GetCartDetailsQueryHandler(ICartService cartService)
+        public GetCartDetailsQueryHandler(ICartManager cartManager)
         {
-            _cartService = cartService;
+            _cartManager = cartManager;
         }
 
         public async Task<Result<CartDetailsDto>> Handle(
@@ -19,7 +19,7 @@ namespace EcomCourse.Application.Carts.Queries.GetCartItems
             CancellationToken cancellationToken
         )
         {
-            var result = await _cartService.GetActiveCartDetailsAsync(cancellationToken);
+            var result = await _cartManager.GetActiveCartDetailsAsync(cancellationToken);
             return result;
         }
     }

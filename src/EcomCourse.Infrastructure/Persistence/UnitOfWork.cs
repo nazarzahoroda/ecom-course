@@ -1,9 +1,11 @@
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
+using EcomCourse.Application.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EcomCourse.Infrastructure.Persistence;
 
-public class UnitOfWork : IUnitOfWork
+public sealed class UnitOfWork : IUnitOfWork
 {
     private readonly EcomCourseDbContext _context;
     private IDbContextTransaction? _transaction;
@@ -13,14 +15,17 @@ public class UnitOfWork : IUnitOfWork
         _context = context;
     }
 
-    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
+    public async Task BeginTransactionAsync(
+        CancellationToken cancellationToken = default)
     {
-        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        _transaction = await _context.Database.BeginTransactionAsync(
+            cancellationToken);
     }
 
-    public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
+    public async Task CommitTransactionAsync(
+        CancellationToken cancellationToken = default)
     {
-        if (_transaction != null)
+        if (_transaction is not null)
         {
             await _transaction.CommitAsync(cancellationToken);
             await _transaction.DisposeAsync();
@@ -28,9 +33,10 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
+    public async Task RollbackTransactionAsync(
+        CancellationToken cancellationToken = default)
     {
-        if (_transaction != null)
+        if (_transaction is not null)
         {
             await _transaction.RollbackAsync(cancellationToken);
             await _transaction.DisposeAsync();
@@ -38,8 +44,16 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    public async Task SaveChangesAsync(
+        CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConcurrencyException(exception);
+        }
     }
 }

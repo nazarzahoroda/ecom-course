@@ -98,7 +98,7 @@ public class CustomWebApplicationFactory<TProgram, TAppDbContext, TIdentityDbCon
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment("Development");
 
         var connectionString = _dbContainer.GetConnectionString();
 

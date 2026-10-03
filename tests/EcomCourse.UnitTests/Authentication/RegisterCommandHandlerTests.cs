@@ -1,7 +1,6 @@
 using EcomCourse.Application.Authentication.Commands.RegisterCommand;
 using EcomCourse.Application.Authentication.DTOs;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Services;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using Moq;
@@ -10,25 +9,21 @@ namespace EcomCourse.Application.Tests.Authentication;
 
 public class RegisterCommandHandlerTests
 {
-    private readonly Mock<IIdentityService> _identityServiceMock;
-    private readonly Mock<ICustomerStore> _customerStoreMock;
-    private readonly CompensateAsync _compensateAsync;
+    private readonly Mock<IIdentityProvider> _identityServiceMock;
+    private readonly Mock<ICustomerRepository> _customerStoreMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
     {
-        _identityServiceMock = new Mock<IIdentityService>();
-        _customerStoreMock = new Mock<ICustomerStore>();
-
-        _compensateAsync = new CompensateAsync(
-            _customerStoreMock.Object,
-            _identityServiceMock.Object
-        );
+        _identityServiceMock = new Mock<IIdentityProvider>();
+        _customerStoreMock = new Mock<ICustomerRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
 
         _handler = new RegisterCommandHandler(
             _identityServiceMock.Object,
             _customerStoreMock.Object,
-            _compensateAsync
+            _unitOfWorkMock.Object
         );
     }
 
@@ -49,7 +44,7 @@ public class RegisterCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenUserAlreadyExists_ReturnsFailure()
+    public async Task Handle_WhenUserAlreadyExists_ReturnsFailureWithoutStartingTransaction()
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
@@ -61,119 +56,332 @@ public class RegisterCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Identity.Register", result.Error.Code);
+        Assert.Equal("Identity.RegistrationFailed", result.Error.Code);
 
         _identityServiceMock.Verify(
-            x =>
-                x.CreateUserAsyncWithResult(It.IsAny<RegisterDto>(), It.IsAny<CancellationToken>()),
+            x => x.CreateUserAsyncWithResult(
+                It.IsAny<RegisterDto>(),
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Never
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
             Times.Never
         );
     }
 
     [Fact]
-    public async Task Handle_WhenUserCreateFails_ReturnsFailure()
+    public async Task Handle_WhenUserCreateFails_RollsBackAndReturnsFailure()
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
+
         var error = new DomainError(
-                        "Identity.CreationFailed",
-                        "Could not create user",
-                        ErrorType.Conflict);
+            "Identity.CreationFailed",
+            "Could not create user",
+            ErrorType.Conflict
+        );
 
         _identityServiceMock
             .Setup(x => x.IsUserExist(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _identityServiceMock
-            .Setup(x => x.CreateUserAsyncWithResult(dto, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CreateUserAsyncWithResult(
+                dto,
+                It.IsAny<CancellationToken>()
+            ))
             .ReturnsAsync(Result.Failure<ApplicationUserDto>(error));
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
 
         Assert.True(result.IsFailure);
         Assert.Equal(error.Code, result.Error.Code);
+
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
     }
 
     [Fact]
-    public async Task Handle_WhenAddingCustomerFails_CallsCompensateAndReturnsFailure()
+    public async Task Handle_WhenAddingCustomerFails_RollsBackAndReturnsFailure()
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
-        var userDto = new ApplicationUserDto { Id = dto.UserId!.Value, Email = dto.Email };
+
+        var userDto = new ApplicationUserDto
+        {
+            Id = dto.UserId!.Value,
+            Email = dto.Email
+        };
 
         _identityServiceMock
             .Setup(x => x.IsUserExist(dto.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         _identityServiceMock
-            .Setup(x => x.CreateUserAsyncWithResult(dto, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CreateUserAsyncWithResult(
+                dto,
+                It.IsAny<CancellationToken>()
+            ))
             .ReturnsAsync(Result.Success(userDto));
 
         _customerStoreMock
-            .Setup(x => x.AddAsync(It.IsAny<Customer>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.AddAsync(
+                It.IsAny<Customer>(),
+                It.IsAny<CancellationToken>()
+            ))
             .ReturnsAsync(false);
 
-        _identityServiceMock
-            .Setup(x => x.DeleteUserAsync(dto.UserId.Value, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
 
         Assert.True(result.IsFailure);
         Assert.Equal("Customer.CreateFailed", result.Error.Code);
 
-        _identityServiceMock.Verify(
-            x => x.DeleteUserAsync(dto.UserId.Value, It.IsAny<CancellationToken>()),
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()),
             Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()),
+            Times.Never
         );
     }
 
     [Fact]
-    public async Task Handle_WhenAllStepsSucceed_ReturnsSuccess()
+    public async Task Handle_WhenSetCustomerIdFails_RollsBackAndReturnsFailure()
     {
         var dto = CreateValidDto();
         var command = new RegisterCommand(dto);
-        var userDto = new ApplicationUserDto { Id = dto.UserId!.Value, Email = dto.Email };
+
+        var userDto = new ApplicationUserDto
+        {
+            Id = dto.UserId!.Value,
+            Email = dto.Email
+        };
+
+        var error = new DomainError(
+            "Identity.UpdateFailed",
+            "Could not update user",
+            ErrorType.Failure
+        );
 
         _identityServiceMock
-            .Setup(x => x.IsUserExist(dto.Email, It.IsAny<CancellationToken>()))
+            .Setup(x => x.IsUserExist(
+                dto.Email,
+                It.IsAny<CancellationToken>()
+            ))
             .ReturnsAsync(false);
 
         _identityServiceMock
-            .Setup(x => x.CreateUserAsyncWithResult(dto, It.IsAny<CancellationToken>()))
+            .Setup(x => x.CreateUserAsyncWithResult(
+                dto,
+                It.IsAny<CancellationToken>()
+            ))
             .ReturnsAsync(Result.Success(userDto));
 
         _customerStoreMock
-            .Setup(x => x.AddAsync(It.IsAny<Customer>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.AddAsync(
+                It.IsAny<Customer>(),
+                It.IsAny<CancellationToken>()
+            ))
             .ReturnsAsync(true);
 
         _identityServiceMock
-            .Setup(x =>
-                x.SetCustomerIdAsync(
-                    dto.UserId.Value,
-                    It.IsAny<Guid>(),
-                    It.IsAny<CancellationToken>()
-                )
-            )
-            .ReturnsAsync(Result.Success());
+            .Setup(x => x.SetCustomerIdAsync(
+                dto.UserId.Value,
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(Result.Failure(error));
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
 
-        Assert.True(result.IsSuccess);
+        Assert.True(result.IsFailure);
+        Assert.Equal(error.Code, result.Error.Code);
 
-        _identityServiceMock.Verify(
-            x =>
-                x.SetCustomerIdAsync(
-                    dto.UserId.Value,
-                    It.IsAny<Guid>(),
-                    It.IsAny<CancellationToken>()
-                ),
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
             Times.Once
         );
 
-        _identityServiceMock.Verify(
-            x => x.DeleteUserAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+        _unitOfWorkMock.Verify(
+            x => x.CommitTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
             Times.Never
+        );
+    }
+
+    [Fact]
+    public async Task Handle_WhenExceptionIsThrown_RollsBackAndRethrows()
+    {
+        var dto = CreateValidDto();
+        var command = new RegisterCommand(dto);
+
+        _identityServiceMock
+            .Setup(x => x.IsUserExist(
+                dto.Email,
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(false);
+
+        _identityServiceMock
+            .Setup(x => x.CreateUserAsyncWithResult(
+                dto,
+                It.IsAny<CancellationToken>()
+            ))
+            .ThrowsAsync(
+                new InvalidOperationException("Database error")
+            );
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _handler.Handle(
+                command,
+                CancellationToken.None
+            )
+        );
+
+        Assert.Equal("Database error", exception.Message);
+
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(
+                CancellationToken.None
+            ),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.CommitTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Never
+        );
+    }
+
+    [Fact]
+    public async Task Handle_WhenAllStepsSucceed_CommitsTransactionAndReturnsSuccess()
+    {
+        var dto = CreateValidDto();
+        var command = new RegisterCommand(dto);
+
+        var userDto = new ApplicationUserDto
+        {
+            Id = dto.UserId!.Value,
+            Email = dto.Email
+        };
+
+        _identityServiceMock
+            .Setup(x => x.IsUserExist(
+                dto.Email,
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(false);
+
+        _identityServiceMock
+            .Setup(x => x.CreateUserAsyncWithResult(
+                dto,
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(Result.Success(userDto));
+
+        _customerStoreMock
+            .Setup(x => x.AddAsync(
+                It.IsAny<Customer>(),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(true);
+
+        _identityServiceMock
+            .Setup(x => x.SetCustomerIdAsync(
+                dto.UserId.Value,
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(Result.Success());
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess);
+
+        _unitOfWorkMock.Verify(
+            x => x.BeginTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.CommitTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Once
+        );
+
+        _unitOfWorkMock.Verify(
+            x => x.RollbackTransactionAsync(
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Never
+        );
+
+        _identityServiceMock.Verify(
+            x => x.SetCustomerIdAsync(
+                dto.UserId.Value,
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()
+            ),
+            Times.Once
         );
     }
 }

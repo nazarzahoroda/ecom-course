@@ -1,6 +1,5 @@
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
-using EcomCourse.Application.Services;
 using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 
@@ -8,27 +7,28 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
 {
     public class RegisterCommandHandler : ICommandHandler<RegisterCommand>
     {
-        private readonly IIdentityService _identityService;
-        private readonly ICustomerStore _customerStore;
-        private readonly CompensateAsync _compensateAsync;
+        private readonly IIdentityProvider _identityProvider;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
         public RegisterCommandHandler(
-            IIdentityService identityService,
-            ICustomerStore customerStore,
-            CompensateAsync compensateAsync
-        )
+            IIdentityProvider identityProvider,
+            ICustomerRepository customerRepository,
+            IUnitOfWork unitOfWork)
         {
-            _identityService = identityService;
-            _customerStore = customerStore;
-            _compensateAsync = compensateAsync;
+            _identityProvider = identityProvider;
+            _customerRepository = customerRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<Result> Handle(
             RegisterCommand request,
-            CancellationToken cancellationToken
-        )
+            CancellationToken cancellationToken)
         {
-            var exists = await _identityService.IsUserExist(request.dto.Email, cancellationToken);
+            var exists = await _identityProvider.IsUserExist(
+                request.dto.Email,
+                cancellationToken);
+
             if (exists)
             {
                 return Result.Failure(
@@ -39,82 +39,78 @@ namespace EcomCourse.Application.Authentication.Commands.RegisterCommand
                     )
                 );
             }
-            var createResult = await _identityService.CreateUserAsyncWithResult(
-                request.dto,
-                cancellationToken
-            );
 
-            if (createResult.IsFailure)
+            await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+            try
             {
-                return createResult;
-            }
+                var createResult = await _identityProvider.CreateUserAsyncWithResult(
+                    request.dto,
+                    cancellationToken);
 
-            var user = createResult.Value;
+                if (createResult.IsFailure)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return createResult;
+                }
 
-            var customerResult = Customer.Create(
-                user!.Id,
-                request.dto.Name,
-                request.dto.Email,
-                request.dto.Street,
-                request.dto.City,
-                request.dto.PostalCode,
-                request.dto.Country
-            );
-            if (customerResult.IsFailure)
-            {
-                var compensateResult = await _compensateAsync.CompensateAsyncTask(
-                    user!.Id,
-                    Guid.Empty,
-                    cancellationToken
+                var user = createResult.Value!;
+
+                var customerResult = Customer.Create(
+                    user.Id,
+                    request.dto.Name,
+                    request.dto.Email,
+                    request.dto.Street,
+                    request.dto.City,
+                    request.dto.PostalCode,
+                    request.dto.Country
                 );
-                if (compensateResult.IsFailure)
-                    return compensateResult;
 
-                return customerResult;
-            }
+                if (customerResult.IsFailure)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return customerResult;
+                }
 
-            var customer = customerResult.Value;
+                var customer = customerResult.Value!;
 
-            var wasAdded = await _customerStore.AddAsync(customer!, cancellationToken);
+                var wasAdded = await _customerRepository.AddAsync(
+                    customer,
+                    cancellationToken);
 
-            if (!wasAdded)
-            {
-                var compensateResult = await _compensateAsync.CompensateAsyncTask(
-                    user!.Id,
-                    Guid.Empty,
-                    cancellationToken
-                );
-                if (compensateResult.IsFailure)
-                    return compensateResult;
+                if (!wasAdded)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
 
-                return Result.Failure(
-                    new DomainError(
-                        "Customer.CreateFailed",
-                        "Failed to create customer",
-                        ErrorType.Failure
-                    )
-                );
-            }
-            var updateUserResult = await _identityService.SetCustomerIdAsync(
-                user!.Id,
-                customer!.Id,
-                cancellationToken
-            );
+                    return Result.Failure(
+                        new DomainError(
+                            "Customer.CreateFailed",
+                            "Failed to create customer",
+                            ErrorType.Failure
+                        )
+                    );
+                }
 
-            if (updateUserResult.IsFailure)
-            {
-                var compensateResult = await _compensateAsync.CompensateAsyncTask(
-                    user!.Id,
+                var updateUserResult = await _identityProvider.SetCustomerIdAsync(
+                    user.Id,
                     customer.Id,
-                    cancellationToken
-                );
-                if (compensateResult.IsFailure)
-                    return compensateResult;
+                    cancellationToken);
 
-                return updateUserResult;
+                if (updateUserResult.IsFailure)
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    return updateUserResult;
+                }
+
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                return Result.Success();
             }
-
-            return Result.Success();
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
+                throw;
+            }
         }
     }
 }

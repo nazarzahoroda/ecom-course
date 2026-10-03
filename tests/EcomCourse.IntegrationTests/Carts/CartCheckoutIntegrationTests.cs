@@ -6,6 +6,7 @@ using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Customers;
+using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Persistence.Identity;

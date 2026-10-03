@@ -1,6 +1,6 @@
 using EcomCourse.Application.Carts.Commands.AddItemToCartCommand;
 using EcomCourse.Application.Carts.DTOs;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 using Moq;
 
@@ -8,13 +8,13 @@ namespace EcomCourse.UnitTests.CartTest
 {
     public class AddItemToCartCommandHandlerTests
     {
-        private readonly Mock<ICartService> _cartServiceMock;
+        private readonly Mock<ICartManager> _cartManagerMock;
         private readonly AddItemToCartCommandHandler _handler;
 
         public AddItemToCartCommandHandlerTests()
         {
-            _cartServiceMock = new Mock<ICartService>();
-            _handler = new AddItemToCartCommandHandler(_cartServiceMock.Object);
+            _cartManagerMock = new Mock<ICartManager>();
+            _handler = new AddItemToCartCommandHandler(_cartManagerMock.Object);
         }
 
         [Fact]
@@ -27,7 +27,7 @@ namespace EcomCourse.UnitTests.CartTest
                             "Product not found.",
                             ErrorType.NotFound);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Failure(error));
 
@@ -36,7 +36,7 @@ namespace EcomCourse.UnitTests.CartTest
             Assert.True(result.IsFailure);
             Assert.Equal(error.Code, result.Error.Code);
 
-            _cartServiceMock.Verify(
+            _cartManagerMock.Verify(
                 x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()),
                 Times.Once
             );
@@ -52,7 +52,7 @@ namespace EcomCourse.UnitTests.CartTest
                             "Active cart already exists.",
                             ErrorType.Conflict);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Failure(error));
 
@@ -68,7 +68,7 @@ namespace EcomCourse.UnitTests.CartTest
             var dto = new AddItemToCartDto { ProductId = Guid.NewGuid(), Quantity = 3 };
             var command = new AddItemToCartCommand(dto);
 
-            _cartServiceMock
+            _cartManagerMock
                 .Setup(x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Result.Success());
 
@@ -76,7 +76,7 @@ namespace EcomCourse.UnitTests.CartTest
 
             Assert.True(result.IsSuccess);
 
-            _cartServiceMock.Verify(
+            _cartManagerMock.Verify(
                 x => x.AddItemToCartAsync(dto, It.IsAny<CancellationToken>()),
                 Times.Once
             );

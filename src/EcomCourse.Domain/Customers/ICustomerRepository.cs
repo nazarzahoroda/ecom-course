@@ -1,0 +1,10 @@
+namespace EcomCourse.Domain.Customers;
+
+public interface ICustomerRepository
+{
+    Task<bool> ExistsByEmailAsync(Email email, CancellationToken cancellationToken);
+
+    Task<bool> AddAsync(Customer customer, CancellationToken cancellationToken);
+
+    Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+}

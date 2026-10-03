@@ -1,5 +1,5 @@
 using EcomCourse.Application.Abstractions.Messaging;
-using EcomCourse.Application.Interfaces;
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Common;
 
 namespace EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand
@@ -7,11 +7,11 @@ namespace EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand
     public class UpdateCartItemQuantityCommandHandler
         : ICommandHandler<UpdateCartItemQuantityCommand>
     {
-        private readonly ICartService _cartService;
+        private readonly ICartManager _cartManager;
 
-        public UpdateCartItemQuantityCommandHandler(ICartService cartService)
+        public UpdateCartItemQuantityCommandHandler(ICartManager cartManager)
         {
-            _cartService = cartService;
+            _cartManager = cartManager;
         }
 
         public async Task<Result> Handle(
@@ -19,7 +19,7 @@ namespace EcomCourse.Application.Carts.Commands.UpdateCartItemQuantityCommand
             CancellationToken cancellationToken
         )
         {
-            var result = await _cartService.UpdateCartItemQuantityAsync(
+            var result = await _cartManager.UpdateCartItemQuantityAsync(
                 request.dto,
                 cancellationToken
             );
