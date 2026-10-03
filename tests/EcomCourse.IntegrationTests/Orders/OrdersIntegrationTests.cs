@@ -1,176 +1,96 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
 using EcomCourse.Application.Orders.Commands.CreateOrder;
 using EcomCourse.Application.Orders.Queries.GetOrderWithLines;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Customers;
+using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
-using EcomCourse.IntegrationTests.Common;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
+using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.IntegrationTests.Infrastructure;
+using EcomCourse.IntegrationTests.TestSupport;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace EcomCourse.IntegrationTests.Orders;
 
+[Collection("IntegrationTests")]
 public class OrdersIntegrationTests : IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory<
+        Program,
+        EcomCourseDbContext,
+        IdentityDbContext
+    > _factory;
     private readonly Guid _customerId = Guid.NewGuid();
-    private Guid _defaultCategoryId;
 
-    public OrdersIntegrationTests()
+    public OrdersIntegrationTests(
+        CustomWebApplicationFactory<Program, EcomCourseDbContext, IdentityDbContext> factory
+    )
     {
-        var dbName = $"InMemoryTestDb_{Guid.NewGuid()}";
-
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureServices(services =>
-            {
-                services
-                    .AddAuthentication(options =>
-                    {
-                        options.DefaultAuthenticateScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-                        options.DefaultChallengeScheme =
-                            TestAuthenticationHandler.AuthenticationScheme;
-                    })
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
-                        TestAuthenticationHandler.AuthenticationScheme,
-                        _ => { }
-                    );
-
-                services.RemoveAll<DbContextOptions<EcomCourseDbContext>>();
-                services.RemoveAll<EcomCourseDbContext>();
-
-                var inMemoryServiceProvider = new ServiceCollection()
-                    .AddEntityFrameworkInMemoryDatabase()
-                    .BuildServiceProvider();
-
-                services.AddDbContext<EcomCourseDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase(dbName);
-                    options.UseInternalServiceProvider(inMemoryServiceProvider);
-                    options.ConfigureWarnings(w =>
-                        w.Ignore(InMemoryEventId.TransactionIgnoredWarning)
-                    );
-                });
-            });
-        });
-
-        _client = _factory.CreateClient();
-
-        _client.DefaultRequestHeaders.Add(
-            "X-Test-CustomerId",
-            _customerId.ToString()
-        );
-        _client.DefaultRequestHeaders.Add("X-Test-Role", "Customer");
+        _factory = factory;
+        _client = factory.WithTestAuthentication().CreateClient();
+        _client.AuthenticateAs(_customerId, role: "Customer");
     }
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
     {
-        using var scope = _factory.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-        var category = Category.Create("Electronics").Value!;
-        _defaultCategoryId = category.Id;
-        dbContext.Categories.Add(category);
-
-        var customer = Customer
-            .Create(
-                _customerId,
-                "Test Customer",
-                $"{_customerId}@example.com",
-                "Khreshchatyk St 1",
-                "Kyiv",
-                "01001",
-                "Ukraine"
-            )
-            .Value!;
-
-        dbContext.Customers.Add(customer);
-
-        await dbContext.SaveChangesAsync();
-    }
-
-    public Task DisposeAsync()
-    {
-        _client.Dispose();
-        _factory.Dispose();
-        return Task.CompletedTask;
+        await _factory.ResetDatabaseAsync();
     }
 
     [Fact]
     public async Task CreateOrder_And_GetOrderWithLines_ShouldReturnCorrectData()
     {
-        var firstProduct = await SeedProductAsync(
-            "Product 1",
-            100m,
-            Currency.USD,
-            "SKU-0001"
-        );
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            SeedCustomer(db, _customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
 
-        var secondProduct = await SeedProductAsync(
-            "Product 2",
-            50m,
-            Currency.USD,
-            "SKU-0002"
-        );
+            var category = Category.Create($"Category-{Guid.NewGuid():N}").Value!;
+            db.Categories.Add(category);
 
-        var command = new CreateOrderCommand(
-            _customerId,
-            new List<OrderLineItemRequest>
-            {
-                new(firstProduct.Id, 2),
-                new(secondProduct.Id, 1)
-            }
-        );
+            var firstProduct = CreateProduct("Product 1", 100m, Currency.USD, category.Id);
+            var secondProduct = CreateProduct("Product 2", 50m, Currency.USD, category.Id);
 
-        var createResponse = await _client.PostAsJsonAsync(
-            "/api/orders",
-            command
-        );
+            db.Products.AddRange(firstProduct, secondProduct);
+            await db.SaveChangesAsync();
 
-        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+            var command = new CreateOrderCommand(
+                _customerId,
+                new List<OrderLineItemRequest> { new(firstProduct.Id, 2), new(secondProduct.Id, 1) }
+            );
 
-        var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+            var createResponse = await _client.PostAsJsonAsync("/api/orders", command);
 
-        Assert.NotEqual(Guid.Empty, orderId);
+            Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
-        var getResponse = await _client.GetAsync(
-            $"/api/orders/{orderId}"
-        );
+            var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+            Assert.NotEqual(Guid.Empty, orderId);
 
-        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+            var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
+            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
-        var orderDetails =
-            await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
+            var orderDetails = await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
 
-        Assert.NotNull(orderDetails);
-        Assert.Equal(orderId, orderDetails.Id);
-        Assert.Equal(_customerId, orderDetails.CustomerId);
-        Assert.Equal(250m, orderDetails.Total);
-        Assert.Equal(Currency.USD, orderDetails.Currency);
-        Assert.Equal(
-            "Khreshchatyk St 1",
-            orderDetails.ShippingAddress.Street
-        );
-        Assert.Equal(
-            "Kyiv",
-            orderDetails.ShippingAddress.City
-        );
+            Assert.NotNull(orderDetails);
+            Assert.Equal(orderId, orderDetails.Id);
+            Assert.Equal(_customerId, orderDetails.CustomerId);
+            Assert.Equal(250m, orderDetails.Total);
+            Assert.Equal(Currency.USD, orderDetails.Currency);
+            Assert.Equal("Khreshchatyk St 1", orderDetails.ShippingAddress.Street);
+            Assert.Equal("Kyiv", orderDetails.ShippingAddress.City);
 
-        Assert.Equal(2, orderDetails.Lines.Count);
+            Assert.Equal(2, orderDetails.Lines.Count);
 
-        var line = orderDetails.Lines.First(l => l.Quantity == 2);
-
-        Assert.Equal(100m, line.UnitPrice);
-        Assert.Equal(Currency.USD, line.Currency);
-        Assert.Equal(200m, line.LineTotal);
+            var firstLine = orderDetails.Lines.First(l => l.Quantity == 2);
+            Assert.Equal(100m, firstLine.UnitPrice);
+            Assert.Equal(Currency.USD, firstLine.Currency);
+            Assert.Equal(200m, firstLine.LineTotal);
+        }
     }
 
     [Fact]
@@ -178,295 +98,214 @@ public class OrdersIntegrationTests : IAsyncLifetime
     {
         var spoofedCustomerId = Guid.NewGuid();
 
-        var product = await SeedProductAsync(
-            "Spoof Test Product",
-            100m,
-            Currency.USD,
-            "SKU-SPDF"
-        );
+        Guid productId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            SeedCustomer(db, _customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
+
+            var category = Category.Create($"Category-{Guid.NewGuid():N}").Value!;
+            db.Categories.Add(category);
+
+            var product = CreateProduct("Product 1", 100m, Currency.USD, category.Id);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+
+            productId = product.Id;
+        }
 
         var payload = new
         {
             customerId = spoofedCustomerId,
-            items = new[]
-            {
-                new
-                {
-                    productId = product.Id,
-                    quantity = 1
-                }
-            },
+            items = new[] { new { productId, quantity = 1 } },
         };
 
-        var createResponse = await _client.PostAsJsonAsync(
-            "/api/orders",
-            payload
-        );
+        var createResponse = await _client.PostAsJsonAsync("/api/orders", payload);
 
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
-        var orderId =
-            await createResponse.Content.ReadFromJsonAsync<Guid>();
-
-        var getResponse = await _client.GetAsync(
-            $"/api/orders/{orderId}"
-        );
-
-        var orderDetails =
-            await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
+        var orderId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+        var getResponse = await _client.GetAsync($"/api/orders/{orderId}");
+        var orderDetails = await getResponse.Content.ReadFromJsonAsync<OrderResponse>();
 
         Assert.NotNull(orderDetails);
         Assert.Equal(_customerId, orderDetails.CustomerId);
-        Assert.NotEqual(
-            spoofedCustomerId,
-            orderDetails.CustomerId
-        );
+        Assert.NotEqual(spoofedCustomerId, orderDetails.CustomerId);
     }
 
     [Fact]
     public async Task CreateOrder_ShouldReturn403_WhenCallerHasNoCustomerRole()
     {
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            "/api/orders"
-        )
-        {
-            Content = JsonContent.Create(
-                new
-                {
-                    items = Array.Empty<object>()
-                }
-            ),
-        };
+        _client.AuthenticateAs(_customerId, role: "Admin");
 
-        request.Headers.Add("X-Test-Role", "Admin");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/orders")
+        {
+            Content = JsonContent.Create(new { items = Array.Empty<object>() }),
+        };
 
         var response = await _client.SendAsync(request);
 
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
     public async Task GetOrders_ShouldReturn403_WhenCallerHasNoCustomerRole()
     {
-        var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            "/api/orders"
-        );
+        _client.AuthenticateAs(_customerId, role: "Admin");
 
-        request.Headers.Add("X-Test-Role", "Admin");
+        var response = await _client.GetAsync("/api/orders");
 
-        var response = await _client.SendAsync(request);
-
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetOrderById_ShouldReturn401_ForAnonymous()
+    public async Task GetOrderById_ShouldReturn401_ForAnonymous_RegardlessOfOrderExistence()
     {
-        var orderId = await CreateSampleOrderAsync();
+        var existingOrderId = await CreateOrderInDatabaseAsync();
+        var nonExistentOrderId = Guid.NewGuid();
 
-        var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"/api/orders/{orderId}"
-        );
+        _client.AuthenticateAsAnonymous();
 
-        request.Headers.Add("X-Test-Anonymous", "true");
+        var existingResponse = await _client.GetAsync($"/api/orders/{existingOrderId}");
+        var missingResponse = await _client.GetAsync($"/api/orders/{nonExistentOrderId}");
 
-        var response = await _client.SendAsync(request);
-
-        Assert.Equal(
-            HttpStatusCode.Unauthorized,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.Unauthorized, existingResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, missingResponse.StatusCode);
     }
 
     [Fact]
     public async Task GetOrderById_ShouldReturn403_WhenCalledByDifferentCustomer()
     {
-        var orderId = await CreateSampleOrderAsync();
+        var orderId = await CreateOrderInDatabaseAsync();
 
-        var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"/api/orders/{orderId}"
-        );
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Customer");
 
-        request.Headers.Add(
-            "X-Test-CustomerId",
-            Guid.NewGuid().ToString()
-        );
-        request.Headers.Add("X-Test-Role", "Customer");
+        var response = await _client.GetAsync($"/api/orders/{orderId}");
 
-        var response = await _client.SendAsync(request);
-
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Theory]
     [InlineData("pay")]
     [InlineData("cancel")]
-    public async Task OrderAction_ShouldReturn401_WhenAnonymous(
-        string action
-    )
+    public async Task OrderAction_ShouldReturn401_WhenAnonymous(string action)
     {
-        var orderId = await CreateSampleOrderAsync();
+        var orderId = await CreateOrderInDatabaseAsync();
 
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"/api/orders/{orderId}/{action}"
-        );
+        _client.AuthenticateAsAnonymous();
 
-        request.Headers.Add("X-Test-Anonymous", "true");
+        var response = await _client.PostAsync($"/api/orders/{orderId}/{action}", null);
 
-        var response = await _client.SendAsync(request);
-
-        Assert.Equal(
-            HttpStatusCode.Unauthorized,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Theory]
     [InlineData("pay")]
     [InlineData("cancel")]
-    public async Task OrderAction_ShouldReturn403_WhenCalledByDifferentCustomer(
-        string action
-    )
+    public async Task OrderAction_ShouldReturn403_WhenCalledByDifferentCustomer(string action)
     {
-        var orderId = await CreateSampleOrderAsync();
+        var orderId = await CreateOrderInDatabaseAsync();
 
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"/api/orders/{orderId}/{action}"
-        );
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Customer");
 
-        request.Headers.Add(
-            "X-Test-CustomerId",
-            Guid.NewGuid().ToString()
-        );
-        request.Headers.Add("X-Test-Role", "Customer");
+        var response = await _client.PostAsync($"/api/orders/{orderId}/{action}", null);
 
-        var response = await _client.SendAsync(request);
-
-        Assert.Equal(
-            HttpStatusCode.Forbidden,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Theory]
     [InlineData("pay")]
     [InlineData("cancel")]
-    public async Task OrderAction_ShouldSucceed_WhenCalledByOwningCustomer(
-        string action
-    )
+    public async Task OrderAction_ShouldSucceed_WhenCalledByOwningCustomer(string action)
     {
-        var orderId = await CreateSampleOrderAsync();
+        var orderId = await CreateOrderInDatabaseAsync();
 
-        var response = await _client.PostAsync(
-            $"/api/orders/{orderId}/{action}",
-            null
-        );
+        _client.AuthenticateAs(_customerId, role: "Customer");
 
-        Assert.Equal(
-            HttpStatusCode.NoContent,
-            response.StatusCode
-        );
+        var response = await _client.PostAsync($"/api/orders/{orderId}/{action}", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Theory]
     [InlineData("pay")]
     [InlineData("cancel")]
-    public async Task OrderAction_ShouldSucceed_WhenCalledByAdmin(
-        string action
-    )
+    public async Task OrderAction_ShouldSucceed_WhenCalledByAdmin(string action)
     {
-        var orderId = await CreateSampleOrderAsync();
+        var orderId = await CreateOrderInDatabaseAsync();
 
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            $"/api/orders/{orderId}/{action}"
-        );
+        _client.AuthenticateAs(Guid.NewGuid(), role: "Admin");
 
-        request.Headers.Add("X-Test-Role", "Admin");
+        var response = await _client.PostAsync($"/api/orders/{orderId}/{action}", null);
 
-        var response = await _client.SendAsync(request);
-
-        Assert.Equal(
-            HttpStatusCode.NoContent,
-            response.StatusCode
-        );
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
-    private async Task<Product> SeedProductAsync(
+    private async Task<Guid> CreateOrderInDatabaseAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+        SeedCustomer(db, _customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
+
+        var category = Category.Create($"Category-{Guid.NewGuid():N}").Value!;
+        db.Categories.Add(category);
+
+        var product = CreateProduct("Product 1", 10m, Currency.USD, category.Id);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        var items = new List<(Guid ProductId, int Quantity, decimal UnitPrice, Currency Currency)>
+        {
+            (product.Id, 1, 10m, Currency.USD),
+        };
+
+        var address = Address.Create("Khreshchatyk St 1", "Kyiv", "01001", "Ukraine").Value!;
+        var order = Order.Create(_customerId, address, items, DateTime.UtcNow).Value!;
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        return order.Id;
+    }
+
+    private static Product CreateProduct(
         string name,
         decimal amount,
         Currency currency,
-        string sku
+        Guid categoryId
     )
     {
-        using var scope = _factory.Services.CreateScope();
-
-        var dbContext =
-            scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-        var createResult = Product.Create(
-            name,
-            amount,
-            currency,
-            sku,
-            _defaultCategoryId
-        );
-
-        if (createResult.IsFailure)
-        {
-            throw new InvalidOperationException(
-                $"Не вдалося створити продукт: {createResult.Error.Code} - {createResult.Error.Description}"
-            );
-        }
-
-        var product = createResult.Value!;
-
-        dbContext.Products.Add(product);
-
-        await dbContext.SaveChangesAsync();
-
-        return product;
+        var price = Price.Create(amount, currency).Value!;
+        var sku = SKU.Create($"SKU-{Random.Shared.Next(1000, 9999)}").Value!;
+        return Product.Create(name, price.Amount, price.Currency, sku.Value, categoryId).Value!;
     }
 
-    private async Task<Guid> CreateSampleOrderAsync()
+    private static void SeedCustomer(
+        EcomCourseDbContext db,
+        Guid customerId,
+        string street,
+        string city,
+        string postalCode,
+        string country
+    )
     {
-        var product = await SeedProductAsync(
-            "Quick Order Product",
-            15m,
-            Currency.USD,
-            $"SKU-{Guid.NewGuid():N}"
-        );
+        var customer = Customer
+            .Create(
+                Guid.NewGuid(),
+                "Test Customer",
+                $"{customerId}@example.com",
+                street,
+                city,
+                postalCode,
+                country
+            )
+            .Value!;
 
-        var command = new CreateOrderCommand(
-            _customerId,
-            new List<OrderLineItemRequest>
-            {
-                new(product.Id, 1)
-            }
-        );
+        typeof(Customer)
+            .BaseType!.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(customer, customerId);
 
-        var response = await _client.PostAsJsonAsync(
-            "/api/orders",
-            command
-        );
-
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content.ReadFromJsonAsync<Guid>();
+        db.Customers.Add(customer);
     }
 }

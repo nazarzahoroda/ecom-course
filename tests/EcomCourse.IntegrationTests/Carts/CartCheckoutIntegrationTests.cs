@@ -9,345 +9,280 @@ using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Orders;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
+using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.IntegrationTests.Infrastructure;
 using EcomCourse.IntegrationTests.TestSupport;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
-namespace EcomCourse.IntegrationTests.Carts;
-
-public class CartCheckoutIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+namespace EcomCourse.IntegrationTests.Carts
 {
-    private readonly HttpClient _client;
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public CartCheckoutIntegrationTests(WebApplicationFactory<Program> factory)
+    [Collection("IntegrationTests")]
+    public class CartCheckoutIntegrationTests : IAsyncLifetime
     {
-        _factory = factory;
-        _client = factory.WithTestAuthentication().CreateClient();
-    }
+        private readonly HttpClient _client;
+        private readonly CustomWebApplicationFactory<
+            Program,
+            EcomCourseDbContext,
+            IdentityDbContext
+        > _factory;
 
-    [Fact]
-    public async Task Checkout_WhenCartIsEmpty_ReturnsConflictDomainError()
-    {
-        var customerId = Guid.NewGuid();
-
-        _client.AuthenticateAs(customerId);
-
-        using (var scope = _factory.Services.CreateScope())
+        public CartCheckoutIntegrationTests(
+            CustomWebApplicationFactory<Program, EcomCourseDbContext, IdentityDbContext> factory
+        )
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-            var cartResult = Cart.Create(customerId);
-            var cart = cartResult.Value!;
-
-            db.Carts.Add(cart);
-            await db.SaveChangesAsync();
+            _factory = factory;
+            _client = factory.WithTestAuthentication().CreateClient();
         }
 
-        var response = await _client.PostAsync("/api/Cart/checkout", null);
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Checkout_FullFlow_Success_UpdatesCartAndSetsCustomerId()
-    {
-        var customerId = Guid.NewGuid();
-
-        var categoryResult = Category.Create("Test Category");
-        var category = categoryResult.Value!;
-
-        var priceResult = Price.Create(100.00m, Currency.USD);
-        Assert.True(priceResult.IsSuccess);
-
-        var randomSku = $"PRD-{Random.Shared.Next(1000, 9999)}";
-
-        var skuResult = SKU.Create(randomSku);
-        Assert.True(skuResult.IsSuccess);
-
-        var productResult = Product.Create(
-            "Sample Product",
-            priceResult.Value!.Amount,
-            priceResult.Value!.Currency,
-            skuResult.Value!.Value,
-            category.Id
-        );
-        Assert.True(productResult.IsSuccess);
-        var product = productResult.Value!;
-
-        using (var scope = _factory.Services.CreateScope())
+        [Fact]
+        public async Task Checkout_WhenCartIsEmpty_ReturnsConflictDomainError()
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-            db.Categories.Add(category);
-            db.Products.Add(product);
-            SeedCustomer(db, customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
-            await db.SaveChangesAsync();
+            var customerId = Guid.NewGuid();
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+                SeedCustomer(db, customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
+
+                var cartResult = Cart.Create(customerId);
+                var cart = cartResult.Value!;
+
+                db.Carts.Add(cart);
+                await db.SaveChangesAsync();
+            }
+
+            _client.AuthenticateAs(customerId);
+
+            var response = await _client.PostAsync("/api/Cart/checkout", null);
+
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         }
 
-        _client.AuthenticateAs(customerId);
-
-        var addRes = await _client.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = product.Id, Quantity = 2 }
-        );
-        Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
-
-        var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
-        Assert.Equal(HttpStatusCode.OK, checkoutRes.StatusCode);
-
-        var orderId = await checkoutRes.Content.ReadFromJsonAsync<Guid>();
-        Assert.NotEqual(Guid.Empty, orderId);
-
-        using (var scope = _factory.Services.CreateScope())
+        [Fact]
+        public async Task Checkout_FullFlow_Success_UpdatesCartAndSetsCustomerId()
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            var customerId = Guid.NewGuid();
 
-            var cart = await db
-                .Carts.Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.CustomerId == customerId);
+            var categoryResult = Category.Create("Test Category");
+            var category = categoryResult.Value!;
 
-            Assert.NotNull(cart);
-            Assert.Equal(CartStatus.CheckedOut, cart.Status);
+            var priceResult = Price.Create(100.00m, Currency.USD);
+            Assert.True(priceResult.IsSuccess);
 
-            var order = await db
-                .Orders.Include(o => o.Lines)
-                .FirstOrDefaultAsync(o => o.Id == orderId);
+            var randomSku = $"PRD-{Random.Shared.Next(1000, 9999)}";
 
-            Assert.NotNull(order);
-            Assert.Equal(customerId, order.CustomerId);
-            Assert.Single(order.Lines);
-            Assert.Equal(product.Id, order.Lines.First().ProductId);
-            Assert.Equal(2, order.Lines.First().Quantity);
-            Assert.Equal(100.00m, order.Lines.First().UnitPrice);
-            Assert.Equal(Currency.USD, order.Lines.First().Currency);
-            Assert.Equal(Currency.USD, order.Currency);
-            Assert.Equal("Khreshchatyk St 1", order.ShippingAddress.Street);
-            Assert.Equal("Kyiv", order.ShippingAddress.City);
-        }
-    }
+            var skuResult = SKU.Create(randomSku);
+            Assert.True(skuResult.IsSuccess);
 
-    [Fact]
-    public async Task Checkout_ReturnsBadRequest_WhenCartHasMixedCurrencyItems()
-    {
-        var customerId = Guid.NewGuid();
+            var productResult = Product.Create(
+                "Sample Product",
+                priceResult.Value!.Amount,
+                priceResult.Value!.Currency,
+                skuResult.Value!.Value,
+                category.Id
+            );
+            Assert.True(productResult.IsSuccess);
+            var product = productResult.Value!;
 
-        var categoryResult = Category.Create("Test Category");
-        var category = categoryResult.Value!;
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+                db.Categories.Add(category);
+                db.Products.Add(product);
+                SeedCustomer(db, customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
+                await db.SaveChangesAsync();
+            }
 
-        var usdProduct = Product.Create(
-            "USD Product",
-            100.00m,
-            Currency.USD,
-            $"PRD-{Random.Shared.Next(1000, 9999)}",
-            category.Id
-        ).Value!;
+            _client.AuthenticateAs(customerId);
 
-        var uahProduct = Product.Create(
-            "UAH Product",
-            100.00m,
-            Currency.UAH,
-            $"PRD-{Random.Shared.Next(1000, 9999)}",
-            category.Id
-        ).Value!;
+            var addRes = await _client.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = product.Id, Quantity = 2 }
+            );
+            Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
 
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-            db.Categories.Add(category);
-            db.Products.AddRange(usdProduct, uahProduct);
-            SeedCustomer(db, customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
-            await db.SaveChangesAsync();
-        }
+            var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
+            Assert.Equal(HttpStatusCode.OK, checkoutRes.StatusCode);
 
-        _client.AuthenticateAs(customerId);
+            var orderId = await checkoutRes.Content.ReadFromJsonAsync<Guid>();
+            Assert.NotEqual(Guid.Empty, orderId);
 
-        await _client.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = usdProduct.Id, Quantity = 1 }
-        );
-        await _client.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = uahProduct.Id, Quantity = 1 }
-        );
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
 
-        var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
+                var cart = await db
+                    .Carts.Include(c => c.Items)
+                    .FirstOrDefaultAsync(c => c.CustomerId == customerId);
 
-        Assert.Equal(HttpStatusCode.BadRequest, checkoutRes.StatusCode);
-    }
+                Assert.NotNull(cart);
+                Assert.Equal(CartStatus.CheckedOut, cart.Status);
 
-    [Fact]
-    public async Task Checkout_SnapshotsShippingAddress_IndependentOfLaterCustomerAddressChanges()
-    {
-        var customerId = Guid.NewGuid();
+                var order = await db
+                    .Orders.Include(o => o.Lines)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
 
-        var categoryResult = Category.Create("Test Category");
-        var category = categoryResult.Value!;
-
-        var priceResult = Price.Create(50.00m, Currency.USD);
-        var randomSku = $"PRD-{Random.Shared.Next(1000, 9999)}";
-        var skuResult = SKU.Create(randomSku);
-
-        var productResult = Product.Create(
-            "Sample Product",
-            priceResult.Value!.Amount,
-            priceResult.Value!.Currency,
-            skuResult.Value!.Value,
-            category.Id
-        );
-        var product = productResult.Value!;
-
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-            db.Categories.Add(category);
-            db.Products.Add(product);
-            SeedCustomer(db, customerId, "Original St 1", "Kyiv", "01001", "Ukraine");
-            await db.SaveChangesAsync();
+                Assert.NotNull(order);
+                Assert.Equal(customerId, order.CustomerId);
+                Assert.Single(order.Lines);
+                Assert.Equal(product.Id, order.Lines.First().ProductId);
+                Assert.Equal(2, order.Lines.First().Quantity);
+                Assert.Equal(100.00m, order.Lines.First().UnitPrice);
+                Assert.Equal(Currency.USD, order.Lines.First().Currency);
+                Assert.Equal(Currency.USD, order.Currency);
+                Assert.Equal("Khreshchatyk St 1", order.ShippingAddress.Street);
+                Assert.Equal("Kyiv", order.ShippingAddress.City);
+            }
         }
 
-        _client.AuthenticateAs(customerId);
-
-        await _client.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = product.Id, Quantity = 1 }
-        );
-
-        var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
-        Assert.Equal(HttpStatusCode.OK, checkoutRes.StatusCode);
-
-        var orderId = await checkoutRes.Content.ReadFromJsonAsync<Guid>();
-
-        // Customer moves after the order was placed.
-        using (var scope = _factory.Services.CreateScope())
+        [Fact]
+        public async Task Checkout_ReturnsBadRequest_WhenCartHasMixedCurrencyItems()
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"UPDATE Customers SET Address_Street = {"New St 99"}, Address_City = {"Lviv"} WHERE Id = {customerId}");
-        }
+            var customerId = Guid.NewGuid();
 
-        var getRes = await _client.GetAsync($"/api/orders/{orderId}");
-        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+            var categoryResult = Category.Create("Test Category");
+            var category = categoryResult.Value!;
 
-        var order = await getRes.Content.ReadFromJsonAsync<OrderResponse>();
+            var usdProduct = Product
+                .Create(
+                    "USD Product",
+                    100.00m,
+                    Currency.USD,
+                    $"PRD-{Random.Shared.Next(1000, 9999)}",
+                    category.Id
+                )
+                .Value!;
 
-        Assert.NotNull(order);
-        Assert.Equal("Original St 1", order.ShippingAddress.Street);
-        Assert.Equal("Kyiv", order.ShippingAddress.City);
-    }
+            var uahProduct = Product
+                .Create(
+                    "UAH Product",
+                    100.00m,
+                    Currency.UAH,
+                    $"PRD-{Random.Shared.Next(1000, 9999)}",
+                    category.Id
+                )
+                .Value!;
 
-    [Fact]
-    public async Task ConcurrentCheckouts_OnSameCart_ProduceExactlyOneOrder()
-    {
-        var customerId = Guid.NewGuid();
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+                db.Categories.Add(category);
+                db.Products.AddRange(usdProduct, uahProduct);
+                SeedCustomer(db, customerId, "Khreshchatyk St 1", "Kyiv", "01001", "Ukraine");
+                await db.SaveChangesAsync();
+            }
 
-        var categoryResult = Category.Create($"Concurrent Category-{Guid.NewGuid()}");
-        Assert.True(categoryResult.IsSuccess);
-        var category = categoryResult.Value!;
+            _client.AuthenticateAs(customerId);
 
-        var priceResult = Price.Create(100.00m, Currency.USD);
-        Assert.True(priceResult.IsSuccess);
-
-        var skuResult = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}");
-        Assert.True(skuResult.IsSuccess);
-
-        var productResult = Product.Create(
-            "Concurrent Checkout Product",
-            priceResult.Value!.Amount,
-            priceResult.Value.Currency,
-            skuResult.Value!.Value,
-            category.Id
-        );
-        Assert.True(productResult.IsSuccess);
-        var product = productResult.Value!;
-
-        using (var setupScope = _factory.Services.CreateScope())
-        {
-            var db = setupScope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-            db.Categories.Add(category);
-            db.Products.Add(product);
-
-            SeedCustomer(
-                db,
-                customerId,
-                "Khreshchatyk St 1",
-                "Kyiv",
-                "01001",
-                "Ukraine"
+            await _client.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = usdProduct.Id, Quantity = 1 }
+            );
+            await _client.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = uahProduct.Id, Quantity = 1 }
             );
 
-            await db.SaveChangesAsync();
+            var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
+
+            Assert.Equal(HttpStatusCode.BadRequest, checkoutRes.StatusCode);
         }
 
-        using var clientA = _factory.WithTestAuthentication().CreateClient();
-        using var clientB = _factory.WithTestAuthentication().CreateClient();
+        [Fact]
+        public async Task Checkout_SnapshotsShippingAddress_IndependentOfLaterCustomerAddressChanges()
+        {
+            var customerId = Guid.NewGuid();
 
-        clientA.AuthenticateAs(customerId);
-        clientB.AuthenticateAs(customerId);
+            var categoryResult = Category.Create("Test Category");
+            var category = categoryResult.Value!;
 
-        var addItemResponse = await clientA.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto
+            var priceResult = Price.Create(50.00m, Currency.USD);
+            var randomSku = $"PRD-{Random.Shared.Next(1000, 9999)}";
+            var skuResult = SKU.Create(randomSku);
+
+            var productResult = Product.Create(
+                "Sample Product",
+                priceResult.Value!.Amount,
+                priceResult.Value!.Currency,
+                skuResult.Value!.Value,
+                category.Id
+            );
+            var product = productResult.Value!;
+
+            using (var scope = _factory.Services.CreateScope())
             {
-                ProductId = product.Id,
-                Quantity = 1
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+                db.Categories.Add(category);
+                db.Products.Add(product);
+                SeedCustomer(db, customerId, "Original St 1", "Kyiv", "01001", "Ukraine");
+                await db.SaveChangesAsync();
             }
-        );
 
-        Assert.Equal(HttpStatusCode.OK, addItemResponse.StatusCode);
+            _client.AuthenticateAs(customerId);
 
-        var checkoutTaskA = clientA.PostAsync("/api/Cart/checkout", null);
-        var checkoutTaskB = clientB.PostAsync("/api/Cart/checkout", null);
+            await _client.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = product.Id, Quantity = 1 }
+            );
 
-        var responses = await Task.WhenAll(checkoutTaskA, checkoutTaskB);
+            var checkoutRes = await _client.PostAsync("/api/Cart/checkout", null);
+            Assert.Equal(HttpStatusCode.OK, checkoutRes.StatusCode);
 
-        Assert.Single(responses, response => response.StatusCode == HttpStatusCode.OK);
+            var orderId = await checkoutRes.Content.ReadFromJsonAsync<Guid>();
 
-        Assert.Single(
-            responses,
-            response =>
-                response.StatusCode == HttpStatusCode.Conflict
-                || response.StatusCode == HttpStatusCode.NotFound
-        );
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"UPDATE Customers SET Address_Street = {"New St 99"}, Address_City = {"Lviv"} WHERE Id = {customerId}"
+                );
+            }
 
-        using var verificationScope = _factory.Services.CreateScope();
+            var getRes = await _client.GetAsync($"/api/orders/{orderId}");
+            Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
 
-        var verificationDb =
-            verificationScope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            var order = await getRes.Content.ReadFromJsonAsync<OrderResponse>();
 
-        var persistedCart = await verificationDb.Carts
-            .SingleAsync(c => c.CustomerId == customerId);
+            Assert.NotNull(order);
+            Assert.Equal("Original St 1", order.ShippingAddress.Street);
+            Assert.Equal("Kyiv", order.ShippingAddress.City);
+        }
 
-        var orderCount = await verificationDb.Orders
-            .CountAsync(o => o.CustomerId == customerId);
+        private static void SeedCustomer(
+            EcomCourseDbContext db,
+            Guid customerId,
+            string street,
+            string city,
+            string postalCode,
+            string country
+        )
+        {
+            var customer = Customer
+                .Create(
+                    Guid.NewGuid(),
+                    "Test Customer",
+                    $"{customerId}@example.com",
+                    street,
+                    city,
+                    postalCode,
+                    country
+                )
+                .Value!;
 
-        Assert.Equal(CartStatus.CheckedOut, persistedCart.Status);
-        Assert.Equal(1, orderCount);
-    }
+            typeof(Customer)
+                .BaseType!.GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
+                .SetValue(customer, customerId);
 
-    private static void SeedCustomer(
-        EcomCourseDbContext db,
-        Guid customerId,
-        string street,
-        string city,
-        string postalCode,
-        string country)
-    {
-        var customer = Customer.Create(
-            Guid.NewGuid(),
-            "Test Customer",
-            $"{customerId}@example.com",
-            street,
-            city,
-            postalCode,
-            country).Value!;
+            db.Customers.Add(customer);
+        }
 
-        typeof(Customer).BaseType!
-            .GetProperty("Id", BindingFlags.Public | BindingFlags.Instance)!
-            .SetValue(customer, customerId);
+        public Task InitializeAsync() => Task.CompletedTask;
 
-        db.Customers.Add(customer);
+        public async Task DisposeAsync()
+        {
+            await _factory.ResetDatabaseAsync();
+        }
     }
 }

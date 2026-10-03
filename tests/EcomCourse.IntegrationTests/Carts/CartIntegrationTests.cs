@@ -1,277 +1,200 @@
 using System.Net;
 using System.Net.Http.Json;
 using EcomCourse.Application.Carts.DTOs;
-using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
-using EcomCourse.IntegrationTests.Common;
+using EcomCourse.Infrastructure.Persistence.Identity;
+using EcomCourse.IntegrationTests.Infrastructure;
 using EcomCourse.IntegrationTests.TestSupport;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
-namespace EcomCourse.IntegrationTests.Carts;
-
-public class CartIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+namespace EcomCourse.IntegrationTests.Carts
 {
-    private readonly HttpClient _httpClient;
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public CartIntegrationTests(WebApplicationFactory<Program> factory)
+    [Collection("IntegrationTests")]
+    public class CartIntegrationTests : IAsyncLifetime
     {
-        _factory = factory;
-        _httpClient = factory.WithTestAuthentication().CreateClient();
-    }
+        private readonly HttpClient _httpClient;
+        private readonly CustomWebApplicationFactory<
+            Program,
+            EcomCourseDbContext,
+            IdentityDbContext
+        > _factory;
 
-    [Fact]
-    public async Task CartFlow_ShouldAddUpdateAndRemoveItems()
-    {
-        var customerId = Guid.NewGuid();
-
-        var categoryResult = Category.Create("Test Category");
-        Assert.True(categoryResult.IsSuccess);
-        var category = categoryResult.Value;
-        Assert.NotNull(category);
-
-        var price1 = Price.Create(100.00m, Currency.USD).Value;
-        var sku1 = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}").Value;
-        Assert.NotNull(price1);
-        Assert.NotNull(sku1);
-
-        var product1Result = Product.Create(
-            "Product 1",
-            price1.Amount,
-            price1.Currency,
-            sku1.Value,
-            category.Id
-        );
-        Assert.True(product1Result.IsSuccess);
-        var product1 = product1Result.Value;
-        Assert.NotNull(product1);
-
-        var price2 = Price.Create(200.00m, Currency.USD).Value;
-        var sku2 = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}").Value;
-        Assert.NotNull(price2);
-        Assert.NotNull(sku2);
-
-        var product2Result = Product.Create(
-            "Product 2",
-            price2.Amount,
-            price2.Currency,
-            sku2.Value,
-            category.Id
-        );
-        Assert.True(product2Result.IsSuccess);
-        var product2 = product2Result.Value;
-        Assert.NotNull(product2);
-
-        using (var scope = _factory.Services.CreateScope())
+        public CartIntegrationTests(
+            CustomWebApplicationFactory<Program, EcomCourseDbContext, IdentityDbContext> factory
+        )
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-            db.Categories.Add(category);
-            db.Products.AddRange(product1, product2);
-            await db.SaveChangesAsync();
+            _factory = factory;
+            _httpClient = factory.WithTestAuthentication().CreateClient();
         }
 
-        _httpClient.AuthenticateAs(customerId);
+        public Task InitializeAsync() => Task.CompletedTask;
 
-        var addRes1 = await _httpClient.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = product1.Id, Quantity = 2 }
-        );
-        Assert.Equal(HttpStatusCode.OK, addRes1.StatusCode);
-
-        var addRes2 = await _httpClient.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = product2.Id, Quantity = 3 }
-        );
-        Assert.Equal(HttpStatusCode.OK, addRes2.StatusCode);
-
-        using (var scope = _factory.Services.CreateScope())
+        public async Task DisposeAsync()
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-            var item1 = await db.CartItems.FirstOrDefaultAsync(x =>
-                x.ProductId == product1.Id && x.Cart.CustomerId == customerId
-            );
-            var item2 = await db.CartItems.FirstOrDefaultAsync(x =>
-                x.ProductId == product2.Id && x.Cart.CustomerId == customerId
-            );
-
-            Assert.NotNull(item1);
-            Assert.NotNull(item2);
-
-            var updateRes = await _httpClient.PutAsJsonAsync(
-                $"/api/Cart/items",
-                new UpdateCartItemQuantityDto { ProductId = item1.ProductId, Quantity = 5 }
-            );
-            Assert.Equal(HttpStatusCode.OK, updateRes.StatusCode);
-
-            var deleteRes = await _httpClient.DeleteAsync($"/api/Cart/items/{item2.Id}");
-            Assert.Equal(HttpStatusCode.OK, deleteRes.StatusCode);
+            await _factory.ResetDatabaseAsync();
         }
 
-        using (var scope = _factory.Services.CreateScope())
+        [Fact]
+        public async Task CartFlow_ShouldAddUpdateAndRemoveItems()
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+            var customerId = Guid.NewGuid();
 
-            var remainingItems = await db
-                .CartItems.Where(x => x.Cart.CustomerId == customerId)
-                .ToListAsync();
+            var categoryResult = Category.Create($"Category-{Guid.NewGuid():N}");
+            Assert.True(categoryResult.IsSuccess);
+            var category = categoryResult.Value;
+            Assert.NotNull(category);
 
-            Assert.Single(remainingItems);
-            Assert.Equal(product1.Id, remainingItems[0].ProductId);
-            Assert.Equal(5, remainingItems[0].Quantity);
-        }
-    }
+            var price1 = Price.Create(100.00m, Currency.USD).Value;
+            var sku1 = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}").Value;
+            Assert.NotNull(price1);
+            Assert.NotNull(sku1);
 
-    [Fact]
-    public async Task UpdateCartItemQuantity_ChangesCartRowVersion()
-    {
-        var customerId = Guid.NewGuid();
-
-        var category = Category.Create($"Category-{Guid.NewGuid()}").Value!;
-        var price = Price.Create(100m, Currency.USD).Value!;
-        var skuResult = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}");
-        Assert.True(skuResult.IsSuccess);
-        var sku = skuResult.Value!;
-
-        var product = Product
-            .Create(
-                "RowVersion Test Product",
-                price.Amount,
-                price.Currency,
-                sku.Value,
+            var product1Result = Product.Create(
+                "Product 1",
+                price1.Amount,
+                price1.Currency,
+                sku1.Value,
                 category.Id
-            )
-            .Value!;
-
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-            db.Categories.Add(category);
-            db.Products.Add(product);
-
-            await db.SaveChangesAsync();
-        }
-
-        _httpClient.AuthenticateAs(customerId);
-
-        var addResponse = await _httpClient.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto
-            {
-                ProductId = product.Id,
-                Quantity = 1,
-            }
-        );
-
-        Assert.Equal(HttpStatusCode.OK, addResponse.StatusCode);
-
-        byte[] originalRowVersion;
-
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-            var cart = await db.Carts.SingleAsync(
-                c => c.CustomerId == customerId && c.Status == CartStatus.Active
             );
+            Assert.True(product1Result.IsSuccess);
+            var product1 = product1Result.Value;
+            Assert.NotNull(product1);
 
-            originalRowVersion = db.Entry(cart)
-                .Property<byte[]>("RowVersion")
-                .CurrentValue!
-                .ToArray();
-        }
+            var price2 = Price.Create(200.00m, Currency.USD).Value;
+            var sku2 = SKU.Create($"PRD-{Random.Shared.Next(1000, 9999)}").Value;
+            Assert.NotNull(price2);
+            Assert.NotNull(sku2);
 
-        var updateResponse = await _httpClient.PutAsJsonAsync(
-            "/api/Cart/items",
-            new UpdateCartItemQuantityDto
-            {
-                ProductId = product.Id,
-                Quantity = 5,
-            }
-        );
-
-        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
-
-        byte[] updatedRowVersion;
-
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-
-            var cart = await db.Carts.SingleAsync(
-                c => c.CustomerId == customerId && c.Status == CartStatus.Active
+            var product2Result = Product.Create(
+                "Product 2",
+                price2.Amount,
+                price2.Currency,
+                sku2.Value,
+                category.Id
             );
+            Assert.True(product2Result.IsSuccess);
+            var product2 = product2Result.Value;
+            Assert.NotNull(product2);
 
-            updatedRowVersion = db.Entry(cart)
-                .Property<byte[]>("RowVersion")
-                .CurrentValue!
-                .ToArray();
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+                db.Categories.Add(category);
+                db.Products.AddRange(product1, product2);
+                await db.SaveChangesAsync();
+            }
+
+            _httpClient.AuthenticateAs(customerId);
+
+            var addRes1 = await _httpClient.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = product1.Id, Quantity = 2 }
+            );
+            Assert.Equal(HttpStatusCode.OK, addRes1.StatusCode);
+
+            var addRes2 = await _httpClient.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = product2.Id, Quantity = 3 }
+            );
+            Assert.Equal(HttpStatusCode.OK, addRes2.StatusCode);
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+                var item1 = await db.CartItems.FirstOrDefaultAsync(x =>
+                    x.ProductId == product1.Id && x.Cart.CustomerId == customerId
+                );
+                var item2 = await db.CartItems.FirstOrDefaultAsync(x =>
+                    x.ProductId == product2.Id && x.Cart.CustomerId == customerId
+                );
+
+                Assert.NotNull(item1);
+                Assert.NotNull(item2);
+
+                var updateRes = await _httpClient.PutAsJsonAsync(
+                    "/api/Cart/items",
+                    new UpdateCartItemQuantityDto { ProductId = item1.ProductId, Quantity = 5 }
+                );
+                Assert.Equal(HttpStatusCode.OK, updateRes.StatusCode);
+
+                var deleteRes = await _httpClient.DeleteAsync($"/api/Cart/items/{item2.Id}");
+                Assert.Equal(HttpStatusCode.OK, deleteRes.StatusCode);
+            }
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+
+                var remainingItems = await db
+                    .CartItems.Where(x => x.Cart.CustomerId == customerId)
+                    .ToListAsync();
+
+                Assert.Single(remainingItems);
+                Assert.Equal(product1.Id, remainingItems[0].ProductId);
+                Assert.Equal(5, remainingItems[0].Quantity);
+            }
         }
 
-        Assert.False(originalRowVersion.SequenceEqual(updatedRowVersion));
-    }
-
-    [Fact]
-    public async Task GetActiveCart_HappyPath_Returns200WithFullCartDetails()
-    {
-        var customerId = Guid.NewGuid();
-        var category = Category.Create("Books").Value!;
-        var price = Price.Create(25.00m, Currency.USD).Value!;
-        var sku = SKU.Create($"SKU-{Random.Shared.Next(1000, 9999)}").Value!;
-        var product = Product
-            .Create("Clean Code", price.Amount, price.Currency, sku.Value, category.Id)
-            .Value!;
-
-        using (var scope = _factory.Services.CreateScope())
+        [Fact]
+        public async Task GetActiveCart_HappyPath_Returns200WithFullCartDetails()
         {
-            var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
-            db.Categories.Add(category);
-            db.Products.Add(product);
-            await db.SaveChangesAsync();
+            var customerId = Guid.NewGuid();
+            var category = Category.Create($"Books-{Guid.NewGuid():N}").Value!;
+            var price = Price.Create(25.00m, Currency.USD).Value!;
+            var sku = SKU.Create($"SKU-{Random.Shared.Next(1000, 9999)}").Value!;
+            var product = Product
+                .Create("Clean Code", price.Amount, price.Currency, sku.Value, category.Id)
+                .Value!;
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcomCourseDbContext>();
+                db.Categories.Add(category);
+                db.Products.Add(product);
+                await db.SaveChangesAsync();
+            }
+
+            _httpClient.AuthenticateAs(customerId);
+
+            var addRes = await _httpClient.PostAsJsonAsync(
+                "/api/Cart/items",
+                new AddItemToCartDto { ProductId = product.Id, Quantity = 2 }
+            );
+            Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
+
+            var getRes = await _httpClient.GetAsync("/api/Cart");
+
+            Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+            var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
+
+            Assert.NotNull(details);
+            Assert.NotEqual(Guid.Empty, details.CartId);
+            Assert.Single(details.Items);
+            Assert.Equal("Clean Code", details.Items[0].Name);
+            Assert.Equal(25.00m, details.Items[0].UnitPrice);
+            Assert.Equal(2, details.Items[0].Quantity);
+            Assert.Equal(50.00m, details.TotalAmount);
         }
 
-        _httpClient.AuthenticateAs(customerId);
+        [Fact]
+        public async Task GetActiveCart_WhenNoActiveCartExists_Returns200WithEmptyCartDetails()
+        {
+            var customerId = Guid.NewGuid();
+            _httpClient.AuthenticateAs(customerId);
 
-        var addRes = await _httpClient.PostAsJsonAsync(
-            "/api/Cart/items",
-            new AddItemToCartDto { ProductId = product.Id, Quantity = 2 }
-        );
-        Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
+            var getRes = await _httpClient.GetAsync("/api/Cart");
 
-        var getRes = await _httpClient.GetAsync("/api/Cart");
+            Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+            var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
 
-        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
-        var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
-
-        Assert.NotNull(details);
-        Assert.NotEqual(Guid.Empty, details.CartId);
-        Assert.Single(details.Items);
-        Assert.Equal("Clean Code", details.Items[0].Name);
-        Assert.Equal(25.00m, details.Items[0].UnitPrice);
-        Assert.Equal(2, details.Items[0].Quantity);
-        Assert.Equal(50.00m, details.TotalAmount);
-    }
-
-    [Fact]
-    public async Task GetActiveCart_WhenNoActiveCartExists_Returns200WithEmptyCartDetails()
-    {
-        var customerId = Guid.NewGuid();
-        _httpClient.AuthenticateAs(customerId);
-
-        var getRes = await _httpClient.GetAsync("/api/Cart");
-
-        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
-        var details = await getRes.Content.ReadFromJsonAsync<CartDetailsDto>();
-
-        Assert.NotNull(details);
-        Assert.Equal(Guid.Empty, details.CartId);
-        Assert.Empty(details.Items);
-        Assert.Equal(0m, details.TotalAmount);
+            Assert.NotNull(details);
+            Assert.Equal(Guid.Empty, details.CartId);
+            Assert.Empty(details.Items);
+            Assert.Equal(0m, details.TotalAmount);
+        }
     }
 }

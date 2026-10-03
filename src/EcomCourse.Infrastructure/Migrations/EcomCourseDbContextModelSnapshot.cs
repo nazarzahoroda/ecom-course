@@ -449,6 +449,14 @@ namespace EcomCourse.Infrastructure.Migrations
 
                     b.Navigation("Cart");
                 });
+            modelBuilder.Entity("EcomCourse.Domain.Products.ProductImage", b =>
+            {
+                b.HasOne("EcomCourse.Domain.Products.Product", null)
+                    .WithMany("Images")
+                    .HasForeignKey("ProductId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
 
             modelBuilder.Entity("EcomCourse.Domain.Customers.Customer", b =>
                 {
