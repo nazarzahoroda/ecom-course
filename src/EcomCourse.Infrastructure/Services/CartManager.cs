@@ -12,13 +12,16 @@ public class CartManager : ICartManager
 {
     private readonly EcomCourseDbContext _context;
     private readonly IUserContext _currentUserService;
+    private readonly IBlobStorageService _storageService;
 
     public CartManager(
         EcomCourseDbContext context,
-        IUserContext currentUserService)
+        IUserContext currentUserService,
+        IBlobStorageService storageService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _storageService = storageService;
     }
 
     public async Task<Result<CartDetailsDto>> GetActiveCartDetailsAsync(
@@ -60,6 +63,10 @@ public class CartManager : ICartManager
                 UnitPrice = p.Price.Amount,
                 Currency = p.Price.Currency.ToString(),
                 Sku = p.SKU.Value,
+                MainImageBlobName = p.Images
+                    .Where(image => image.IsMain)
+                    .Select(image => image.BlobName)
+                    .FirstOrDefault(),
             })
             .ToDictionaryAsync(
                 p => p.Id,
@@ -81,6 +88,21 @@ public class CartManager : ICartManager
             {
                 var product = products[item.ProductId];
 
+                var imageUrl = string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(product.MainImageBlobName))
+                {
+                    var sasResult = _storageService.GenerateReadSasUri(
+                        product.MainImageBlobName,
+                        TimeSpan.FromHours(1)
+                    );
+
+                    if (sasResult.IsSuccess)
+                    {
+                        imageUrl = sasResult.Value!;
+                    }
+                }
+
                 return new CartItemDetailsDto
                 {
                     Id = item.Id,
@@ -90,6 +112,7 @@ public class CartManager : ICartManager
                     UnitPrice = product.UnitPrice,
                     Currency = product.Currency,
                     Quantity = item.Quantity,
+                    ImageUrl = imageUrl,
                 };
             })
             .ToList();
