@@ -1,6 +1,7 @@
 using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain.Carts;
 using EcomCourse.Domain.Categories;
+using EcomCourse.Domain.Common;
 using EcomCourse.Domain.Customers;
 using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
@@ -15,6 +16,7 @@ namespace EcomCourse.UnitTests.CartTest
         private readonly Mock<IUserContext> _currentUserServiceMock = new();
         private readonly Mock<ICustomerRepository> _customerRepositoryMock = new();
         private readonly DbContextOptions<EcomCourseDbContext> _dbOptions;
+        private readonly Mock<IBlobStorageService> _storageServiceMock = new();
 
         public GetActiveCartDetailsTests()
         {
@@ -32,7 +34,8 @@ namespace EcomCourse.UnitTests.CartTest
             await using var context = new EcomCourseDbContext(_dbOptions);
             var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object
+                _currentUserServiceMock.Object,
+                _storageServiceMock.Object
             );
 
             var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
@@ -59,7 +62,8 @@ namespace EcomCourse.UnitTests.CartTest
             await using var context = new EcomCourseDbContext(_dbOptions);
             var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object
+                _currentUserServiceMock.Object,
+                _storageServiceMock.Object
             );
 
             var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
@@ -97,7 +101,8 @@ namespace EcomCourse.UnitTests.CartTest
             await using var context = new EcomCourseDbContext(_dbOptions);
             var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object
+                _currentUserServiceMock.Object,
+                _storageServiceMock.Object
             );
 
             var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
@@ -152,13 +157,84 @@ namespace EcomCourse.UnitTests.CartTest
             await using var context = new EcomCourseDbContext(_dbOptions);
             var manager = new CartManager(
                 context,
-                _currentUserServiceMock.Object
+                _currentUserServiceMock.Object,
+                _storageServiceMock.Object
             );
 
             var result = await manager.GetActiveCartDetailsAsync(CancellationToken.None);
 
             Assert.True(result.IsFailure);
             Assert.Equal(ProductErrors.Unavailable.Code, result.Error.Code);
+        }
+
+        [Fact]
+        public async Task GetActiveCartDetailsAsync_WhenProductHasMainImage_ReturnsImageUrl()
+        {
+            var customerId = Guid.NewGuid();
+            _currentUserServiceMock.Setup(x => x.CustomerId).Returns(customerId);
+
+            var category = Category.Create("Electronics").Value!;
+
+            var product = Product
+                .Create(
+                    "Product With Image",
+                    100.00m,
+                    Currency.USD,
+                    "PRD-9839",
+                    category.Id)
+                .Value!;
+
+            var image = ProductImage.Create(
+                product.Id,
+                "products/product-image.jpg",
+                "image/jpeg",
+                true);
+
+            var cart = Cart.Create(customerId).Value!;
+            cart.AddItem(product.Id, 1);
+
+            await using (var setupContext = new EcomCourseDbContext(_dbOptions))
+            {
+                setupContext.Categories.Add(category);
+                setupContext.Products.Add(product);
+                setupContext.ProductImages.Add(image);
+                setupContext.Carts.Add(cart);
+
+                await setupContext.SaveChangesAsync();
+            }
+
+            const string expectedImageUrl =
+                "https://storage.test/products/product-image.jpg?sas=test";
+
+            _storageServiceMock
+                .Setup(x => x.GenerateReadSasUri(
+                    image.BlobName,
+                    It.IsAny<TimeSpan>()))
+                .Returns(Result.Success(expectedImageUrl));
+
+            await using var context = new EcomCourseDbContext(_dbOptions);
+
+            var manager = new CartManager(
+                context,
+                _currentUserServiceMock.Object,
+                _storageServiceMock.Object);
+
+            var result = await manager.GetActiveCartDetailsAsync(
+                CancellationToken.None);
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value!.Items);
+
+            var item = result.Value.Items.First();
+
+            Assert.Equal(product.Id, item.ProductId);
+            Assert.Equal(expectedImageUrl, item.ImageUrl);
+
+            _storageServiceMock.Verify(
+                x => x.GenerateReadSasUri(
+                    image.BlobName,
+                    It.IsAny<TimeSpan>()),
+                Times.Once);
         }
     }
 }
