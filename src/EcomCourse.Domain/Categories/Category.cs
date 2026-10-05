@@ -5,16 +5,19 @@ namespace EcomCourse.Domain.Categories
 {
     public sealed class Category : Entity<Guid>
     {
-        private Category() : base(Guid.Empty)
-        {
-        }
+        private Category()
+            : base(Guid.Empty) { }
 
-        private Category(Guid id, string name) : base(id)
+        private Category(Guid id, string name, string? blobName = null)
+            : base(id)
         {
             Name = name;
+            BlobName = blobName;
         }
 
         public string Name { get; private set; } = null!;
+
+        public string? BlobName { get; private set; }
 
         public static Result<Category> Create(string name)
         {
@@ -48,6 +51,23 @@ namespace EcomCourse.Domain.Categories
             Name = name.Trim();
 
             return Result.Success();
+        }
+
+        public Result UpdateImage(string blobName)
+        {
+            if (string.IsNullOrWhiteSpace(blobName))
+            {
+                return Result.Failure(CategoryErrors.BlobNameEmpty);
+            }
+
+            BlobName = blobName.Trim();
+
+            return Result.Success();
+        }
+
+        public void RemoveImage()
+        {
+            BlobName = null;
         }
     }
 }
