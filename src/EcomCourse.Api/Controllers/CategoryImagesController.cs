@@ -1,9 +1,9 @@
 using EcomCourse.Api.Common;
+using EcomCourse.Application.Categories;
 using EcomCourse.Application.Categories.Commands.ConfirmCategoryImageUpload;
 using EcomCourse.Application.Categories.Commands.DeleteCategoryImage;
 using EcomCourse.Application.Categories.Commands.InitiateCategoryImageUpload;
 using EcomCourse.Application.Products;
-using EcomCourse.Application.Products.Queries.GetProductImages;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,28 +14,11 @@ namespace EcomCourse.Api.Controllers
     [Route("api/[controller]")]
     public class CategoryImagesController : ControllerBase
     {
-        public sealed record ConfirmUploadRequest(string BlobName);
-
         private readonly ISender _sender;
 
         public CategoryImagesController(ISender sender)
         {
             _sender = sender;
-        }
-
-        [HttpGet("{productId}")]
-        public async Task<IActionResult> GetImages(
-            Guid productId,
-            CancellationToken cancellationToken
-        )
-        {
-            var request = new GetProductImagesQuery(productId);
-            var images = await _sender.Send(request, cancellationToken);
-            if (images.IsFailure)
-            {
-                return images.ToProblemDetails();
-            }
-            return Ok(images.Value);
         }
 
         [HttpPost("{categoryId}/initiate-upload")]
@@ -64,7 +47,7 @@ namespace EcomCourse.Api.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ConfirmUpload(
             [FromRoute] Guid categoryId,
-            [FromBody] ConfirmUploadRequest request,
+            [FromBody] ConfirmCategoryImageUploadRequest request,
             CancellationToken cancellationToken
         )
         {
