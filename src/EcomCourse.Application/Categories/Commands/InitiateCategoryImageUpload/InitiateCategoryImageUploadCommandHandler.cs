@@ -36,7 +36,7 @@ namespace EcomCourse.Application.Categories.Commands.InitiateCategoryImageUpload
             CancellationToken cancellationToken
         )
         {
-            if (!await _categoryManager.CategoryExists(request.categoryId, cancellationToken))
+            if (!await _categoryManager.CategoryExistsAsync(request.categoryId, cancellationToken))
                 return Result.Failure<InitiateUploadResponse>(
                     CategoryErrors.NotFound(request.categoryId)
                 );

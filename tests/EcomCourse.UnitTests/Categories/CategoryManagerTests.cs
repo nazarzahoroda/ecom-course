@@ -1,13 +1,17 @@
+using EcomCourse.Application.Abstractions;
 using EcomCourse.Domain;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Infrastructure.Persistence;
 using EcomCourse.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 
 namespace EcomCourse.UnitTests.Categories;
 
 public class CategoryManagerTests
 {
+    private readonly IBlobStorageService _storageService = Substitute.For<IBlobStorageService>();
+
     [Fact]
     public async Task CreateAsync_WhenNameAlreadyExists_ReturnsNameAlreadyExistsError()
     {
@@ -18,8 +22,7 @@ public class CategoryManagerTests
 
         dbContext.Categories.Add(existingCategory);
         await dbContext.SaveChangesAsync();
-
-        var service = new CategoryManager(dbContext);
+        var service = new CategoryManager(dbContext, _storageService);
 
         // Act
         var result = await service.CreateAsync("Electronics");
@@ -41,12 +44,10 @@ public class CategoryManagerTests
         dbContext.Categories.AddRange(electronics, books);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryManager(dbContext);
+        var service = new CategoryManager(dbContext, _storageService);
 
         // Act
-        var result = await service.UpdateAsync(
-            books.Id,
-            electronics.Name);
+        var result = await service.UpdateAsync(books.Id, electronics.Name);
 
         // Assert
         Assert.True(result.IsFailure);
@@ -64,12 +65,10 @@ public class CategoryManagerTests
         dbContext.Categories.Add(category);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryManager(dbContext);
+        var service = new CategoryManager(dbContext, _storageService);
 
         // Act
-        var result = await service.UpdateAsync(
-            category.Id,
-            category.Name);
+        var result = await service.UpdateAsync(category.Id, category.Name);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -87,12 +86,10 @@ public class CategoryManagerTests
         dbContext.Categories.AddRange(electronics, books);
         await dbContext.SaveChangesAsync();
 
-        var service = new CategoryManager(dbContext);
+        var service = new CategoryManager(dbContext, _storageService);
 
         // Act
-        var result = await service.UpdateAsync(
-            books.Id,
-            electronics.Name);
+        var result = await service.UpdateAsync(books.Id, electronics.Name);
 
         // Assert
         Assert.True(result.IsFailure);
