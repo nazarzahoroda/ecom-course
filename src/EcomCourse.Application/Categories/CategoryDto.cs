@@ -1,6 +1,4 @@
-
-
 namespace EcomCourse.Application.Categories
 {
-    public sealed record CategoryDto(Guid Id, string Name);
+    public sealed record CategoryDto(Guid Id, string Name, string? ImageUrl = null);
 }
