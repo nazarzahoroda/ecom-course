@@ -61,7 +61,8 @@ namespace EcomCourse.Application.Categories.Commands.InitiateCategoryImageUpload
             }
 
             var safeFileName = Path.GetFileName(request.fileName);
-            var blobName = $"{Guid.NewGuid()}-{safeFileName}";
+            var blobName =
+                $"categories/{request.categoryId}/{Guid.NewGuid()}{ext.ToLowerInvariant()}";
 
             var sasResult = _storageService.GenerateWriteSasUri(
                 blobName,
