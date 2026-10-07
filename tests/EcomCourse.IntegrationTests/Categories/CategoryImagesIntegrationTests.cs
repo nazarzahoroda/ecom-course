@@ -115,6 +115,7 @@ namespace EcomCourse.IntegrationTests.Categories
             Assert.NotNull(result);
             Assert.False(string.IsNullOrWhiteSpace(result.UploadUrl));
             Assert.False(string.IsNullOrWhiteSpace(result.BlobName));
+            Assert.Contains($"categories/{_categoryId}/", result.BlobName);
             Assert.Contains(".png", result.BlobName);
         }
 
@@ -138,7 +139,7 @@ namespace EcomCourse.IntegrationTests.Categories
         [Fact]
         public async Task ConfirmUpload_ShouldPersistImageInDatabase_WhenBlobExists()
         {
-            var blobName = $"{Guid.NewGuid()}-category.jpg";
+            var blobName = $"categories/{_categoryId}/{Guid.NewGuid()}.jpg";
             _fakeStorage.RegisterBlob(blobName);
 
             var request = BuildRequest(
@@ -162,9 +163,26 @@ namespace EcomCourse.IntegrationTests.Categories
         }
 
         [Fact]
+        public async Task ConfirmUpload_ShouldReturnBadRequest_WhenBlobDoesNotBelongToCategory()
+        {
+            var otherBlob = $"products/{Guid.NewGuid()}/photo.png";
+
+            var request = BuildRequest(
+                HttpMethod.Post,
+                $"/api/CategoryImages/{_categoryId}/confirm-upload",
+                role: "Admin"
+            );
+            request.Content = JsonContent.Create(new ConfirmCategoryImageUploadRequest(otherBlob));
+
+            var response = await _client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
         public async Task ConfirmUpload_ShouldReturnError_WhenBlobNotFoundInStorage()
         {
-            var nonExistentBlob = "missing-category-image.jpg";
+            var nonExistentBlob = $"categories/{_categoryId}/{Guid.NewGuid()}.jpg";
 
             var request = BuildRequest(
                 HttpMethod.Post,
@@ -183,7 +201,7 @@ namespace EcomCourse.IntegrationTests.Categories
         [Fact]
         public async Task DeleteImage_ShouldRemoveImageFromDbAndStorage_WhenAdmin()
         {
-            var blobName = $"{Guid.NewGuid()}-category.webp";
+            var blobName = $"categories/{_categoryId}/{Guid.NewGuid()}.webp";
             _fakeStorage.RegisterBlob(blobName);
 
             var confirmRequest = BuildRequest(
@@ -199,7 +217,7 @@ namespace EcomCourse.IntegrationTests.Categories
 
             var deleteRequest = BuildRequest(
                 HttpMethod.Delete,
-                $"/api/CategoryImages/{_categoryId}?productId={_categoryId}",
+                $"/api/CategoryImages/{_categoryId}",
                 role: "Admin"
             );
             var deleteResponse = await _client.SendAsync(deleteRequest);

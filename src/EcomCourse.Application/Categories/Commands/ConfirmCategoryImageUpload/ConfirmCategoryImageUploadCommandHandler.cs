@@ -24,6 +24,22 @@ namespace EcomCourse.Application.Categories.Commands.ConfirmCategoryImageUpload
             CancellationToken cancellationToken
         )
         {
+            var expectedPrefix = $"categories/{request.categoryId}/";
+
+            if (
+                string.IsNullOrWhiteSpace(request.blobName)
+                || !request.blobName.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                return Result.Failure(
+                    new DomainError(
+                        "Storage.InvalidOwnership",
+                        "The specified blob does not belong to this category.",
+                        ErrorType.Validation
+                    )
+                );
+            }
+
             var exists = await _storageService.ExistsAsync(request.blobName, cancellationToken);
             if (!exists)
             {

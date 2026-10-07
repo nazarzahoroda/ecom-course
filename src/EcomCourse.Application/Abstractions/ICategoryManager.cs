@@ -16,7 +16,7 @@ public interface ICategoryManager
     Task<Result> UpdateAsync(Guid id, string name, CancellationToken cancellationToken = default);
 
     Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<bool> CategoryExists(Guid id, CancellationToken cancellationToken);
+    Task<bool> CategoryExistsAsync(Guid id, CancellationToken cancellationToken);
     Task<Result> AddImageAsync(
         Guid categoryId,
         string blobName,

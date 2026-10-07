@@ -3,7 +3,6 @@ using EcomCourse.Application.Categories;
 using EcomCourse.Domain;
 using EcomCourse.Domain.Categories;
 using EcomCourse.Domain.Common;
-using EcomCourse.Domain.Products;
 using EcomCourse.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -219,7 +218,7 @@ namespace EcomCourse.Infrastructure.Services
             return Result.Success();
         }
 
-        public async Task<bool> CategoryExists(Guid id, CancellationToken cancellationToken)
+        public async Task<bool> CategoryExistsAsync(Guid id, CancellationToken cancellationToken)
         {
             return await _dbContext.Categories.AnyAsync(x => x.Id == id, cancellationToken);
         }
@@ -244,10 +243,11 @@ namespace EcomCourse.Infrastructure.Services
             if (category is null)
                 return Result.Failure(CategoryErrors.NotFound(categoryId));
 
-            if (!string.IsNullOrWhiteSpace(category.BlobName))
+            if (string.Equals(category.BlobName, blobName, StringComparison.Ordinal))
             {
-                await _storageService.DeleteAsync(category.BlobName, cancellationToken);
+                return Result.Success();
             }
+            var oldBlobName = category.BlobName;
 
             var addResult = category.UpdateImage(blobName);
 
@@ -255,6 +255,11 @@ namespace EcomCourse.Infrastructure.Services
                 return Result.Failure(addResult.Error);
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(oldBlobName))
+            {
+                await _storageService.DeleteAsync(oldBlobName, CancellationToken.None);
+            }
 
             return Result.Success();
         }
@@ -275,17 +280,13 @@ namespace EcomCourse.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(category.BlobName))
                 return Result.Success();
 
-            var deleteResult = await _storageService.DeleteAsync(
-                category.BlobName,
-                cancellationToken
-            );
-
-            if (deleteResult.IsFailure)
-                return Result.Failure(deleteResult.Error);
+            var blobToDelete = category.BlobName;
 
             category.RemoveImage();
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            await _storageService.DeleteAsync(blobToDelete, CancellationToken.None);
 
             return Result.Success();
         }

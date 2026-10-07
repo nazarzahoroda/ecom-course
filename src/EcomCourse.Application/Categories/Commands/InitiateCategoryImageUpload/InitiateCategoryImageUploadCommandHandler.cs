@@ -36,7 +36,7 @@ namespace EcomCourse.Application.Categories.Commands.InitiateCategoryImageUpload
             CancellationToken cancellationToken
         )
         {
-            if (!await _categoryManager.CategoryExists(request.categoryId, cancellationToken))
+            if (!await _categoryManager.CategoryExistsAsync(request.categoryId, cancellationToken))
                 return Result.Failure<InitiateUploadResponse>(
                     CategoryErrors.NotFound(request.categoryId)
                 );
@@ -60,8 +60,8 @@ namespace EcomCourse.Application.Categories.Commands.InitiateCategoryImageUpload
                 );
             }
 
-            var safeFileName = Path.GetFileName(request.fileName);
-            var blobName = $"{Guid.NewGuid()}-{safeFileName}";
+            var blobName =
+                $"categories/{request.categoryId}/{Guid.NewGuid()}{ext.ToLowerInvariant()}";
 
             var sasResult = _storageService.GenerateWriteSasUri(
                 blobName,
