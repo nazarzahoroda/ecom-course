@@ -60,7 +60,6 @@ namespace EcomCourse.Application.Categories.Commands.InitiateCategoryImageUpload
                 );
             }
 
-            var safeFileName = Path.GetFileName(request.fileName);
             var blobName =
                 $"categories/{request.categoryId}/{Guid.NewGuid()}{ext.ToLowerInvariant()}";
 

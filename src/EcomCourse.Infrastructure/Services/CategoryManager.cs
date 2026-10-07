@@ -254,12 +254,12 @@ namespace EcomCourse.Infrastructure.Services
             if (addResult.IsFailure)
                 return Result.Failure(addResult.Error);
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             if (!string.IsNullOrWhiteSpace(oldBlobName))
             {
                 await _storageService.DeleteAsync(oldBlobName, CancellationToken.None);
             }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return Result.Success();
         }
@@ -280,17 +280,13 @@ namespace EcomCourse.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(category.BlobName))
                 return Result.Success();
 
-            var deleteResult = await _storageService.DeleteAsync(
-                category.BlobName,
-                cancellationToken
-            );
-
-            if (deleteResult.IsFailure)
-                return Result.Failure(deleteResult.Error);
+            var blobToDelete = category.BlobName;
 
             category.RemoveImage();
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            await _storageService.DeleteAsync(blobToDelete, CancellationToken.None);
 
             return Result.Success();
         }
